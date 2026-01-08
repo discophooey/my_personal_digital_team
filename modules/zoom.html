@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrolltastic Zoomies</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 30px;
+            align-items: start;
+            transition: grid-template-columns 0.3s ease;
+        }
+
+        .container.controls-hidden {
+            grid-template-columns: 0 1fr;
+        }
+
+        .panel {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .controls {
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .controls.hidden {
+            opacity: 0;
+            transform: translateX(-20px);
+            pointer-events: none;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #2a2a2a;
+        }
+
+        .logo-image {
+            width: 72px;
+            height: 72px;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            border: 3px solid rgba(74, 158, 255, 0.4);
+            border-radius: 12px;
+            background: #0a0a0a;
+            padding: 8px;
+            box-shadow: 0 0 20px rgba(74, 158, 255, 0.2);
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #fff;
+            margin: 0;
+            text-shadow: 0 0 10px rgba(74, 158, 255, 0.5);
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+            letter-spacing: 1px;
+        }
+
+        h2 {
+            font-size: 16px;
+            margin: 24px 0 0 0;
+            color: #fff;
+            padding: 12px;
+            background: #0a0a0a;
+            border-radius: 6px;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h2:hover {
+            background: #151515;
+        }
+
+        h2::after {
+            content: '▼';
+            font-size: 12px;
+            transition: transform 0.3s;
+        }
+
+        h2.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            max-height: 2000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            opacity: 1;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        h3 {
+            font-size: 14px;
+            margin: 16px 0 8px 0;
+            color: #4a9eff;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 2px dashed #444;
+            border-radius: 8px;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        input[type="text"],
+        input[type="url"],
+        input[type="number"],
+        input[type="color"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+
+        textarea {
+            min-height: 60px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+        }
+
+        .range-value {
+            float: right;
+            color: #888;
+            font-size: 12px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4a9eff;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 8px;
+        }
+
+        button:hover {
+            background: #3a8eef;
+        }
+
+        button.secondary {
+            background: #2a2a2a;
+        }
+
+        button.secondary:hover {
+            background: #3a3a3a;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 6px;
+        }
+
+        .toggle-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px 16px;
+            cursor: pointer;
+            z-index: 100;
+            font-size: 14px;
+            color: #e0e0e0;
+            transition: background 0.2s;
+        }
+
+        .toggle-controls:hover {
+            background: #2a2a2a;
+        }
+
+        .preview-wrapper {
+            background: #0a0a0a;
+            border-radius: 12px;
+            border: 1px solid #2a2a2a;
+            height: calc(100vh - 40px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .zoom-container {
+            height: 300vh;
+            position: relative;
+        }
+
+        .sticky-stage {
+            position: sticky;
+            top: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .image-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 98%;
+        }
+
+        .image-container {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        #zoomImage {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            object-position: center;
+            transition: transform 0.1s ease-out;
+            transform-origin: center center;
+        }
+
+        .text-overlay {
+            position: absolute;
+            padding: 12px 20px;
+            border-radius: 4px;
+            z-index: 10;
+            max-width: 80%;
+            opacity: 1;
+        }
+
+        .caption-overlay {
+            position: relative;
+            width: 85%;
+            max-width: 700px;
+            padding: 10px 16px;
+            background: rgba(0,0,0,0.9);
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: 1;
+            z-index: 20;
+        }
+
+        .caption-credit {
+            color: #999;
+            font-size: 11px;
+            font-style: italic;
+            margin-top: 4px;
+        }
+
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .zoom-anchor {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #4a9eff;
+            border-radius: 50%;
+            background: rgba(74, 158, 255, 0.3);
+            transform: translate(-50%, -50%);
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .zoom-anchor.anchor-2 {
+            border-color: #ff4a9e;
+            background: rgba(255, 74, 158, 0.3);
+        }
+
+        .zoom-anchor::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            background: #4a9eff;
+            border-radius: 50%;
+        }
+
+        .zoom-anchor.anchor-2::after {
+            background: #ff4a9e;
+        }
+
+        .anchor-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            z-index: 25;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-close {
+            background: #2a2a2a;
+            border: none;
+            color: #e0e0e0;
+            font-size: 20px;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+        }
+
+        #exportCode {
+            flex: 1;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            padding: 16px;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            resize: none;
+            margin-bottom: 16px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .help-text {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .anchor-section {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .divider {
+            text-align: center;
+            color: #666;
+            margin: 12px 0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="toggle-controls" onclick="toggleControls()">☰ Controls</div>
+
+    <div class="container" id="container">
+        <div class="panel controls" id="controls">
+            <div class="header-logo">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAACQCAYAAADnRuK4AAAEw0lEQVR4nO3dsWoUURjF8Y1MkyZtiu0DYRAhRfq0IuYF8hoi24ooYiNinyadiCBimz5FQGQIpN8XSIot9QXuCRzPd7Mb/f/KcZ3d7B4ue7gz327NcC/GcfxdcZ5pmtQ/bVWc3/VoHU+KfwcBQoQAIUKAECFAiBAgRAgQIgQIEQKECAFChAAh0n3/5OzszNoDOjo6ah7f3d1tHr+8vPRfVMN8Prcev1wuuz7vzs5O8/jV1VXz+OcvX63n/fH9W/P4NE1WJliBECFAiBAgRAgQIgQIEbuFLZfLZqtSrWF7e7t53G1PBwcH1uMfutVq1TyuWpj7/qjzv3r9pnn8/bu3zaywAiFCgBAhQIgQIEQIECKyhak9rOPj4+bjb25umsfVntH19XXzuNoLUy1PUe3PpdpK7+dVVHtV76f6vNx2fHh4SAtDPQKECAFChAAhQoAQGdz/oNqW4rYt93lVO+vdntz3wT2/ev3unpe7d6Y+L4UVCBEChAgBQoQAIUKAEBnc+7bc+5WqqD01ddy938ptbYpqZ26LVK1Nvc79/f3mcfdz+flLzmBsYgVChAAhQoAQIUCIECBEBvWtW90HdHFxYbW2vb096wW5Uy/U3o07bUNx97yUqhapqDbn7m2pqR2z2az5ubMCIUKAECFAiBAgRAgQIoNqW4r7rV61sA8fPzWPu69HtULVbty9J7eFuS1SzTZUbWixWDSPq/u/FPdzVFiBECFAiBAgRAgQIgQIEfu+sJOTk2ZLevFy0WxDqoXdsedSomovTE3Id69gVO3syePRfk0tqi2q919N21C/Lj2O7dfJCoQIAUKEACFCgBAhQIjYLUxx24Ta05mJK9/cKxuV3jMM3VmOStXfq6jWrKjWzAqECAFChAAhQoAQIUCIlLUwpeoKxqr7pKpmJ7ptrqr9Vf1atHvlp8IKhAgBQoQAIUKAECFAiJS1MHWloprB6M7ic1uYO5NQqZqdqFpY75mTqgWrKw+VaZr4vTDUI0CIECBECBAiBAiRkv2Qv6GuiFNXNrp7ZKrdVM08rJowXzX9Q7Ut1Y4V90pFViBECBAiBAgRAoQIAUJky/29MMX9tq+o1+O2sKoJ8O4VgL1b4fn5efN41fuvqHbGCoQIAUKEACFCgBAhQIiUXZHo7qFU3Zc0n8+tWX+KuuKu6jy3t7fWeVT76922FPV5sQIhQoAQIUCIECBECBAig9pjcqdquDMS3T2vqt+3Uty25Z5H3edVNVF/XViBECFAiBAgRAgQIgQIkaGq3bjTOVzuNA+1J1VFta2nz55b51FXKlbNQuyNFQgRAoQIAUKEACFCgBAp+9Vm9/GqnalW6O61qZZU1c6mqd0K1e+gqT2vqmkhVdSVpVyRiC4IECIECBEChAgBQmRtMxIVd+9M7ZHdcd+ZOr/1XqiWd3p62ny8e+XhuqZwuFiBECFAiBAgRAgQIgQIkY36Rn8Xd49Gqdojq5q0XzVhvjf1vrECIUKAECFAiBAgRAgQIhv1Tf8+VM08VKrug3Otq7WxAiFCgBAhQIgQIEQIECL/XQtTVHty72tTe15K79mPvdsZKxAiBAgRAoQIAUKEACEy9J5isWncvap17W09FKxAiBAgRAgQIgQIEQKEyB9J7KLqgGQZnAAAAABJRU5ErkJggg==" alt="Pixel Dog Logo" class="logo-image">
+                <div>
+                    <h1>Scrolltastic Zoomies</h1>
+                    <div class="subtitle">SCROLL-BASED IMAGE ZOOM TOOL</div>
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection('imageSource')">Image Source</h2>
+            <div class="section-content" id="imageSource">
+                <div class="control-group">
+                    <label>Upload Image File</label>
+                    <input type="file" id="imageInput" accept="image/*">
+                </div>
+
+                <div class="divider">— OR —</div>
+
+                <div class="control-group">
+                    <label>Image URL</label>
+                    <input type="url" id="imageUrl" placeholder="https://example.com/image.jpg">
+                    <div class="help-text">Use direct link for easy updates</div>
+                </div>
+
+                <button class="secondary" onclick="loadImageFromUrl()">Load from URL</button>
+            </div>
+
+            <h2 onclick="toggleSection('zoomSettings')" class="collapsed">Zoom Settings</h2>
+            <div class="section-content collapsed" id="zoomSettings">
+                <div class="control-group">
+                    <label>Image Fit</label>
+                    <select id="imageFit">
+                        <option value="cover" selected>Cover (fill viewport)</option>
+                        <option value="contain">Contain (fit whole image)</option>
+                        <option value="fill">Fill (stretch to fit)</option>
+                        <option value="none">None (actual size)</option>
+                    </select>
+                    <div class="help-text">How the image fills the viewport</div>
+                </div>
+
+                <div class="control-group">
+                    <label>Aspect Ratio</label>
+                    <select id="aspectRatio">
+                        <option value="auto">Auto (original)</option>
+                        <option value="16:9">16:9 (Landscape)</option>
+                        <option value="9:16">9:16 (Portrait/Mobile)</option>
+                        <option value="4:3">4:3 (Classic)</option>
+                        <option value="3:4">3:4 (Portrait)</option>
+                        <option value="1:1">1:1 (Square)</option>
+                        <option value="21:9">21:9 (Ultrawide)</option>
+                        <option value="3:2">3:2 (Photography)</option>
+                        <option value="2:3">2:3 (Portrait Photo)</option>
+                    </select>
+                    <div class="help-text">Force specific aspect ratio</div>
+                </div>
+
+                <div class="control-group">
+                    <label>Zoom Direction</label>
+                    <select id="zoomDirection">
+                        <option value="in">Zoom In (Scale Up)</option>
+                        <option value="out">Zoom Out (Scale Down)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Zoom Start <span class="range-value" id="zoomStartValue">1×</span></label>
+                    <input type="range" id="zoomStart" min="0.5" max="3" step="0.1" value="1">
+                </div>
+
+                <div class="control-group">
+                    <label>Zoom End <span class="range-value" id="zoomEndValue">1.3×</span></label>
+                    <input type="range" id="zoomEnd" min="1" max="10" step="0.1" value="1.3">
+                </div>
+
+                <div class="control-group">
+                    <label>Scroll Distance <span class="range-value" id="scrollDistValue">200vh</span></label>
+                    <input type="range" id="scrollDistance" min="100" max="500" step="50" value="200">
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection('anchorPoints')" class="collapsed">Anchor Points</h2>
+            <div class="section-content collapsed" id="anchorPoints">
+                <div class="control-group">
+                    <label>Anchor Mode</label>
+                    <select id="anchorMode">
+                        <option value="none">No Anchor (Center)</option>
+                        <option value="single">Single Anchor Point</option>
+                        <option value="dual">Dual Anchor Crossfade</option>
+                    </select>
+                </div>
+
+                <div class="control-group" id="quickZoomSection" style="display: none;">
+                    <label>
+                        <input type="checkbox" id="quickZoom">
+                        Quick Zoom Mode
+                    </label>
+                    <div class="help-text">Snappier transitions with easing curves</div>
+                </div>
+
+                <div class="anchor-section" id="anchor1Section">
+                    <h3>Anchor Point 1 (Blue)</h3>
+                    <div class="control-group">
+                        <label>Anchor 1 X <span class="range-value" id="anchor1XValue">50%</span></label>
+                        <input type="range" id="anchor1X" min="0" max="100" step="1" value="50">
+                    </div>
+                    <div class="control-group">
+                        <label>Anchor 1 Y <span class="range-value" id="anchor1YValue">50%</span></label>
+                        <input type="range" id="anchor1Y" min="0" max="100" step="1" value="50">
+                    </div>
+                    <button class="secondary" onclick="setAnchor(1)">Click Image to Set Point 1</button>
+                </div>
+
+                <div class="anchor-section" id="anchor2Section" style="display: none;">
+                    <h3>Anchor Point 2 (Pink)</h3>
+                    <div class="control-group">
+                        <label>Anchor 2 X <span class="range-value" id="anchor2XValue">50%</span></label>
+                        <input type="range" id="anchor2X" min="0" max="100" step="1" value="50">
+                    </div>
+                    <div class="control-group">
+                        <label>Anchor 2 Y <span class="range-value" id="anchor2YValue">50%</span></label>
+                        <input type="range" id="anchor2Y" min="0" max="100" step="1" value="50">
+                    </div>
+                    <button class="secondary" onclick="setAnchor(2)">Click Image to Set Point 2</button>
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection('textOverlay')" class="collapsed">Text Overlay</h2>
+            <div class="section-content collapsed" id="textOverlay">
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="textEnabled" checked>
+                        Enable Text Overlay
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label>Text Content</label>
+                    <textarea id="textContent" placeholder="Enter your text..."></textarea>
+                </div>
+
+                <div class="control-group">
+                    <label>Position</label>
+                    <select id="textPosition">
+                        <option value="top">Top</option>
+                        <option value="center">Center</option>
+                        <option value="bottom">Bottom</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Text Alignment</label>
+                    <select id="textAlign">
+                        <option value="left">Left</option>
+                        <option value="center">Center</option>
+                        <option value="right">Right</option>
+                        <option value="justify">Justify</option>
+                        <option value="justify-left">Justify (Left last line)</option>
+                        <option value="justify-right">Justify (Right last line)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Font Size <span class="range-value" id="textSizeValue">32px</span></label>
+                    <input type="range" id="textSize" min="12" max="96" step="1" value="32">
+                </div>
+
+                <div class="control-group">
+                    <label>Text Color</label>
+                    <input type="color" id="textColor" value="#ffffff">
+                </div>
+
+                <div class="control-group">
+                    <label>Line Height <span class="range-value" id="lineHeightValue">1.4</span></label>
+                    <input type="range" id="lineHeight" min="0.8" max="3" step="0.1" value="1.4">
+                </div>
+
+                <div class="control-group">
+                    <label>Letter Spacing <span class="range-value" id="letterSpacingValue">0px</span></label>
+                    <input type="range" id="letterSpacing" min="-5" max="20" step="0.5" value="0">
+                </div>
+
+                <div class="control-group">
+                    <label>Font Weight <span class="range-value" id="fontWeightValue">400</span></label>
+                    <input type="range" id="fontWeight" min="100" max="900" step="100" value="400">
+                </div>
+
+                <div class="control-group">
+                    <label>Text Transform</label>
+                    <select id="textTransform">
+                        <option value="none">None</option>
+                        <option value="uppercase">UPPERCASE</option>
+                        <option value="lowercase">lowercase</option>
+                        <option value="capitalize">Capitalize</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Max Width <span class="range-value" id="maxWidthValue">80%</span></label>
+                    <input type="range" id="maxWidth" min="20" max="100" step="5" value="80">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="textBgEnabled" checked>
+                        Text Background
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label>Background Opacity <span class="range-value" id="bgOpacityValue">80%</span></label>
+                    <input type="range" id="bgOpacity" min="0" max="100" step="5" value="80">
+                </div>
+
+                <div class="control-group">
+                    <label>Background Blur <span class="range-value" id="bgBlurValue">10px</span></label>
+                    <input type="range" id="bgBlur" min="0" max="30" step="1" value="10">
+                </div>
+
+                <div class="control-group">
+                    <label>Horizontal Offset <span class="range-value" id="textXValue">0px</span></label>
+                    <input type="range" id="textX" min="-400" max="400" step="5" value="0">
+                </div>
+
+                <div class="control-group">
+                    <label>Vertical Offset <span class="range-value" id="textYValue">0px</span></label>
+                    <input type="range" id="textY" min="-400" max="400" step="5" value="0">
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection('caption')" class="collapsed">Caption</h2>
+            <div class="section-content collapsed" id="caption">
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="captionEnabled">
+                        Enable Caption
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label>Caption Text</label>
+                    <textarea id="captionText" placeholder="Main caption...">this is a caption, use it as you would to caption photos and illustrations. Have a great time, don't hurt anyone.</textarea>
+                </div>
+
+                <div class="control-group">
+                    <label>Credit/Source</label>
+                    <input type="text" id="captionCredit" placeholder="Photo credit..." value="AP Photo Marshall Ritzel">
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection('export')" class="collapsed">Export</h2>
+            <div class="section-content collapsed" id="export">
+                <button onclick="exportHTML()">Export HTML</button>
+                <button class="secondary" onclick="clearImage()">Clear Image</button>
+            </div>
+        </div>
+
+        <div class="preview-wrapper" id="preview">
+            <div class="empty-state">
+                <div class="empty-state-icon">🖼️</div>
+                <div>Load an image to begin</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="margin: 0;">Export HTML</h2>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <textarea id="exportCode" readonly></textarea>
+            <div class="grid-2">
+                <button onclick="copyCode()">Copy to Clipboard</button>
+                <button onclick="downloadHTML()">Download HTML</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentImage = null;
+        let currentImageUrl = null;
+        let controlsVisible = true;
+        let settingAnchor = 0;
+
+        function easeInOutCubic(t) {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const header = section.previousElementSibling;
+            section.classList.toggle('collapsed');
+            header.classList.toggle('collapsed');
+        }
+
+        function toggleControls() {
+            controlsVisible = !controlsVisible;
+            const container = document.getElementById('container');
+            const controls = document.getElementById('controls');
+            
+            if (controlsVisible) {
+                container.classList.remove('controls-hidden');
+                controls.classList.remove('hidden');
+            } else {
+                container.classList.add('controls-hidden');
+                controls.classList.add('hidden');
+            }
+        }
+
+        function setAnchor(num) {
+            settingAnchor = num;
+            updatePreview();
+        }
+
+        function loadImageFromUrl() {
+            const url = document.getElementById('imageUrl').value.trim();
+            if (!url) {
+                alert('Please enter an image URL');
+                return;
+            }
+            currentImageUrl = url;
+            currentImage = url;
+            updatePreview();
+        }
+
+        const ranges = {
+            zoomStart: { el: 'zoomStart', display: 'zoomStartValue', suffix: '×' },
+            zoomEnd: { el: 'zoomEnd', display: 'zoomEndValue', suffix: '×' },
+            scrollDistance: { el: 'scrollDistance', display: 'scrollDistValue', suffix: 'vh' },
+            textSize: { el: 'textSize', display: 'textSizeValue', suffix: 'px' },
+            lineHeight: { el: 'lineHeight', display: 'lineHeightValue', suffix: '' },
+            letterSpacing: { el: 'letterSpacing', display: 'letterSpacingValue', suffix: 'px' },
+            fontWeight: { el: 'fontWeight', display: 'fontWeightValue', suffix: '' },
+            maxWidth: { el: 'maxWidth', display: 'maxWidthValue', suffix: '%' },
+            bgOpacity: { el: 'bgOpacity', display: 'bgOpacityValue', suffix: '%' },
+            bgBlur: { el: 'bgBlur', display: 'bgBlurValue', suffix: 'px' },
+            textX: { el: 'textX', display: 'textXValue', suffix: 'px' },
+            textY: { el: 'textY', display: 'textYValue', suffix: 'px' },
+            anchor1X: { el: 'anchor1X', display: 'anchor1XValue', suffix: '%' },
+            anchor1Y: { el: 'anchor1Y', display: 'anchor1YValue', suffix: '%' },
+            anchor2X: { el: 'anchor2X', display: 'anchor2XValue', suffix: '%' },
+            anchor2Y: { el: 'anchor2Y', display: 'anchor2YValue', suffix: '%' }
+        };
+
+        Object.keys(ranges).forEach(key => {
+            const range = ranges[key];
+            const input = document.getElementById(range.el);
+            const display = document.getElementById(range.display);
+            input.addEventListener('input', () => {
+                display.textContent = input.value + range.suffix;
+                updatePreview();
+            });
+        });
+
+        document.getElementById('anchorMode').addEventListener('change', function() {
+            const mode = this.value;
+            const anchor2Section = document.getElementById('anchor2Section');
+            const quickZoomSection = document.getElementById('quickZoomSection');
+            
+            if (mode === 'dual') {
+                anchor2Section.style.display = 'block';
+                quickZoomSection.style.display = 'block';
+            } else {
+                anchor2Section.style.display = 'none';
+                quickZoomSection.style.display = 'none';
+            }
+            updatePreview();
+        });
+
+        document.getElementById('quickZoom').addEventListener('change', updatePreview);
+        document.getElementById('zoomDirection').addEventListener('change', updatePreview);
+        document.getElementById('imageFit').addEventListener('change', updatePreview);
+        document.getElementById('aspectRatio').addEventListener('change', updatePreview);
+
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentImage = event.target.result;
+                    currentImageUrl = null;
+                    document.getElementById('imageUrl').value = '';
+                    updatePreview();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        ['textEnabled', 'textContent', 'textPosition', 'textAlign', 'textColor', 'textTransform',
+         'textBgEnabled', 'captionEnabled', 'captionText', 'captionCredit'].forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('change', updatePreview);
+            el.addEventListener('input', updatePreview);
+        });
+
+        function updatePreview() {
+            const preview = document.getElementById('preview');
+            
+            if (!currentImage) {
+                preview.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🖼️</div><div>Load an image to begin</div></div>`;
+                return;
+            }
+
+            const anchorMode = document.getElementById('anchorMode').value;
+            const quickZoom = document.getElementById('quickZoom').checked;
+            const zoomDirection = document.getElementById('zoomDirection').value;
+            const imageFit = document.getElementById('imageFit').value;
+            const aspectRatio = document.getElementById('aspectRatio').value;
+            let zoomStart = parseFloat(document.getElementById('zoomStart').value);
+            let zoomEnd = parseFloat(document.getElementById('zoomEnd').value);
+            
+            if (zoomDirection === 'out') [zoomStart, zoomEnd] = [zoomEnd, zoomStart];
+            
+            const scrollDist = parseInt(document.getElementById('scrollDistance').value);
+            const anchor1X = parseFloat(document.getElementById('anchor1X').value);
+            const anchor1Y = parseFloat(document.getElementById('anchor1Y').value);
+            const anchor2X = parseFloat(document.getElementById('anchor2X').value);
+            const anchor2Y = parseFloat(document.getElementById('anchor2Y').value);
+            
+            const textEnabled = document.getElementById('textEnabled').checked;
+            const textContent = document.getElementById('textContent').value;
+            const textPosition = document.getElementById('textPosition').value;
+            const textAlign = document.getElementById('textAlign').value;
+            const textSize = document.getElementById('textSize').value;
+            const textColor = document.getElementById('textColor').value;
+            const lineHeight = document.getElementById('lineHeight').value;
+            const letterSpacing = document.getElementById('letterSpacing').value;
+            const fontWeight = document.getElementById('fontWeight').value;
+            const textTransform = document.getElementById('textTransform').value;
+            const maxWidth = document.getElementById('maxWidth').value;
+            const textBgEnabled = document.getElementById('textBgEnabled').checked;
+            const bgOpacity = document.getElementById('bgOpacity').value / 100;
+            const bgBlur = document.getElementById('bgBlur').value;
+            const textX = document.getElementById('textX').value;
+            const textY = document.getElementById('textY').value;
+            
+            const captionEnabled = document.getElementById('captionEnabled').checked;
+            const captionText = document.getElementById('captionText').value;
+            const captionCredit = document.getElementById('captionCredit').value;
+
+            let posStyle = '';
+            if (textPosition === 'top') posStyle = 'top: 20px;';
+            else if (textPosition === 'center') posStyle = 'top: 50%; transform: translate(-50%, -50%);';
+            else posStyle = 'bottom: 20px;';
+
+            const bgStyle = textBgEnabled ? `background: rgba(0,0,0,${bgOpacity}); backdrop-filter: blur(${bgBlur}px);` : '';
+
+            let actualTextAlign = textAlign;
+            let textAlignLast = '';
+            if (textAlign === 'justify-left') {
+                actualTextAlign = 'justify';
+                textAlignLast = 'text-align-last: left;';
+            } else if (textAlign === 'justify-right') {
+                actualTextAlign = 'justify';
+                textAlignLast = 'text-align-last: right;';
+            }
+
+            let textOverlay = '';
+            if (textEnabled && textContent) {
+                textOverlay = `<div class="text-overlay" style="${posStyle} left: 50%; transform: translateX(-50%); margin-left: ${textX}px; margin-top: ${textY}px; font-size: ${textSize}px; color: ${textColor}; text-align: ${actualTextAlign}; ${textAlignLast} line-height: ${lineHeight}; letter-spacing: ${letterSpacing}px; font-weight: ${fontWeight}; text-transform: ${textTransform}; max-width: ${maxWidth}%; ${bgStyle}">${textContent.replace(/\n/g, '<br>')}</div>`;
+            }
+
+            let captionOverlay = '';
+            if (captionEnabled && (captionText || captionCredit)) {
+                captionOverlay = `<div class="caption-overlay">${captionText ? captionText : ''}${captionCredit ? `<div class="caption-credit">${captionCredit}</div>` : ''}</div>`;
+            }
+
+            let anchorPoints = '';
+            let anchorOverlay = '';
+            
+            if (anchorMode === 'single') {
+                anchorPoints = `<div class="zoom-anchor" style="left: ${anchor1X}%; top: ${anchor1Y}%;"></div>`;
+                if (settingAnchor === 1) anchorOverlay = `<div class="anchor-overlay" id="anchorOverlay"></div>`;
+            } else if (anchorMode === 'dual') {
+                anchorPoints = `<div class="zoom-anchor" style="left: ${anchor1X}%; top: ${anchor1Y}%;"></div><div class="zoom-anchor anchor-2" style="left: ${anchor2X}%; top: ${anchor2Y}%;"></div>`;
+                if (settingAnchor > 0) anchorOverlay = `<div class="anchor-overlay" id="anchorOverlay"></div>`;
+            }
+
+            // Calculate aspect ratio styling
+            let aspectRatioStyle = '';
+            if (aspectRatio !== 'auto') {
+                const [width, height] = aspectRatio.split(':').map(Number);
+                const ratio = (height / width) * 100;
+                aspectRatioStyle = `aspect-ratio: ${width} / ${height}; height: auto;`;
+            } else {
+                aspectRatioStyle = 'height: 100%;';
+            }
+
+            preview.innerHTML = `<div class="zoom-container" style="height: ${scrollDist}vh;"><div class="sticky-stage"><div class="image-wrapper"><div class="image-container" style="${aspectRatioStyle}"><img id="zoomImage" src="${currentImage}" style="object-fit: ${imageFit};">${anchorPoints}${anchorOverlay}</div>${textOverlay}${captionOverlay}</div></div></div>`;
+
+            const zoomImage = document.getElementById('zoomImage');
+            
+            preview.addEventListener('scroll', () => {
+                const scrollTop = preview.scrollTop;
+                const maxScroll = preview.scrollHeight - preview.clientHeight;
+                let progress = Math.min(scrollTop / maxScroll, 1);
+                
+                if (anchorMode === 'dual' && quickZoom) progress = easeInOutCubic(progress);
+                
+                const currentZoom = zoomStart + (zoomEnd - zoomStart) * progress;
+                
+                if (anchorMode === 'none') {
+                    zoomImage.style.transformOrigin = '50% 50%';
+                } else if (anchorMode === 'single') {
+                    zoomImage.style.transformOrigin = `${anchor1X}% ${anchor1Y}%`;
+                } else if (anchorMode === 'dual') {
+                    const currentX = anchor1X + (anchor2X - anchor1X) * progress;
+                    const currentY = anchor1Y + (anchor2Y - anchor1Y) * progress;
+                    zoomImage.style.transformOrigin = `${currentX}% ${currentY}%`;
+                }
+                
+                zoomImage.style.transform = `scale(${currentZoom})`;
+            });
+
+            if (settingAnchor > 0) {
+                const anchorOverlayEl = document.getElementById('anchorOverlay');
+                if (anchorOverlayEl) {
+                    anchorOverlayEl.style.pointerEvents = 'auto';
+                    anchorOverlayEl.addEventListener('click', function(e) {
+                        const rect = zoomImage.getBoundingClientRect();
+                        const x = ((e.clientX - rect.left) / rect.width) * 100;
+                        const y = ((e.clientY - rect.top) / rect.height) * 100;
+                        
+                        if (settingAnchor === 1) {
+                            document.getElementById('anchor1X').value = Math.round(x);
+                            document.getElementById('anchor1Y').value = Math.round(y);
+                            document.getElementById('anchor1XValue').textContent = Math.round(x) + '%';
+                            document.getElementById('anchor1YValue').textContent = Math.round(y) + '%';
+                        } else if (settingAnchor === 2) {
+                            document.getElementById('anchor2X').value = Math.round(x);
+                            document.getElementById('anchor2Y').value = Math.round(y);
+                            document.getElementById('anchor2XValue').textContent = Math.round(x) + '%';
+                            document.getElementById('anchor2YValue').textContent = Math.round(y) + '%';
+                        }
+                        
+                        settingAnchor = 0;
+                        updatePreview();
+                    });
+                }
+            }
+        }
+
+        function clearImage() {
+            if (confirm('Clear the current image?')) {
+                currentImage = null;
+                currentImageUrl = null;
+                document.getElementById('imageInput').value = '';
+                document.getElementById('imageUrl').value = '';
+                updatePreview();
+            }
+        }
+
+        function exportHTML() {
+            if (!currentImage) {
+                alert('Please load an image first!');
+                return;
+            }
+
+            const anchorMode = document.getElementById('anchorMode').value;
+            const quickZoom = document.getElementById('quickZoom').checked;
+            const zoomDirection = document.getElementById('zoomDirection').value;
+            const imageFit = document.getElementById('imageFit').value;
+            const aspectRatio = document.getElementById('aspectRatio').value;
+            let zoomStart = document.getElementById('zoomStart').value;
+            let zoomEnd = document.getElementById('zoomEnd').value;
+            
+            if (zoomDirection === 'out') [zoomStart, zoomEnd] = [zoomEnd, zoomStart];
+            
+            const scrollDist = document.getElementById('scrollDistance').value;
+            const anchor1X = document.getElementById('anchor1X').value;
+            const anchor1Y = document.getElementById('anchor1Y').value;
+            const anchor2X = document.getElementById('anchor2X').value;
+            const anchor2Y = document.getElementById('anchor2Y').value;
+            
+            const textEnabled = document.getElementById('textEnabled').checked;
+            const textContent = document.getElementById('textContent').value;
+            const textPosition = document.getElementById('textPosition').value;
+            const textAlign = document.getElementById('textAlign').value;
+            const textSize = document.getElementById('textSize').value;
+            const textColor = document.getElementById('textColor').value;
+            const lineHeight = document.getElementById('lineHeight').value;
+            const letterSpacing = document.getElementById('letterSpacing').value;
+            const fontWeight = document.getElementById('fontWeight').value;
+            const textTransform = document.getElementById('textTransform').value;
+            const maxWidth = document.getElementById('maxWidth').value;
+            const textBgEnabled = document.getElementById('textBgEnabled').checked;
+            const bgOpacity = document.getElementById('bgOpacity').value / 100;
+            const bgBlur = document.getElementById('bgBlur').value;
+            const textX = document.getElementById('textX').value;
+            const textY = document.getElementById('textY').value;
+            
+            const captionEnabled = document.getElementById('captionEnabled').checked;
+            const captionText = document.getElementById('captionText').value;
+            const captionCredit = document.getElementById('captionCredit').value;
+
+            const imageSource = currentImageUrl || currentImage;
+
+            let posStyle = '';
+            if (textPosition === 'top') posStyle = 'top: 20px;';
+            else if (textPosition === 'center') posStyle = 'top: 50%; transform: translate(-50%, -50%);';
+            else posStyle = 'bottom: 20px;';
+
+            const bgStyle = textBgEnabled ? `background: rgba(0,0,0,${bgOpacity}); backdrop-filter: blur(${bgBlur}px);` : '';
+
+            let actualTextAlign = textAlign;
+            let textAlignLast = '';
+            if (textAlign === 'justify-left') {
+                actualTextAlign = 'justify';
+                textAlignLast = 'text-align-last: left;';
+            } else if (textAlign === 'justify-right') {
+                actualTextAlign = 'justify';
+                textAlignLast = 'text-align-last: right;';
+            }
+
+            let textOverlay = '';
+            if (textEnabled && textContent) {
+                textOverlay = `<div class="text-overlay" style="${posStyle} left: 50%; transform: translateX(-50%); margin-left: ${textX}px; margin-top: ${textY}px; font-size: ${textSize}px; color: ${textColor}; text-align: ${actualTextAlign}; ${textAlignLast} line-height: ${lineHeight}; letter-spacing: ${letterSpacing}px; font-weight: ${fontWeight}; text-transform: ${textTransform}; max-width: ${maxWidth}%; ${bgStyle}">${textContent.replace(/\n/g, '<br>')}</div>`;
+            }
+
+            let captionOverlay = '';
+            if (captionEnabled && (captionText || captionCredit)) {
+                captionOverlay = `<div class="caption-overlay">${captionText ? captionText : ''}${captionCredit ? `<div class="caption-credit">${captionCredit}</div>` : ''}</div>`;
+            }
+
+            let easingFunction = '';
+            if (anchorMode === 'dual' && quickZoom) {
+                easingFunction = `
+        function easeInOutCubic(t) {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }`;
+            }
+
+            let zoomScript = '';
+            if (anchorMode === 'none') {
+                zoomScript = `
+        function updateZoom() {
+            const scrollTop = window.pageYOffset;
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = Math.min(scrollTop / maxScroll, 1);
+            const currentZoom = zoomStart + (zoomEnd - zoomStart) * progress;
+            zoomImage.style.transformOrigin = '50% 50%';
+            zoomImage.style.transform = 'scale(' + currentZoom + ')';
+        }`;
+            } else if (anchorMode === 'single') {
+                zoomScript = `
+        function updateZoom() {
+            const scrollTop = window.pageYOffset;
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = Math.min(scrollTop / maxScroll, 1);
+            const currentZoom = zoomStart + (zoomEnd - zoomStart) * progress;
+            zoomImage.style.transformOrigin = '${anchor1X}% ${anchor1Y}%';
+            zoomImage.style.transform = 'scale(' + currentZoom + ')';
+        }`;
+            } else {
+                const progressCalc = quickZoom ? 'easeInOutCubic(progress)' : 'progress';
+                zoomScript = `
+        function updateZoom() {
+            const scrollTop = window.pageYOffset;
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            let progress = Math.min(scrollTop / maxScroll, 1);
+            ${quickZoom ? 'progress = ' + progressCalc + ';' : ''}
+            const currentZoom = zoomStart + (zoomEnd - zoomStart) * progress;
+            const currentX = ${anchor1X} + (${anchor2X} - ${anchor1X}) * progress;
+            const currentY = ${anchor1Y} + (${anchor2Y} - ${anchor1Y}) * progress;
+            zoomImage.style.transformOrigin = currentX + '% ' + currentY + '%';
+            zoomImage.style.transform = 'scale(' + currentZoom + ')';
+        }`;
+            }
+
+            // Calculate aspect ratio styling for export
+            let aspectRatioStyleExport = '';
+            let imageContainerStyle = '';
+            if (aspectRatio !== 'auto') {
+                const [width, height] = aspectRatio.split(':').map(Number);
+                imageContainerStyle = `aspect-ratio: ${width} / ${height}; height: auto;`;
+            } else {
+                imageContainerStyle = 'height: 100%;';
+            }
+
+            const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrolltastic Zoomies</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; color: #fff; overflow-x: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        
+        .zoom-container { height: ${scrollDist}vh; position: relative; }
+        .sticky-stage { position: sticky; top: 0; width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .image-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; width: 98%; }
+        .image-container { position: relative; width: 100%; overflow: hidden; ${imageContainerStyle} }
+        #zoomImage { width: 100%; height: 100%; display: block; object-fit: ${imageFit}; object-position: center; transition: transform 0.1s ease-out; }
+        .text-overlay { position: absolute; padding: 12px 20px; border-radius: 4px; z-index: 10; opacity: 1; }
+        .caption-overlay { position: relative; width: 85%; max-width: 700px; padding: 10px 16px; background: rgba(0,0,0,0.9); font-size: 13px; line-height: 1.5; opacity: 1; z-index: 20; }
+        .caption-credit { color: #999; font-size: 11px; font-style: italic; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <div class="zoom-container">
+        <div class="sticky-stage">
+            <div class="image-wrapper">
+                <div class="image-container">
+                    <img id="zoomImage" src="${imageSource}">
+                </div>
+                ${textOverlay}
+                ${captionOverlay}
+            </div>
+        </div>
+    </div>
+    <scr` + `ipt>
+        const zoomImage = document.getElementById('zoomImage');
+        const zoomStart = ${zoomStart};
+        const zoomEnd = ${zoomEnd};
+        ${easingFunction}${zoomScript}
+        
+        window.addEventListener('scroll', updateZoom);
+        updateZoom();
+    </scr` + `ipt>
+</body>
+</html>`;
+
+            document.getElementById('exportCode').value = html;
+            document.getElementById('exportModal').classList.add('active');
+        }
+
+        function copyCode() {
+            const code = document.getElementById('exportCode');
+            code.select();
+            document.execCommand('copy');
+            alert('Code copied to clipboard!');
+        }
+
+        function downloadHTML() {
+            const code = document.getElementById('exportCode').value;
+            const blob = new Blob([code], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'scrolltastic-zoomies.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function closeModal() {
+            document.getElementById('exportModal').classList.remove('active');
+        }
+
+        updatePreview();
+    </script>
+</body>
+</html>

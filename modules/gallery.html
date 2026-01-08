@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrolltastic Image Gallery</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .panel {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .controls {
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 24px;
+            color: #fff;
+        }
+
+        h2 {
+            font-size: 16px;
+            margin: 24px 0 12px 0;
+            color: #fff;
+            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 8px;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 2px dashed #444;
+            border-radius: 8px;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="color"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+
+        textarea {
+            min-height: 60px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+        }
+
+        .range-value {
+            float: right;
+            color: #888;
+            font-size: 12px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4a9eff;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 8px;
+        }
+
+        button:hover {
+            background: #3a8eef;
+        }
+
+        button.secondary {
+            background: #2a2a2a;
+        }
+
+        button.secondary:hover {
+            background: #3a3a3a;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* Image Items */
+        .image-item {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .image-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .image-item h3 {
+            font-size: 13px;
+            color: #4a9eff;
+        }
+
+        .image-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .icon-btn {
+            background: #2a2a2a;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .icon-btn:hover {
+            background: #3a3a3a;
+        }
+
+        .image-thumb {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 6px;
+        }
+
+        /* Preview */
+        .preview-wrapper {
+            background: #0a0a0a;
+            border-radius: 12px;
+            border: 1px solid #2a2a2a;
+            height: calc(100vh - 40px);
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .story-container {
+            position: relative;
+        }
+
+        .sticky-stage {
+            position: sticky;
+            top: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-layer {
+            position: absolute;
+            width: 98%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .image-layer.active {
+            opacity: 1;
+        }
+
+        .image-layer img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .text-overlay {
+            position: absolute;
+            padding: 12px 20px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+            z-index: 10;
+        }
+
+        .image-layer.active .text-overlay {
+            opacity: 1;
+        }
+
+        .caption-overlay {
+            position: relative;
+            width: 85%;
+            max-width: 700px;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.9);
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: 20;
+        }
+
+        .image-layer.active .caption-overlay {
+            opacity: 1;
+        }
+
+        .caption-overlay.active {
+            opacity: 1;
+        }
+
+        .caption-credit {
+            color: #999;
+            font-size: 11px;
+            font-style: italic;
+            margin-top: 4px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        textarea.code {
+            width: 100%;
+            min-height: 400px;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            padding: 16px;
+            color: #4a9eff;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .controls {
+                position: relative;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel controls">
+            <h1>Scrolltastic Image Gallery</h1>
+
+            <div class="control-group">
+                <label>Add Images</label>
+                <input type="file" id="imageInput" accept="image/*" multiple>
+            </div>
+
+            <div class="control-group">
+                <label>Or paste image URL</label>
+                <input type="text" id="imageURL" placeholder="https://example.com/image.jpg">
+                <button onclick="addFromURL()" style="margin-top: 8px;">Add from URL</button>
+            </div>
+
+            <h2>Global Settings</h2>
+            
+            <div class="control-group">
+                <label>Image Fit</label>
+                <select id="imageFit">
+                    <option value="contain">Contain (fit inside)</option>
+                    <option value="cover">Cover (fill)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Upload Custom Font (.ttf, .woff, .woff2)</label>
+                <input type="file" id="fontUpload" accept=".ttf,.woff,.woff2,.otf">
+                <button onclick="uploadFont()" style="margin-top: 8px;">Upload Font</button>
+            </div>
+
+            <div class="control-group">
+                <label>Text Font Family</label>
+                <select id="textFontFamily" onchange="renderPreview()">
+                    <option value="inherit">System Default</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="'Courier New', monospace">Courier</option>
+                    <option value="'Times New Roman', serif">Times New Roman</option>
+                    <option value="Verdana, sans-serif">Verdana</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Caption Font Family</label>
+                <select id="captionFontFamily" onchange="renderPreview()">
+                    <option value="inherit">System Default</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="'Courier New', monospace">Courier</option>
+                    <option value="'Times New Roman', serif">Times New Roman</option>
+                    <option value="Verdana, sans-serif">Verdana</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Text Background Opacity <span class="range-value">80%</span></label>
+                <input type="range" id="textOpacity" min="0" max="100" value="80" 
+                    oninput="this.previousElementSibling.querySelector('.range-value').textContent = this.value + '%'; renderPreview();">
+            </div>
+
+            <h2>Images</h2>
+            <div id="imageList"></div>
+
+            <button onclick="exportHTML()">Export HTML</button>
+            <button class="secondary" onclick="clearAll()">Clear All</button>
+        </div>
+
+        <div class="panel">
+            <h2>Preview</h2>
+            <div class="preview-wrapper" id="preview"></div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <h2>Export HTML</h2>
+            <textarea class="code" id="exportCode" readonly></textarea>
+            <button onclick="copyCode()">Copy Code</button>
+            <button class="secondary" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        let images = [];
+        let customFonts = [];
+
+        function uploadFont() {
+            const input = document.getElementById('fontUpload');
+            const file = input.files[0];
+            
+            if (!file) {
+                alert('Please select a font file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fontName = file.name.replace(/\.[^/.]+$/, "");
+                const fontData = e.target.result;
+                const format = file.name.endsWith('.woff2') ? 'woff2' : 
+                              file.name.endsWith('.woff') ? 'woff' : 
+                              file.name.endsWith('.otf') ? 'opentype' : 'truetype';
+                
+                // Create font face
+                const fontFace = new FontFace(fontName, `url(${fontData})`, { format: format });
+                fontFace.load().then(function(loadedFont) {
+                    document.fonts.add(loadedFont);
+                    
+                    // Store font data
+                    customFonts.push({
+                        name: fontName,
+                        data: fontData,
+                        format: format
+                    });
+                    
+                    // Add to both dropdowns
+                    const textSelect = document.getElementById('textFontFamily');
+                    const captionSelect = document.getElementById('captionFontFamily');
+                    
+                    const option1 = document.createElement('option');
+                    option1.value = `"${fontName}"`;
+                    option1.textContent = `${fontName} (Custom)`;
+                    textSelect.appendChild(option1);
+                    
+                    const option2 = document.createElement('option');
+                    option2.value = `"${fontName}"`;
+                    option2.textContent = `${fontName} (Custom)`;
+                    captionSelect.appendChild(option2);
+                    
+                    alert(`Font "${fontName}" uploaded successfully!`);
+                    input.value = '';
+                }).catch(function(error) {
+                    alert('Failed to load font: ' + error);
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            files.forEach((file, i) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    images.push({
+                        id: Date.now() + i,
+                        src: event.target.result,
+                        name: file.name,
+                        textEnabled: false,
+                        text: '',
+                        textSize: 32,
+                        textColor: '#ffffff',
+                        textAlign: 'center',
+                        textPosition: 'bottom',
+                        textX: 0,
+                        textY: 0,
+                        textBgEnabled: true,
+                        textBgOpacity: 80,
+                        textLineHeight: 1.4,
+                        textLetterSpacing: 0,
+                        captionEnabled: false,
+                        caption: '',
+                        credit: ''
+                    });
+                    if (images.length === files.length) {
+                        render();
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+            e.target.value = '';
+        });
+
+        function addFromURL() {
+            const input = document.getElementById('imageURL');
+            const url = input.value.trim();
+            
+            if (!url) {
+                alert('Please enter an image URL');
+                return;
+            }
+            
+            // Test if URL is valid by loading it
+            const img = new Image();
+            img.onload = function() {
+                images.push({
+                    id: Date.now(),
+                    src: url,
+                    name: url.split('/').pop() || 'Image',
+                    textEnabled: false,
+                    text: '',
+                    textSize: 32,
+                    textColor: '#ffffff',
+                    textAlign: 'center',
+                    textPosition: 'bottom',
+                    textX: 0,
+                    textY: 0,
+                    textBgEnabled: true,
+                    textBgOpacity: 80,
+                    textLineHeight: 1.4,
+                    textLetterSpacing: 0,
+                    captionEnabled: false,
+                    caption: '',
+                    credit: ''
+                });
+                input.value = '';
+                render();
+            };
+            img.onerror = function() {
+                alert('Could not load image from URL. Please check the link.');
+            };
+            img.src = url;
+        }
+
+        function render() {
+            renderList();
+            renderPreview();
+        }
+
+        function renderList() {
+            const list = document.getElementById('imageList');
+            if (images.length === 0) {
+                list.innerHTML = '<p style="color: #666; font-size: 12px;">No images added</p>';
+                return;
+            }
+
+            list.innerHTML = images.map((img, i) => {
+                const escapeHtml = (str) => str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                return `
+                <div class="image-item">
+                    <div class="image-item-header">
+                        <h3>Image ${i + 1}</h3>
+                        <div class="image-controls">
+                            ${i > 0 ? `<button class="icon-btn" onclick="move(${i}, -1)">↑</button>` : ''}
+                            ${i < images.length - 1 ? `<button class="icon-btn" onclick="move(${i}, 1)">↓</button>` : ''}
+                            <button class="icon-btn" onclick="remove(${i})">×</button>
+                        </div>
+                    </div>
+                    <img src="${img.src}" class="image-thumb">
+                    
+                    <label><input type="checkbox" ${img.textEnabled ? 'checked' : ''} onchange="toggle(${i}, 'textEnabled')">Text Overlay</label>
+                    ${img.textEnabled ? `
+                        <div class="control-group">
+                            <textarea placeholder="Text..." onchange="update(${i}, 'text', this.value)">${escapeHtml(img.text)}</textarea>
+                        </div>
+                        <div class="grid-2">
+                            <div class="control-group">
+                                <label>Size <span class="range-value">${img.textSize}px</span></label>
+                                <input type="range" min="16" max="80" value="${img.textSize}" 
+                                    oninput="this.previousElementSibling.querySelector('.range-value').textContent = this.value + 'px'"
+                                    onchange="update(${i}, 'textSize', parseInt(this.value))">
+                            </div>
+                            <div class="control-group">
+                                <label>Color</label>
+                                <input type="color" value="${img.textColor}" onchange="update(${i}, 'textColor', this.value)">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="control-group">
+                                <label>Position</label>
+                                <select onchange="update(${i}, 'textPosition', this.value)">
+                                    <option value="top" ${img.textPosition === 'top' ? 'selected' : ''}>Top</option>
+                                    <option value="center" ${img.textPosition === 'center' ? 'selected' : ''}>Center</option>
+                                    <option value="bottom" ${img.textPosition === 'bottom' ? 'selected' : ''}>Bottom</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label>Align</label>
+                                <select onchange="update(${i}, 'textAlign', this.value)">
+                                    <option value="left" ${img.textAlign === 'left' ? 'selected' : ''}>Left</option>
+                                    <option value="center" ${img.textAlign === 'center' ? 'selected' : ''}>Center</option>
+                                    <option value="right" ${img.textAlign === 'right' ? 'selected' : ''}>Right</option>
+                                    <option value="justify" ${img.textAlign === 'justify' ? 'selected' : ''}>Justify</option>
+                                    <option value="justify-left" ${img.textAlign === 'justify-left' ? 'selected' : ''}>Justify Left</option>
+                                    <option value="justify-right" ${img.textAlign === 'justify-right' ? 'selected' : ''}>Justify Right</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="control-group">
+                                <label>Line Height <span class="range-value">${img.textLineHeight || 1.4}</span></label>
+                                <input type="range" min="1" max="2.5" step="0.1" value="${img.textLineHeight || 1.4}" 
+                                    oninput="this.previousElementSibling.querySelector('.range-value').textContent = this.value"
+                                    onchange="update(${i}, 'textLineHeight', parseFloat(this.value))">
+                            </div>
+                            <div class="control-group">
+                                <label>Letter Spacing <span class="range-value">${img.textLetterSpacing || 0}px</span></label>
+                                <input type="range" min="-2" max="10" value="${img.textLetterSpacing || 0}" 
+                                    oninput="this.previousElementSibling.querySelector('.range-value').textContent = this.value + 'px'"
+                                    onchange="update(${i}, 'textLetterSpacing', parseInt(this.value))">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="control-group">
+                                <label>X Offset <span class="range-value">${img.textX || 0}px</span></label>
+                                <input type="range" min="-300" max="300" value="${img.textX || 0}" 
+                                    oninput="this.previousElementSibling.querySelector('.range-value').textContent = this.value + 'px'"
+                                    onchange="update(${i}, 'textX', parseInt(this.value))">
+                            </div>
+                            <div class="control-group">
+                                <label>Y Offset <span class="range-value">${img.textY || 0}px</span></label>
+                                <input type="range" min="-300" max="300" value="${img.textY || 0}" 
+                                    oninput="this.previousElementSibling.querySelector('.range-value').textContent = this.value + 'px'"
+                                    onchange="update(${i}, 'textY', parseInt(this.value))">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="control-group">
+                                <label><input type="checkbox" ${img.textBgEnabled !== false ? 'checked' : ''} onchange="toggle(${i}, 'textBgEnabled')">Background</label>
+                            </div>
+                            <div class="control-group" ${img.textBgEnabled !== false ? '' : 'style="opacity: 0.5;"'}>
+                                <label>BG Opacity <span class="range-value">${img.textBgOpacity !== undefined ? img.textBgOpacity : 80}%</span></label>
+                                <input type="range" min="0" max="100" value="${img.textBgOpacity !== undefined ? img.textBgOpacity : 80}" 
+                                    oninput="this.previousElementSibling.querySelector('.range-value').textContent = this.value + '%'"
+                                    onchange="update(${i}, 'textBgOpacity', parseInt(this.value))"
+                                    ${img.textBgEnabled !== false ? '' : 'disabled'}>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <label style="margin-top: 10px;"><input type="checkbox" ${img.captionEnabled ? 'checked' : ''} onchange="toggle(${i}, 'captionEnabled')">Caption</label>
+                    ${img.captionEnabled ? `
+                        <div class="control-group">
+                            <textarea placeholder="Caption text..." onchange="update(${i}, 'caption', this.value)">${escapeHtml(img.caption)}</textarea>
+                        </div>
+                        <div class="control-group">
+                            <input type="text" placeholder="Credit/Source" value="${escapeHtml(img.credit)}" onchange="update(${i}, 'credit', this.value)">
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            }).join('');
+        }
+
+        function renderPreview() {
+            const preview = document.getElementById('preview');
+            const fit = document.getElementById('imageFit').value;
+            const textFont = document.getElementById('textFontFamily').value;
+            const captionFont = document.getElementById('captionFontFamily').value;
+            
+            if (images.length === 0) {
+                preview.innerHTML = '<div style="padding: 40px; text-align: center; color: #666;">Add images to preview</div>';
+                return;
+            }
+
+            const height = images.length * 100;
+            let html = `<div class="story-container" style="height: ${height}vh;"><div class="sticky-stage">`;
+            
+            images.forEach((img, i) => {
+                html += `<div class="image-layer" data-index="${i}">`;
+                html += `<img src="${img.src}" style="object-fit: ${fit};">`;
+                
+                if (img.textEnabled && img.text) {
+                    let pos = '';
+                    if (img.textPosition === 'top') pos = 'top: 20px;';
+                    else if (img.textPosition === 'center') pos = 'top: 50%; transform: translate(-50%, -50%);';
+                    else pos = 'bottom: 20px;';
+                    
+                    const xOffset = img.textX || 0;
+                    const yOffset = img.textY || 0;
+                    const bgOpacity = (img.textBgOpacity !== undefined ? img.textBgOpacity : 80) / 100;
+                    const lineHeight = img.textLineHeight || 1.4;
+                    const letterSpacing = img.textLetterSpacing || 0;
+                    const bgStyle = img.textBgEnabled !== false ? `background: rgba(0,0,0,${bgOpacity}); backdrop-filter: blur(10px);` : '';
+                    
+                    // Handle text alignment including justify variations
+                    let textAlign = img.textAlign;
+                    let textAlignLast = '';
+                    if (img.textAlign === 'justify-left') {
+                        textAlign = 'justify';
+                        textAlignLast = 'text-align-last: left;';
+                    } else if (img.textAlign === 'justify-right') {
+                        textAlign = 'justify';
+                        textAlignLast = 'text-align-last: right;';
+                    }
+                    
+                    html += `<div class="text-overlay" style="${pos} left: 50%; transform: translateX(-50%); margin-left: ${xOffset}px; margin-top: ${yOffset}px; font-size: ${img.textSize}px; color: ${img.textColor}; text-align: ${textAlign}; ${textAlignLast} font-family: ${textFont}; line-height: ${lineHeight}; letter-spacing: ${letterSpacing}px; ${bgStyle}">${img.text.replace(/\n/g, '<br>')}</div>`;
+                }
+                
+                if (img.captionEnabled && (img.caption || img.credit)) {
+                    html += `<div class="caption-overlay" style="font-family: ${captionFont};">${img.caption ? img.caption : ''}${img.credit ? `<div class="caption-credit">${img.credit}</div>` : ''}</div>`;
+                }
+                
+                html += `</div>`;
+            });
+            
+            html += `</div></div>`;
+            preview.innerHTML = html;
+            
+            preview.addEventListener('scroll', updateActive);
+            updateActive();
+        }
+
+        function updateActive() {
+            const preview = document.getElementById('preview');
+            const scroll = preview.scrollTop;
+            const height = preview.clientHeight;
+            
+            images.forEach((img, i) => {
+                const start = i * height;
+                const end = (i + 1) * height;
+                const layer = preview.querySelector(`.image-layer[data-index="${i}"]`);
+                
+                if (scroll >= start && scroll < end) {
+                    if (layer) layer.classList.add('active');
+                } else {
+                    if (layer) layer.classList.remove('active');
+                }
+            });
+        }
+
+        function toggle(i, prop) {
+            images[i][prop] = !images[i][prop];
+            render();
+        }
+
+        function update(i, prop, value) {
+            images[i][prop] = value;
+            renderPreview();
+        }
+
+        function move(i, dir) {
+            const newI = i + dir;
+            [images[i], images[newI]] = [images[newI], images[i]];
+            render();
+        }
+
+        function remove(i) {
+            if (confirm('Delete this image?')) {
+                images.splice(i, 1);
+                render();
+            }
+        }
+
+        function clearAll() {
+            if (confirm('Clear all images?')) {
+                images = [];
+                render();
+            }
+        }
+
+        function exportHTML() {
+            const fit = document.getElementById('imageFit').value;
+            const textFont = document.getElementById('textFontFamily').value;
+            const captionFont = document.getElementById('captionFontFamily').value;
+            const height = images.length * 100;
+            
+            let layers = '';
+            
+            images.forEach((img, i) => {
+                layers += `<div class="image-layer" data-index="${i}"><img src="${img.src}" style="object-fit: ${fit};">`;
+                
+                if (img.textEnabled && img.text) {
+                    let pos = '';
+                    if (img.textPosition === 'top') pos = 'top: 20px;';
+                    else if (img.textPosition === 'center') pos = 'top: 50%; transform: translate(-50%, -50%);';
+                    else pos = 'bottom: 20px;';
+                    
+                    const xOffset = img.textX || 0;
+                    const yOffset = img.textY || 0;
+                    const bgOpacity = (img.textBgOpacity !== undefined ? img.textBgOpacity : 80) / 100;
+                    const lineHeight = img.textLineHeight || 1.4;
+                    const letterSpacing = img.textLetterSpacing || 0;
+                    const bgStyle = img.textBgEnabled !== false ? `background: rgba(0,0,0,${bgOpacity}); backdrop-filter: blur(10px);` : '';
+                    
+                    // Handle text alignment including justify variations
+                    let textAlign = img.textAlign;
+                    let textAlignLast = '';
+                    if (img.textAlign === 'justify-left') {
+                        textAlign = 'justify';
+                        textAlignLast = 'text-align-last: left;';
+                    } else if (img.textAlign === 'justify-right') {
+                        textAlign = 'justify';
+                        textAlignLast = 'text-align-last: right;';
+                    }
+                    
+                    layers += `<div class="text-overlay" style="${pos} left: 50%; transform: translateX(-50%); margin-left: ${xOffset}px; margin-top: ${yOffset}px; font-size: ${img.textSize}px; color: ${img.textColor}; text-align: ${textAlign}; ${textAlignLast} font-family: ${textFont}; line-height: ${lineHeight}; letter-spacing: ${letterSpacing}px; ${bgStyle}">${img.text.replace(/\n/g, '<br>')}</div>`;
+                }
+                
+                if (img.captionEnabled && (img.caption || img.credit)) {
+                    layers += `<div class="caption-overlay" style="font-family: ${captionFont};">${img.caption ? img.caption : ''}${img.credit ? `<div class="caption-credit">${img.credit}</div>` : ''}</div>`;
+                }
+                
+                layers += `</div>`;
+            });
+
+            const code = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrolltastic Gallery</title>
+    <style>
+        ${customFonts.map(font => `
+        @font-face {
+            font-family: "${font.name}";
+            src: url(${font.data}) format('${font.format}');
+        }`).join('')}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; color: #fff; overflow-x: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        
+        /* Instructions Page */
+        .instructions {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        .instructions.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .instructions-content {
+            max-width: 600px;
+            padding: 40px;
+            text-align: center;
+        }
+        .instructions h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .instructions p {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #b8b8d1;
+            margin-bottom: 30px;
+        }
+        .instructions button {
+            padding: 16px 40px;
+            font-size: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .instructions button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        .instructions .tip {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #8b8ba7;
+        }
+        
+        /* Gallery Styles */
+        .story-container { position: relative; height: ${height}vh; }
+        .sticky-stage { position: sticky; top: 0; width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .image-layer { position: absolute; width: 98%; display: flex; flex-direction: column; align-items: center; opacity: 0; transition: opacity 0.5s; }
+        .image-layer.active { opacity: 1; }
+        .image-layer img { width: 100%; height: auto; display: block; }
+        .text-overlay { position: absolute; padding: 12px 20px; border-radius: 4px; opacity: 0; transition: opacity 0.8s ease; z-index: 10; }
+        .image-layer.active .text-overlay { opacity: 1; }
+        .caption-overlay { position: relative; width: 85%; max-width: 700px; padding: 10px 16px; background: rgba(0,0,0,0.9); font-size: 13px; line-height: 1.5; opacity: 0; transition: opacity 0.5s; z-index: 20; }
+        .image-layer.active .caption-overlay { opacity: 1; }
+        .caption-overlay.active { opacity: 1; }
+        .caption-credit { color: #999; font-size: 11px; font-style: italic; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <!-- Instructions Page -->
+    <div class="instructions" id="instructions">
+        <div class="instructions-content">
+            <h1>Scrolltastic Gallery</h1>
+            <p>Welcome! This is an interactive scroll-based image gallery.</p>
+            <p><strong>How to view:</strong><br>Simply scroll down to experience the gallery. Each image will fade in as you scroll.</p>
+            <p><strong>Compatible with:</strong><br>All modern browsers on desktop, tablet, and mobile devices.</p>
+            <button onclick="document.getElementById('instructions').classList.add('hidden')">Start Gallery →</button>
+            <p class="tip">💡 Works offline • No installation needed • Share this file with anyone</p>
+        </div>
+    </div>
+
+    <!-- Gallery Content -->
+    <div class="story-container">
+        <div class="sticky-stage">
+            ${layers}
+        </div>
+    </div>
+    <scr` + `ipt>
+        function update() {
+            const scroll = window.pageYOffset;
+            const height = window.innerHeight;
+            const total = ${images.length};
+            for (let i = 0; i < total; i++) {
+                const start = i * height;
+                const end = (i + 1) * height;
+                const layer = document.querySelector('.image-layer[data-index="' + i + '"]');
+                if (scroll >= start && scroll < end) {
+                    if (layer) layer.classList.add('active');
+                } else {
+                    if (layer) layer.classList.remove('active');
+                }
+            }
+        }
+        window.addEventListener('scroll', update);
+        update();
+    </scr` + `ipt>
+</body>
+</html>`;
+
+            document.getElementById('exportCode').value = code;
+            document.getElementById('exportModal').classList.add('active');
+        }
+
+        function copyCode() {
+            document.getElementById('exportCode').select();
+            document.execCommand('copy');
+            alert('Copied!');
+        }
+
+        function closeModal() {
+            document.getElementById('exportModal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
