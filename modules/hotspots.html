@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrolltastic Hotspots</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 30px;
+            align-items: start;
+            transition: grid-template-columns 0.3s ease;
+        }
+
+        .container.controls-hidden {
+            grid-template-columns: 0 1fr;
+        }
+
+        .panel {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .controls {
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .controls.hidden {
+            opacity: 0;
+            transform: translateX(-20px);
+            pointer-events: none;
+        }
+
+        .toggle-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px 16px;
+            cursor: pointer;
+            z-index: 100;
+            font-size: 14px;
+            color: #e0e0e0;
+            transition: background 0.2s;
+        }
+
+        .toggle-controls:hover {
+            background: #2a2a2a;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 24px;
+            color: #fff;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #fff;
+            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 8px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h2:hover {
+            color: #4a9eff;
+        }
+
+        h2::after {
+            content: '▼';
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        h2.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            max-height: 2000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 2px dashed #444;
+            border-radius: 8px;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        input[type="file"]:hover {
+            border-color: #666;
+            background: #333;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        input[type="url"],
+        input[type="color"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        textarea#embedCode {
+            min-height: 300px;
+            font-family: monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            padding: 0;
+            height: 6px;
+            cursor: pointer;
+        }
+
+        .range-value {
+            display: inline-block;
+            margin-left: 10px;
+            color: #888;
+            font-size: 13px;
+        }
+
+        .split-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4a9eff;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #3a8eef;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.add-btn {
+            background: #34a853;
+        }
+
+        button.add-btn:hover {
+            background: #2d8e47;
+        }
+
+        button.remove-btn {
+            background: #ff4444;
+            padding: 5px 10px;
+            font-size: 12px;
+            width: auto;
+        }
+
+        button.remove-btn:hover {
+            background: #cc0000;
+        }
+
+        button.secondary {
+            background: #2a2a2a;
+            color: #e0e0e0;
+        }
+
+        button.secondary:hover {
+            background: #3a3a3a;
+        }
+
+        .copy-btn {
+            background: #2a2a2a;
+            color: #e0e0e0;
+        }
+
+        .copy-btn:hover {
+            background: #3a3a3a;
+        }
+
+        .preview-container {
+            position: relative;
+        }
+
+        .preview-wrapper {
+            background: #0a0a0a;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #2a2a2a;
+            height: 600px;
+            overflow-y: scroll;
+            scroll-behavior: smooth;
+        }
+
+        .preview-scroll-content {
+            position: relative;
+        }
+
+        .preview-canvas-wrapper {
+            position: sticky;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        #previewCanvas {
+            display: block;
+            max-width: 100%;
+            cursor: crosshair;
+        }
+
+        .caption-text {
+            position: relative;
+            width: 85%;
+            max-width: 700px;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #e0e0e0;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0 auto;
+            display: none;
+        }
+
+        .caption-text.visible {
+            display: block;
+        }
+
+        .caption-credit {
+            color: #999;
+            font-size: 11px;
+            font-style: italic;
+            margin-top: 4px;
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #444;
+            text-align: center;
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .hotspot-item {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .hotspot-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .hotspot-item-header h3 {
+            font-size: 14px;
+            color: #4a9eff;
+            margin: 0;
+            flex: 1;
+        }
+
+        .hotspot-item-header::before {
+            content: '▼';
+            font-size: 12px;
+            margin-right: 8px;
+            transition: transform 0.2s;
+            color: #888;
+        }
+
+        .hotspot-item-header.collapsed::before {
+            transform: rotate(-90deg);
+        }
+
+        .hotspot-controls {
+            max-height: 2000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .hotspot-controls.collapsed {
+            max-height: 0;
+        }
+
+        .file-info {
+            font-size: 11px;
+            color: #666;
+            margin-top: 6px;
+        }
+
+        .code-section {
+            margin-top: 20px;
+        }
+
+        .setting-mode {
+            background: #34a853;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                position: relative;
+                top: 0;
+            }
+
+            .toggle-controls {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="toggle-controls" onclick="toggleControls()">☰ Controls</div>
+
+    <div class="container" id="container">
+        <div class="panel controls" id="controls">
+            <h1>Scrolltastic Hotspots</h1>
+            
+            <h2 onclick="toggleSection(this)">Image Source</h2>
+            <div class="section-content">
+                <div class="control-group">
+                    <label>Load Method</label>
+                    <select id="loadMethod" onchange="toggleLoadMethod()">
+                        <option value="upload">Upload from Local</option>
+                        <option value="url">Direct Image URL</option>
+                    </select>
+                </div>
+
+                <div class="control-group" id="uploadSection">
+                    <label>Upload Image</label>
+                    <input type="file" id="imageInput" accept="image/*">
+                    <div class="file-info" id="fileInfo">No image selected</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                        <button onclick="loadExampleHotspots()" style="background: #9b59b6;">Load Example</button>
+                        <button onclick="clearAllHotspots()" style="background: #e74c3c;">Clear All</button>
+                    </div>
+                </div>
+
+                <div class="control-group" id="urlSection" style="display: none;">
+                    <label>Direct Image URL</label>
+                    <input type="url" id="imageUrl" placeholder="https://example.com/image.jpg">
+                    <button onclick="loadFromURL()" style="margin-top: 10px;">Load Image</button>
+                </div>
+
+                <div class="control-group">
+                    <label>Aspect Ratio Presets</label>
+                    <select id="aspectRatio" onchange="applyAspectRatio()">
+                        <option value="custom">Custom</option>
+                        <option value="9:16">Vertical Phone (9:16)</option>
+                        <option value="16:9" selected>Widescreen (16:9)</option>
+                        <option value="4:3">Desktop Standard (4:3)</option>
+                        <option value="16:10">Desktop Wide (16:10)</option>
+                        <option value="21:9">Ultrawide (21:9)</option>
+                        <option value="1:1">Square (1:1)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Dimensions</label>
+                    <div class="split-inputs">
+                        <input type="number" id="widthInput" placeholder="Width" value="1920">
+                        <input type="number" id="heightInput" placeholder="Height" value="1080">
+                    </div>
+                    <div class="file-info" id="dimensionsInfo">1920 x 1080 (16:9 ratio)</div>
+                </div>
+
+                <div class="control-group">
+                    <label>Image Fit</label>
+                    <select id="imageFit" onchange="updatePreview(); generateEmbedCode();">
+                        <option value="contain" selected>Contain (fit whole image)</option>
+                        <option value="cover">Cover (fill viewport)</option>
+                        <option value="fill">Fill (stretch to fit)</option>
+                        <option value="none">None (actual size)</option>
+                    </select>
+                    <div class="file-info">How the image fills the canvas</div>
+                </div>
+
+                <div class="control-group">
+                    <label>Scroll Duration (pixels)</label>
+                    <div class="split-inputs">
+                        <input type="number" id="scrollDurationNumber" min="500" max="5000" step="100" value="2000" 
+                               oninput="document.getElementById('scrollDuration').value = this.value; document.getElementById('scrollValue').textContent = this.value; updatePreview(); generateEmbedCode();">
+                        <input type="range" id="scrollDuration" min="500" max="5000" step="100" value="2000"
+                               oninput="document.getElementById('scrollDurationNumber').value = this.value; document.getElementById('scrollValue').textContent = this.value; updatePreview(); generateEmbedCode();">
+                    </div>
+                    <div class="file-info">Current: <span id="scrollValue">2000</span>px</div>
+                </div>
+
+                <div class="control-group">
+                    <label>Caption Font Family</label>
+                    <select id="captionFontFamily" onchange="updatePreview(); generateEmbedCode();">
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" selected>System Font</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="captionEnabled" checked onchange="toggleCaption(this.checked)" style="width: auto; margin-right: 8px;">
+                        Enable Caption Display
+                    </label>
+                    <div class="file-info">Auto-extracted from image metadata when available</div>
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection(this)">Hotspots</h2>
+            <div class="section-content">
+                <div id="settingMode" style="display: none;" class="setting-mode">
+                    Click on image to set position
+                </div>
+                <button class="add-btn" onclick="addHotspot()" style="margin-bottom: 15px;">+ Add Hotspot</button>
+                <div id="hotspotsList"></div>
+            </div>
+
+            <h2 onclick="toggleSection(this)">Custom Fonts</h2>
+            <div class="section-content">
+                <div class="control-group">
+                    <label>Google Fonts URL or Font Name</label>
+                    <input type="text" id="customFontInput" placeholder="e.g., Playfair Display or https://fonts.googleapis.com/css2?family=...">
+                    <button onclick="addCustomFont()" style="margin-top: 10px;">Add Font</button>
+                </div>
+                <div id="customFontsList"></div>
+            </div>
+
+            <div class="code-section">
+                <h2 onclick="toggleSection(this)">Embed Code</h2>
+                <div class="section-content">
+                    <textarea id="embedCode" readonly></textarea>
+                    <button class="copy-btn" onclick="copyCode()" style="margin-top: 10px;">Copy to Clipboard</button>
+                    <button class="copy-btn" onclick="downloadCode()" style="background: #34a853; margin-top: 10px;">Download HTML File</button>
+                </div>
+            </div>
+
+            <button onclick="saveProject()" style="margin-top: 20px; background: #9b59b6;">Save Project (.json)</button>
+            <button onclick="loadProject()" style="margin-top: 10px; background: #9b59b6;">Load Project</button>
+        </div>
+
+        <div class="panel preview-container">
+            <h2>Preview</h2>
+            <div class="preview-wrapper" id="previewWrapper">
+                <div class="preview-scroll-content" id="scrollContent">
+                    <div class="preview-canvas-wrapper">
+                        <canvas id="previewCanvas"></canvas>
+                        <div class="caption-text" id="captionText"></div>
+                    </div>
+                    <div class="scroll-indicator" id="scrollIndicator">
+                        Upload an image to add hotspots
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sourceImage = null;
+        let imageDataUrl = null;
+        let hotspots = [];
+        let customFonts = [];
+        let hotspotIdCounter = 0;
+        let settingHotspotId = null;
+        let captionEnabled = true;
+        let autoCaption = 'no caption info';
+
+        // Load example hotspots
+        function loadExampleHotspots() {
+            const exampleURL = 'https://discophooey.github.io/my_personal_digital_team/examples/PLACE_HOLDER.png';
+            
+            const img = new Image();
+            img.onload = () => {
+                sourceImage = img;
+                imageDataUrl = exampleURL;
+                
+                // Set dimensions to match example
+                document.getElementById('widthInput').value = 1920;
+                document.getElementById('heightInput').value = 1440;
+                document.getElementById('aspectRatio').value = '4:3';
+                
+                // Add example hotspot
+                hotspots = [{
+                    id: ++hotspotIdCounter,
+                    x: 50,
+                    y: 50,
+                    text: 'Example Hotspot - Click to edit'
+                }];
+                
+                updatePreview();
+                renderHotspotsList();
+                document.getElementById('fileInfo').textContent = '✓ Example image loaded';
+                alert('✓ Loaded example with hotspot');
+            };
+            img.onerror = () => {
+                alert('Failed to load example image');
+            };
+            img.src = exampleURL;
+        }
+
+        // Clear all hotspots
+        function clearAllHotspots() {
+            if (!sourceImage && hotspots.length === 0) return;
+            
+            if (confirm('Clear image and all hotspots?')) {
+                sourceImage = null;
+                imageDataUrl = null;
+                hotspots = [];
+                hotspotIdCounter = 0;
+                updatePreview();
+                renderHotspotsList();
+                document.getElementById('fileInfo').textContent = 'No image selected';
+                document.getElementById('imageInput').value = '';
+            }
+        }
+
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+        const previewWrapper = document.getElementById('previewWrapper');
+        const scrollContent = document.getElementById('scrollContent');
+
+        const aspectRatioPresets = {
+            '9:16': { width: 1080, height: 1920, name: 'Vertical Phone' },
+            '16:9': { width: 1920, height: 1080, name: 'Widescreen' },
+            '4:3': { width: 1024, height: 768, name: 'Desktop Standard' },
+            '16:10': { width: 1920, height: 1200, name: 'Desktop Wide' },
+            '21:9': { width: 2560, height: 1080, name: 'Ultrawide' },
+            '1:1': { width: 1080, height: 1080, name: 'Square' }
+        };
+
+        applyAspectRatio();
+        updateDimensionsInfo();
+
+        document.getElementById('imageInput').addEventListener('change', handleImageUpload);
+        document.getElementById('widthInput').addEventListener('input', updateDimensionsInfo);
+        document.getElementById('heightInput').addEventListener('input', updateDimensionsInfo);
+
+        previewWrapper.addEventListener('scroll', renderPreview);
+        canvas.addEventListener('click', handleCanvasClick);
+
+        function toggleControls() {
+            const container = document.getElementById('container');
+            const controls = document.getElementById('controls');
+            container.classList.toggle('controls-hidden');
+            controls.classList.toggle('hidden');
+        }
+
+        function toggleSection(header) {
+            const content = header.nextElementSibling;
+            header.classList.toggle('collapsed');
+            content.classList.toggle('collapsed');
+        }
+
+        function toggleHotspot(id) {
+            const header = document.querySelector(`#hotspot-header-${id}`);
+            const controls = document.querySelector(`#hotspot-controls-${id}`);
+            header.classList.toggle('collapsed');
+            controls.classList.toggle('collapsed');
+        }
+
+        function toggleLoadMethod() {
+            const method = document.getElementById('loadMethod').value;
+            const uploadSection = document.getElementById('uploadSection');
+            const urlSection = document.getElementById('urlSection');
+            
+            if (method === 'upload') {
+                uploadSection.style.display = 'block';
+                urlSection.style.display = 'none';
+            } else {
+                uploadSection.style.display = 'none';
+                urlSection.style.display = 'block';
+            }
+        }
+
+        function applyAspectRatio() {
+            const selected = document.getElementById('aspectRatio').value;
+            if (selected === 'custom') return;
+            
+            const preset = aspectRatioPresets[selected];
+            if (preset) {
+                document.getElementById('widthInput').value = preset.width;
+                document.getElementById('heightInput').value = preset.height;
+                updateDimensionsInfo();
+            }
+        }
+
+        function updateDimensionsInfo() {
+            const width = parseInt(document.getElementById('widthInput').value) || 1920;
+            const height = parseInt(document.getElementById('heightInput').value) || 1080;
+            const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+            const divisor = gcd(width, height);
+            const ratio = `${width / divisor}:${height / divisor}`;
+            document.getElementById('dimensionsInfo').textContent = `${width} x ${height} (${ratio} ratio)`;
+            updatePreview();
+        }
+
+        function toggleCaption(enabled) {
+            captionEnabled = enabled;
+            updatePreview();
+            generateEmbedCode();
+        }
+
+        function extractImageMetadata(file) {
+            // Try to extract EXIF/IPTC metadata from image
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const arrayBuffer = e.target.result;
+                    const view = new DataView(arrayBuffer);
+                    
+                    try {
+                        // Look for JPEG markers
+                        if (view.getUint16(0, false) === 0xFFD8) {
+                            let offset = 2;
+                            while (offset < view.byteLength) {
+                                const marker = view.getUint16(offset, false);
+                                offset += 2;
+                                
+                                if (marker === 0xFFE1) { // APP1 (EXIF)
+                                    const length = view.getUint16(offset, false);
+                                    const exifData = new Uint8Array(arrayBuffer, offset + 2, length - 2);
+                                    const exifString = new TextDecoder('utf-8').decode(exifData);
+                                    
+                                    // Look for ImageDescription or UserComment
+                                    if (exifString.includes('ImageDescription') || exifString.includes('UserComment')) {
+                                        // Try to extract caption text (simplified)
+                                        const match = exifString.match(/[\x20-\x7E]{10,}/g);
+                                        if (match && match.length > 0) {
+                                            const caption = match.find(m => m.length > 15 && !m.includes('Exif'));
+                                            if (caption) {
+                                                resolve(caption.substring(0, 200));
+                                                return;
+                                            }
+                                        }
+                                    }
+                                    break;
+                                }
+                                
+                                if (marker >= 0xFFE0 && marker <= 0xFFEF) {
+                                    const length = view.getUint16(offset, false);
+                                    offset += length;
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.log('Could not extract metadata:', err);
+                    }
+                    
+                    resolve('no caption info');
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Extract metadata first
+            extractImageMetadata(file).then(caption => {
+                autoCaption = caption;
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    loadImageFromDataUrl(event.target.result);
+                    imageDataUrl = event.target.result;
+                    document.getElementById('fileInfo').textContent = file.name;
+                    
+                    // Set caption for first hotspot if it doesn't have one
+                    if (hotspots.length > 0 && !hotspots[0].caption) {
+                        hotspots[0].caption = autoCaption;
+                        updateHotspotsList();
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function loadFromURL() {
+            const url = document.getElementById('imageUrl').value.trim();
+            if (!url) {
+                alert('Please enter an image URL');
+                return;
+            }
+
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                sourceImage = img;
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = img.width;
+                tempCanvas.height = img.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(img, 0, 0);
+                imageDataUrl = tempCanvas.toDataURL('image/jpeg', 0.9);
+                
+                document.getElementById('scrollIndicator').style.display = 'none';
+                
+                // Auto-update dimensions
+                const imgRatio = img.width / img.height;
+                let newWidth = 1920;
+                let newHeight = Math.round(1920 / imgRatio);
+                
+                if (imgRatio < 1) {
+                    newHeight = 1920;
+                    newWidth = Math.round(1920 * imgRatio);
+                }
+                
+                document.getElementById('widthInput').value = newWidth;
+                document.getElementById('heightInput').value = newHeight;
+                document.getElementById('aspectRatio').value = 'custom';
+                
+                updateDimensionsInfo();
+                updatePreview();
+                generateEmbedCode();
+            };
+            img.onerror = () => {
+                alert('Failed to load image. Make sure the URL is correct and CORS is enabled.');
+            };
+            img.src = url;
+        }
+
+        function loadImageFromDataUrl(dataUrl) {
+            const img = new Image();
+            img.onload = () => {
+                sourceImage = img;
+                document.getElementById('scrollIndicator').style.display = 'none';
+                
+                // Auto-update dimensions
+                const imgRatio = img.width / img.height;
+                let newWidth = 1920;
+                let newHeight = Math.round(1920 / imgRatio);
+                
+                if (imgRatio < 1) {
+                    newHeight = 1920;
+                    newWidth = Math.round(1920 * imgRatio);
+                }
+                
+                document.getElementById('widthInput').value = newWidth;
+                document.getElementById('heightInput').value = newHeight;
+                document.getElementById('aspectRatio').value = 'custom';
+                
+                updateDimensionsInfo();
+                updatePreview();
+                generateEmbedCode();
+            };
+            img.src = dataUrl;
+        }
+
+        function addHotspot() {
+            // Get settings from last hotspot if exists
+            const lastHotspot = hotspots.length > 0 ? hotspots[hotspots.length - 1] : null;
+            
+            const hotspot = {
+                id: hotspotIdCounter++,
+                x: lastHotspot ? lastHotspot.x : 50,
+                y: lastHotspot ? lastHotspot.y + 10 : 50,
+                label: 'Click to edit',
+                description: '',
+                caption: lastHotspot && lastHotspot.caption ? lastHotspot.caption : (hotspots.length === 0 ? autoCaption : ''),
+                credit: lastHotspot ? lastHotspot.credit : '',
+                startScroll: lastHotspot ? lastHotspot.startScroll : 0,
+                endScroll: lastHotspot ? lastHotspot.endScroll : 100,
+                fadeIn: lastHotspot ? lastHotspot.fadeIn : 10,
+                fadeOut: lastHotspot ? lastHotspot.fadeOut : 10,
+                markerColor: lastHotspot ? lastHotspot.markerColor : '#ff6b35',
+                lineLength: lastHotspot ? lastHotspot.lineLength : 60,
+                labelPosition: lastHotspot ? lastHotspot.labelPosition : 'right',
+                textAlign: lastHotspot ? lastHotspot.textAlign : 'left',
+                fontSize: lastHotspot ? lastHotspot.fontSize : 40,
+                fontFamily: lastHotspot ? lastHotspot.fontFamily : 'Arial',
+                textTransform: lastHotspot ? lastHotspot.textTransform : 'none',
+                letterSpacing: lastHotspot ? lastHotspot.letterSpacing : 0,
+                lineHeight: lastHotspot ? lastHotspot.lineHeight : 1.2,
+                shadowBlur: lastHotspot ? lastHotspot.shadowBlur : 0,
+                shadowColor: lastHotspot ? lastHotspot.shadowColor : '#000000',
+                clickAction: lastHotspot ? lastHotspot.clickAction : 'none',
+                clickUrl: lastHotspot ? lastHotspot.clickUrl : '',
+                clickScrollTo: lastHotspot ? lastHotspot.clickScrollTo : 0
+            };
+            hotspots.push(hotspot);
+            updateHotspotsList();
+            updatePreview();
+            generateEmbedCode();
+        }
+
+        function removeHotspot(id) {
+            hotspots = hotspots.filter(h => h.id !== id);
+            updateHotspotsList();
+            updatePreview();
+            generateEmbedCode();
+        }
+
+        function updateHotspot(id, property, value) {
+            const hotspot = hotspots.find(h => h.id === id);
+            if (hotspot) {
+                if (['x', 'y', 'startScroll', 'endScroll', 'fadeIn', 'fadeOut', 'fontSize', 'clickScrollTo', 
+                     'lineLength', 'letterSpacing', 'lineHeight', 'shadowBlur'].includes(property)) {
+                    hotspot[property] = parseFloat(value);
+                } else {
+                    hotspot[property] = value;
+                }
+                updatePreview();
+                generateEmbedCode();
+            }
+        }
+
+        function setHotspotPosition(id) {
+            settingHotspotId = id;
+            document.getElementById('settingMode').style.display = 'block';
+            canvas.style.cursor = 'crosshair';
+        }
+
+        function handleCanvasClick(e) {
+            if (!settingHotspotId) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+            const hotspot = hotspots.find(h => h.id === settingHotspotId);
+            if (hotspot) {
+                hotspot.x = Math.round(x * 10) / 10;
+                hotspot.y = Math.round(y * 10) / 10;
+                updateHotspotsList();
+                updatePreview();
+                generateEmbedCode();
+            }
+
+            settingHotspotId = null;
+            document.getElementById('settingMode').style.display = 'none';
+            canvas.style.cursor = 'default';
+        }
+
+        function updateHotspotsList() {
+            const list = document.getElementById('hotspotsList');
+            const fontOptions = [
+                'Arial', 'Helvetica', 'Georgia', 'Times New Roman', 'Courier New', 
+                'Verdana', 'Impact', '-apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif'
+            ].concat(customFonts.map(f => f.name));
+
+            list.innerHTML = hotspots.map(hotspot => `
+                <div class="hotspot-item">
+                    <div class="hotspot-item-header" id="hotspot-header-${hotspot.id}" onclick="toggleHotspot(${hotspot.id})">
+                        <h3>Hotspot ${hotspot.id + 1}</h3>
+                        <button class="remove-btn" onclick="event.stopPropagation(); removeHotspot(${hotspot.id})">Remove</button>
+                    </div>
+                    
+                    <div class="hotspot-controls" id="hotspot-controls-${hotspot.id}">
+                        <div class="control-group">
+                            <label>Label</label>
+                            <input type="text" value="${hotspot.label}" onchange="updateHotspot(${hotspot.id}, 'label', this.value)">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Description (optional)</label>
+                            <textarea onchange="updateHotspot(${hotspot.id}, 'description', this.value)">${hotspot.description}</textarea>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Caption (appears below image)</label>
+                            <textarea onchange="updateHotspot(${hotspot.id}, 'caption', this.value)">${hotspot.caption || ''}</textarea>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Credit (appears below caption, smaller/italic)</label>
+                            <input type="text" value="${hotspot.credit || ''}" onchange="updateHotspot(${hotspot.id}, 'credit', this.value)" placeholder="Photo by...">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Position X <span class="range-value">${hotspot.x.toFixed(1)}%</span></label>
+                            <input type="range" min="0" max="100" step="0.1" value="${hotspot.x}"
+                                   oninput="this.previousElementSibling.querySelector('.range-value').textContent = parseFloat(this.value).toFixed(1) + '%'; updateHotspot(${hotspot.id}, 'x', this.value)">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Position Y <span class="range-value">${hotspot.y.toFixed(1)}%</span></label>
+                            <input type="range" min="0" max="100" step="0.1" value="${hotspot.y}"
+                                   oninput="this.previousElementSibling.querySelector('.range-value').textContent = parseFloat(this.value).toFixed(1) + '%'; updateHotspot(${hotspot.id}, 'y', this.value)">
+                        </div>
+                        
+                        <div class="control-group">
+                            <button class="secondary" onclick="setHotspotPosition(${hotspot.id})">Click Image to Set Position</button>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Scroll Range (%)</label>
+                            <div class="split-inputs">
+                                <input type="number" min="0" max="100" value="${hotspot.startScroll}" 
+                                       onchange="updateHotspot(${hotspot.id}, 'startScroll', this.value)" placeholder="Start">
+                                <input type="number" min="0" max="100" value="${hotspot.endScroll}" 
+                                       onchange="updateHotspot(${hotspot.id}, 'endScroll', this.value)" placeholder="End">
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Fade In/Out (%)</label>
+                            <div class="split-inputs">
+                                <input type="number" min="0" max="50" value="${hotspot.fadeIn}" 
+                                       onchange="updateHotspot(${hotspot.id}, 'fadeIn', this.value)" placeholder="Fade In">
+                                <input type="number" min="0" max="50" value="${hotspot.fadeOut}" 
+                                       onchange="updateHotspot(${hotspot.id}, 'fadeOut', this.value)" placeholder="Fade Out">
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Marker Color</label>
+                            <input type="color" value="${hotspot.markerColor}" onchange="updateHotspot(${hotspot.id}, 'markerColor', this.value)">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Line Length <span class="range-value">${hotspot.lineLength}px</span></label>
+                            <input type="range" min="20" max="200" step="5" value="${hotspot.lineLength}"
+                                   oninput="this.previousElementSibling.querySelector('.range-value').textContent = this.value + 'px'; updateHotspot(${hotspot.id}, 'lineLength', this.value)">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Label Position</label>
+                            <select onchange="updateHotspot(${hotspot.id}, 'labelPosition', this.value)">
+                                <option value="right" ${hotspot.labelPosition === 'right' ? 'selected' : ''}>Right</option>
+                                <option value="left" ${hotspot.labelPosition === 'left' ? 'selected' : ''}>Left</option>
+                                <option value="top" ${hotspot.labelPosition === 'top' ? 'selected' : ''}>Top</option>
+                                <option value="bottom" ${hotspot.labelPosition === 'bottom' ? 'selected' : ''}>Bottom</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Text Alignment in Box</label>
+                            <select onchange="updateHotspot(${hotspot.id}, 'textAlign', this.value)">
+                                <option value="left" ${hotspot.textAlign === 'left' ? 'selected' : ''}>Left</option>
+                                <option value="right" ${hotspot.textAlign === 'right' ? 'selected' : ''}>Right</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Font Size</label>
+                            <input type="number" value="${hotspot.fontSize}" onchange="updateHotspot(${hotspot.id}, 'fontSize', this.value)">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Font Family</label>
+                            <select onchange="updateHotspot(${hotspot.id}, 'fontFamily', this.value)">
+                                ${fontOptions.map(font => `<option value="${font}" ${hotspot.fontFamily === font ? 'selected' : ''}>${font.length > 40 ? 'System Font' : font}</option>`).join('')}
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Text Transform</label>
+                            <select onchange="updateHotspot(${hotspot.id}, 'textTransform', this.value)">
+                                <option value="none" ${hotspot.textTransform === 'none' ? 'selected' : ''}>None</option>
+                                <option value="uppercase" ${hotspot.textTransform === 'uppercase' ? 'selected' : ''}>UPPERCASE</option>
+                                <option value="lowercase" ${hotspot.textTransform === 'lowercase' ? 'selected' : ''}>lowercase</option>
+                                <option value="capitalize" ${hotspot.textTransform === 'capitalize' ? 'selected' : ''}>Capitalize</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Letter Spacing (px)</label>
+                            <input type="number" value="${hotspot.letterSpacing}" step="0.5" onchange="updateHotspot(${hotspot.id}, 'letterSpacing', this.value)">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Line Height</label>
+                            <input type="number" value="${hotspot.lineHeight}" step="0.1" min="0.5" max="3" onchange="updateHotspot(${hotspot.id}, 'lineHeight', this.value)">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Shadow Blur (px)</label>
+                            <input type="number" value="${hotspot.shadowBlur}" min="0" max="50" onchange="updateHotspot(${hotspot.id}, 'shadowBlur', this.value)">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Shadow Color</label>
+                            <input type="color" value="${hotspot.shadowColor}" onchange="updateHotspot(${hotspot.id}, 'shadowColor', this.value)">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Click Action</label>
+                            <select onchange="updateHotspot(${hotspot.id}, 'clickAction', this.value); updateHotspotsList();">
+                                <option value="none" ${hotspot.clickAction === 'none' ? 'selected' : ''}>None</option>
+                                <option value="url" ${hotspot.clickAction === 'url' ? 'selected' : ''}>Open URL</option>
+                                <option value="scroll" ${hotspot.clickAction === 'scroll' ? 'selected' : ''}>Scroll To Position</option>
+                            </select>
+                        </div>
+                        
+                        ${hotspot.clickAction === 'url' ? `
+                        <div class="control-group">
+                            <label>URL</label>
+                            <input type="url" value="${hotspot.clickUrl}" onchange="updateHotspot(${hotspot.id}, 'clickUrl', this.value)" placeholder="https://example.com">
+                        </div>
+                        ` : ''}
+                        
+                        ${hotspot.clickAction === 'scroll' ? `
+                        <div class="control-group">
+                            <label>Scroll To (%)</label>
+                            <input type="number" min="0" max="100" value="${hotspot.clickScrollTo}" onchange="updateHotspot(${hotspot.id}, 'clickScrollTo', this.value)">
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addCustomFont() {
+            const input = document.getElementById('customFontInput').value.trim();
+            if (!input) return;
+
+            let fontName = input;
+            let fontUrl = null;
+
+            if (input.startsWith('http')) {
+                const match = input.match(/family=([^:&]+)/);
+                if (match) {
+                    fontName = match[1].replace(/\+/g, ' ');
+                    fontUrl = input;
+                }
+            }
+
+            customFonts.push({ name: fontName, url: fontUrl });
+            
+            if (fontUrl) {
+                const link = document.createElement('link');
+                link.href = fontUrl;
+                link.rel = 'stylesheet';
+                document.head.appendChild(link);
+            }
+
+            updateCustomFontsList();
+            updateHotspotsList();
+            generateEmbedCode();
+            document.getElementById('customFontInput').value = '';
+        }
+
+        function removeCustomFont(index) {
+            customFonts.splice(index, 1);
+            updateCustomFontsList();
+            updateHotspotsList();
+            generateEmbedCode();
+        }
+
+        function updateCustomFontsList() {
+            const list = document.getElementById('customFontsList');
+            if (customFonts.length === 0) {
+                list.innerHTML = '';
+                return;
+            }
+            list.innerHTML = customFonts.map((font, index) => `
+                <div style="background: #2a2a2a; padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    ${font.name}
+                    <button class="remove-btn" onclick="removeCustomFont(${index})">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        function drawImageWithFit(ctx, img, x, y, width, height, fit) {
+            const imgRatio = img.width / img.height;
+            const canvasRatio = width / height;
+            let drawWidth, drawHeight, drawX, drawY;
+
+            switch(fit) {
+                case 'cover':
+                    if (imgRatio > canvasRatio) {
+                        drawHeight = height;
+                        drawWidth = height * imgRatio;
+                        drawX = x - (drawWidth - width) / 2;
+                        drawY = y;
+                    } else {
+                        drawWidth = width;
+                        drawHeight = width / imgRatio;
+                        drawX = x;
+                        drawY = y - (drawHeight - height) / 2;
+                    }
+                    break;
+                case 'contain':
+                    if (imgRatio > canvasRatio) {
+                        drawWidth = width;
+                        drawHeight = width / imgRatio;
+                        drawX = x;
+                        drawY = y + (height - drawHeight) / 2;
+                    } else {
+                        drawHeight = height;
+                        drawWidth = height * imgRatio;
+                        drawX = x + (width - drawWidth) / 2;
+                        drawY = y;
+                    }
+                    break;
+                case 'fill':
+                    drawX = x;
+                    drawY = y;
+                    drawWidth = width;
+                    drawHeight = height;
+                    break;
+                case 'none':
+                    drawX = x + (width - img.width) / 2;
+                    drawY = y + (height - img.height) / 2;
+                    drawWidth = img.width;
+                    drawHeight = img.height;
+                    break;
+            }
+
+            ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+        }
+
+        function updatePreview() {
+            const width = parseInt(document.getElementById('widthInput').value) || 1920;
+            const height = parseInt(document.getElementById('heightInput').value) || 1080;
+            const scrollDuration = parseInt(document.getElementById('scrollDuration').value) || 2000;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            scrollContent.style.height = (height + scrollDuration) + 'px';
+
+            renderPreview();
+        }
+
+        function renderPreview() {
+            if (!sourceImage) return;
+
+            const scrollTop = previewWrapper.scrollTop;
+            const scrollDuration = parseInt(document.getElementById('scrollDuration').value) || 2000;
+            const scrollProgress = Math.min(scrollTop / scrollDuration, 1);
+            const imageFit = document.getElementById('imageFit').value;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawImageWithFit(ctx, sourceImage, 0, 0, canvas.width, canvas.height, imageFit);
+
+            // Draw hotspots
+            hotspots.forEach(hotspot => {
+                const hotspotScrollStart = hotspot.startScroll / 100;
+                const hotspotScrollEnd = hotspot.endScroll / 100;
+
+                if (scrollProgress < hotspotScrollStart || scrollProgress > hotspotScrollEnd) return;
+
+                const hotspotDuration = hotspotScrollEnd - hotspotScrollStart;
+                const hotspotProgress = (scrollProgress - hotspotScrollStart) / hotspotDuration;
+
+                let opacity = 1;
+                if (hotspotProgress < hotspot.fadeIn / 100) {
+                    opacity = hotspotProgress / (hotspot.fadeIn / 100);
+                } else if (hotspotProgress > 1 - (hotspot.fadeOut / 100)) {
+                    opacity = (1 - hotspotProgress) / (hotspot.fadeOut / 100);
+                }
+
+                const x = (hotspot.x / 100) * canvas.width;
+                const y = (hotspot.y / 100) * canvas.height;
+
+                ctx.save();
+                ctx.globalAlpha = opacity;
+                
+                // Draw solid dot
+                ctx.beginPath();
+                ctx.arc(x, y, 12, 0, Math.PI * 2);
+                ctx.fillStyle = hotspot.markerColor;
+                ctx.fill();
+
+                // Draw label
+                if (hotspot.label) {
+                    // Apply text transform
+                    let displayText = hotspot.label;
+                    switch(hotspot.textTransform) {
+                        case 'uppercase': displayText = displayText.toUpperCase(); break;
+                        case 'lowercase': displayText = displayText.toLowerCase(); break;
+                        case 'capitalize': displayText = displayText.replace(/\b\w/g, l => l.toUpperCase()); break;
+                    }
+
+                    ctx.font = `${hotspot.fontSize}px ${hotspot.fontFamily}`;
+                    ctx.fillStyle = '#e0e0e0';
+                    
+                    // Measure text for proper box sizing
+                    const textMetrics = ctx.measureText(displayText);
+                    const textWidth = textMetrics.width;
+                    const actualHeight = hotspot.fontSize;
+                    
+                    const labelWidth = textWidth + 20;
+                    const labelHeight = actualHeight + 20;
+                    
+                    let labelX = x;
+                    let labelY = y;
+                    let lineEndX = x;
+                    let lineEndY = y;
+                    const lineLen = hotspot.lineLength || 60;
+                    const textAlign = hotspot.textAlign || 'left';
+                    
+                    switch(hotspot.labelPosition) {
+                        case 'right':
+                            labelX = x + lineLen + 10;
+                            // Anchor to left edge of box if text is left-aligned, right edge if right-aligned
+                            lineEndX = textAlign === 'left' ? labelX : labelX + labelWidth;
+                            lineEndY = y;
+                            break;
+                        case 'left':
+                            labelX = x - lineLen - 10 - labelWidth;
+                            // Anchor to right edge of box if text is left-aligned, left edge if right-aligned
+                            lineEndX = textAlign === 'left' ? labelX + labelWidth : labelX;
+                            lineEndY = y;
+                            break;
+                        case 'top':
+                            labelX = x - labelWidth / 2;
+                            labelY = y - lineLen - 10 - labelHeight;
+                            lineEndX = x;
+                            lineEndY = y - lineLen;
+                            break;
+                        case 'bottom':
+                            labelX = x - labelWidth / 2;
+                            labelY = y + lineLen + 10;
+                            lineEndX = x;
+                            lineEndY = y + lineLen;
+                            break;
+                    }
+                    
+                    // Draw line from marker to label - vertically centered with text
+                    const textCenterY = labelY + labelHeight / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    if (hotspot.labelPosition === 'right' || hotspot.labelPosition === 'left') {
+                        ctx.lineTo(lineEndX, textCenterY);
+                    } else {
+                        ctx.lineTo(lineEndX, lineEndY);
+                    }
+                    ctx.strokeStyle = hotspot.markerColor;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    
+                    // Draw label background
+                    ctx.fillStyle = 'rgba(26, 26, 26, 0.95)';
+                    ctx.fillRect(labelX, labelY, labelWidth, labelHeight);
+                    
+                    // Draw text with shadow if enabled
+                    if (hotspot.shadowBlur > 0) {
+                        ctx.shadowBlur = hotspot.shadowBlur;
+                        ctx.shadowColor = hotspot.shadowColor;
+                    }
+                    
+                    ctx.fillStyle = '#e0e0e0';
+                    
+                    // Calculate text start position based on alignment
+                    let textStartX = labelX + 10;
+                    if (textAlign === 'right') {
+                        textStartX = labelX + labelWidth - 10 - textWidth;
+                    }
+                    
+                    // Apply letter spacing if needed
+                    if (hotspot.letterSpacing !== 0) {
+                        const chars = displayText.split('');
+                        let currentX = textStartX;
+                        chars.forEach(char => {
+                            ctx.fillText(char, currentX, labelY + actualHeight + 5);
+                            currentX += ctx.measureText(char).width + hotspot.letterSpacing;
+                        });
+                    } else {
+                        ctx.fillText(displayText, textStartX, labelY + actualHeight + 5);
+                    }
+                }
+
+                ctx.restore();
+            });
+
+            // Update caption - persists once shown
+            const captionElement = document.getElementById('captionText');
+            const captionFont = document.getElementById('captionFontFamily').value;
+            let currentCaption = '';
+            let currentCredit = '';
+            
+            if (captionEnabled) {
+                // Find the last caption that should be showing (based on startScroll)
+                hotspots.forEach(hotspot => {
+                    const hotspotScrollStart = hotspot.startScroll / 100;
+                    if (scrollProgress >= hotspotScrollStart) {
+                        if (hotspot.caption) currentCaption = hotspot.caption;
+                        if (hotspot.credit) currentCredit = hotspot.credit;
+                    }
+                });
+            }
+
+            if (captionEnabled && (currentCaption || currentCredit)) {
+                captionElement.style.fontFamily = captionFont;
+                let html = currentCaption;
+                if (currentCredit) {
+                    html += `<div class="caption-credit">${currentCredit}</div>`;
+                }
+                captionElement.innerHTML = html;
+                captionElement.classList.add('visible');
+            } else {
+                captionElement.innerHTML = '';
+                captionElement.classList.remove('visible');
+            }
+        }
+
+        function generateEmbedCode() {
+            if (!sourceImage) {
+                document.getElementById('embedCode').value = '// Upload an image to generate embed code';
+                return;
+            }
+
+            const width = parseInt(document.getElementById('widthInput').value) || 1920;
+            const height = parseInt(document.getElementById('heightInput').value) || 1080;
+            const scrollDuration = parseInt(document.getElementById('scrollDuration').value) || 2000;
+            const imageFit = document.getElementById('imageFit').value;
+            const captionFont = document.getElementById('captionFontFamily').value;
+            const captionEnabledValue = document.getElementById('captionEnabled').checked;
+
+            const customFontsLinks = customFonts.map(font => 
+                `    <link rel="stylesheet" href="${font.url}">`
+            ).join('\n');
+
+            const hotspotsConfig = JSON.stringify(hotspots.map(h => ({
+                x: h.x,
+                y: h.y,
+                label: h.label,
+                description: h.description,
+                caption: h.caption,
+                credit: h.credit,
+                startScroll: h.startScroll,
+                endScroll: h.endScroll,
+                fadeIn: h.fadeIn,
+                fadeOut: h.fadeOut,
+                markerColor: h.markerColor,
+                lineLength: h.lineLength,
+                labelPosition: h.labelPosition,
+                textAlign: h.textAlign,
+                fontSize: h.fontSize,
+                fontFamily: h.fontFamily,
+                textTransform: h.textTransform,
+                letterSpacing: h.letterSpacing,
+                lineHeight: h.lineHeight,
+                shadowBlur: h.shadowBlur,
+                shadowColor: h.shadowColor,
+                clickAction: h.clickAction,
+                clickUrl: h.clickUrl,
+                clickScrollTo: h.clickScrollTo
+            })), null, 12).replace(/\n/g, '\n            ');
+
+            const code = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Hotspots</title>
+${customFontsLinks ? customFontsLinks + '\n' : ''}    <style>
+        body { margin: 0; padding: 0; background: #000; }
+        .hotspot-container {
+            position: relative;
+            width: 100%;
+        }
+        .hotspot-canvas-wrapper {
+            position: sticky;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .hotspot-canvas {
+            display: block;
+            cursor: pointer;
+        }
+        .caption-text {
+            position: relative;
+            width: 85%;
+            max-width: 700px;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #e0e0e0;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0 auto;
+            display: none;
+        }
+        .caption-text.visible {
+            display: block;
+        }
+        .caption-credit {
+            color: #999;
+            font-size: 11px;
+            font-style: italic;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="hotspot-container" id="container">
+        <div class="hotspot-canvas-wrapper">
+            <canvas id="canvas" class="hotspot-canvas"></canvas>
+            <div class="caption-text" id="captionText"></div>
+        </div>
+    </div>
+
+    <script>
+        const config = {
+            width: ${width},
+            height: ${height},
+            scrollDuration: ${scrollDuration},
+            imageFit: '${imageFit}',
+            captionFont: '${captionFont}',
+            captionEnabled: ${captionEnabledValue},
+            imageData: '${imageDataUrl || ''}',
+            hotspots: ${hotspotsConfig}
+        };
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('container');
+        
+        canvas.width = config.width;
+        canvas.height = config.height;
+        container.style.height = (config.height + config.scrollDuration) + 'px';
+
+        const img = new Image();
+        img.onload = () => render();
+        img.src = config.imageData;
+
+        function drawImageWithFit(ctx, img, x, y, width, height, fit) {
+            const imgRatio = img.width / img.height;
+            const canvasRatio = width / height;
+            let drawWidth, drawHeight, drawX, drawY;
+
+            switch(fit) {
+                case 'cover':
+                    if (imgRatio > canvasRatio) {
+                        drawHeight = height;
+                        drawWidth = height * imgRatio;
+                        drawX = x - (drawWidth - width) / 2;
+                        drawY = y;
+                    } else {
+                        drawWidth = width;
+                        drawHeight = width / imgRatio;
+                        drawX = x;
+                        drawY = y - (drawHeight - height) / 2;
+                    }
+                    break;
+                case 'contain':
+                    if (imgRatio > canvasRatio) {
+                        drawWidth = width;
+                        drawHeight = width / imgRatio;
+                        drawX = x;
+                        drawY = y + (height - drawHeight) / 2;
+                    } else {
+                        drawHeight = height;
+                        drawWidth = height * imgRatio;
+                        drawX = x + (width - drawWidth) / 2;
+                        drawY = y;
+                    }
+                    break;
+                case 'fill':
+                    drawX = x;
+                    drawY = y;
+                    drawWidth = width;
+                    drawHeight = height;
+                    break;
+                case 'none':
+                    drawX = x + (width - img.width) / 2;
+                    drawY = y + (height - img.height) / 2;
+                    drawWidth = img.width;
+                    drawHeight = img.height;
+                    break;
+            }
+            ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+        }
+
+        let animationFrame;
+        function render() {
+            const scrollTop = window.pageYOffset;
+            const scrollProgress = Math.min(scrollTop / config.scrollDuration, 1);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawImageWithFit(ctx, img, 0, 0, canvas.width, canvas.height, config.imageFit);
+
+            config.hotspots.forEach(hotspot => {
+                const hotspotScrollStart = hotspot.startScroll / 100;
+                const hotspotScrollEnd = hotspot.endScroll / 100;
+                if (scrollProgress < hotspotScrollStart || scrollProgress > hotspotScrollEnd) return;
+
+                const hotspotDuration = hotspotScrollEnd - hotspotScrollStart;
+                const hotspotProgress = (scrollProgress - hotspotScrollStart) / hotspotDuration;
+                let opacity = 1;
+                if (hotspotProgress < hotspot.fadeIn / 100) opacity = hotspotProgress / (hotspot.fadeIn / 100);
+                else if (hotspotProgress > 1 - (hotspot.fadeOut / 100)) opacity = (1 - hotspotProgress) / (hotspot.fadeOut / 100);
+
+                const x = (hotspot.x / 100) * canvas.width;
+                const y = (hotspot.y / 100) * canvas.height;
+
+                ctx.save();
+                ctx.globalAlpha = opacity;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 12, 0, Math.PI * 2);
+                ctx.fillStyle = hotspot.markerColor;
+                ctx.fill();
+
+                if (hotspot.label) {
+                    let displayText = hotspot.label;
+                    switch(hotspot.textTransform) {
+                        case 'uppercase': displayText = displayText.toUpperCase(); break;
+                        case 'lowercase': displayText = displayText.toLowerCase(); break;
+                        case 'capitalize': displayText = displayText.replace(/\\b\\w/g, l => l.toUpperCase()); break;
+                    }
+
+                    ctx.font = \`\${hotspot.fontSize}px \${hotspot.fontFamily}\`;
+                    ctx.fillStyle = '#e0e0e0';
+                    const textMetrics = ctx.measureText(displayText);
+                    const textWidth = textMetrics.width;
+                    const actualHeight = hotspot.fontSize;
+                    const labelWidth = textWidth + 20;
+                    const labelHeight = actualHeight + 20;
+                    let labelX = x, labelY = y, lineEndX = x, lineEndY = y;
+                    const lineLen = hotspot.lineLength || 60;
+                    const textAlign = hotspot.textAlign || 'left';
+                    
+                    switch(hotspot.labelPosition) {
+                        case 'right': 
+                            labelX = x + lineLen + 10; 
+                            lineEndX = textAlign === 'left' ? labelX : labelX + labelWidth;
+                            lineEndY = y; 
+                            break;
+                        case 'left': 
+                            labelX = x - lineLen - 10 - labelWidth; 
+                            lineEndX = textAlign === 'left' ? labelX + labelWidth : labelX;
+                            lineEndY = y; 
+                            break;
+                        case 'top': 
+                            labelX = x - labelWidth / 2; 
+                            labelY = y - lineLen - 10 - labelHeight; 
+                            lineEndX = x; 
+                            lineEndY = y - lineLen; 
+                            break;
+                        case 'bottom': 
+                            labelX = x - labelWidth / 2; 
+                            labelY = y + lineLen + 10; 
+                            lineEndX = x; 
+                            lineEndY = y + lineLen; 
+                            break;
+                    }
+                    
+                    const textCenterY = labelY + labelHeight / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    if (hotspot.labelPosition === 'right' || hotspot.labelPosition === 'left') {
+                        ctx.lineTo(lineEndX, textCenterY);
+                    } else {
+                        ctx.lineTo(lineEndX, lineEndY);
+                    }
+                    ctx.strokeStyle = hotspot.markerColor;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = 'rgba(26, 26, 26, 0.95)';
+                    ctx.fillRect(labelX, labelY, labelWidth, labelHeight);
+                    
+                    if (hotspot.shadowBlur > 0) {
+                        ctx.shadowBlur = hotspot.shadowBlur;
+                        ctx.shadowColor = hotspot.shadowColor;
+                    }
+                    
+                    ctx.fillStyle = '#e0e0e0';
+                    let textStartX = labelX + 10;
+                    if (textAlign === 'right') {
+                        textStartX = labelX + labelWidth - 10 - textWidth;
+                    }
+                    
+                    if (hotspot.letterSpacing !== 0) {
+                        const chars = displayText.split('');
+                        let currentX = textStartX;
+                        chars.forEach(char => {
+                            ctx.fillText(char, currentX, labelY + actualHeight + 5);
+                            currentX += ctx.measureText(char).width + hotspot.letterSpacing;
+                        });
+                    } else {
+                        ctx.fillText(displayText, textStartX, labelY + actualHeight + 5);
+                    }
+                }
+                ctx.restore();
+            });
+
+            const captionElement = document.getElementById('captionText');
+            let currentCaption = '';
+            let currentCredit = '';
+            
+            if (config.captionEnabled) {
+                config.hotspots.forEach(hotspot => {
+                    const hotspotScrollStart = hotspot.startScroll / 100;
+                    if (scrollProgress >= hotspotScrollStart) {
+                        if (hotspot.caption) currentCaption = hotspot.caption;
+                        if (hotspot.credit) currentCredit = hotspot.credit;
+                    }
+                });
+            }
+
+            if (config.captionEnabled && (currentCaption || currentCredit)) {
+                captionElement.style.fontFamily = config.captionFont;
+                let html = currentCaption;
+                if (currentCredit) {
+                    html += \`<div class="caption-credit">\${currentCredit}</div>\`;
+                }
+                captionElement.innerHTML = html;
+                captionElement.classList.add('visible');
+            } else {
+                captionElement.innerHTML = '';
+                captionElement.classList.remove('visible');
+            }
+
+            animationFrame = requestAnimationFrame(render);
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = ((e.clientX - rect.left) / rect.width) * 100;
+            const clickY = ((e.clientY - rect.top) / rect.height) * 100;
+            const scrollTop = window.pageYOffset;
+            const scrollProgress = Math.min(scrollTop / config.scrollDuration, 1);
+
+            config.hotspots.forEach(hotspot => {
+                const hotspotScrollStart = hotspot.startScroll / 100;
+                const hotspotScrollEnd = hotspot.endScroll / 100;
+                if (scrollProgress < hotspotScrollStart || scrollProgress > hotspotScrollEnd) return;
+
+                const distance = Math.sqrt(Math.pow(clickX - hotspot.x, 2) + Math.pow(clickY - hotspot.y, 2));
+                if (distance < 5) {
+                    if (hotspot.clickAction === 'url' && hotspot.clickUrl) {
+                        window.open(hotspot.clickUrl, '_blank');
+                    } else if (hotspot.clickAction === 'scroll') {
+                        const targetScroll = (hotspot.clickScrollTo / 100) * config.scrollDuration;
+                        window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                    }
+                }
+            });
+        });
+
+        window.addEventListener('scroll', () => {
+            if (!animationFrame) render();
+        });
+        render();
+    <\/script>
+</body>
+</html>`;
+
+            document.getElementById('embedCode').value = code;
+        }
+
+        function copyCode() {
+            const textarea = document.getElementById('embedCode');
+            textarea.select();
+            document.execCommand('copy');
+            
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        }
+
+        function downloadCode() {
+            const code = document.getElementById('embedCode').value;
+            const blob = new Blob([code], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'hotspots.html';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function saveProject() {
+            const project = {
+                version: 1,
+                width: canvas.width,
+                height: canvas.height,
+                scrollDuration: parseInt(document.getElementById('scrollDuration').value),
+                imageFit: document.getElementById('imageFit').value,
+                captionFont: document.getElementById('captionFontFamily').value,
+                captionEnabled: document.getElementById('captionEnabled').checked,
+                autoCaption: autoCaption,
+                hotspots: hotspots,
+                customFonts: customFonts,
+                imageData: imageDataUrl
+            };
+
+            const json = JSON.stringify(project, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.download = 'hotspots-project.json';
+            link.href = url;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        function loadProject() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const project = JSON.parse(event.target.result);
+                        
+                        document.getElementById('widthInput').value = project.width;
+                        document.getElementById('heightInput').value = project.height;
+                        document.getElementById('scrollDuration').value = project.scrollDuration;
+                        document.getElementById('scrollDurationNumber').value = project.scrollDuration;
+                        document.getElementById('scrollValue').textContent = project.scrollDuration;
+                        if (project.imageFit) document.getElementById('imageFit').value = project.imageFit;
+                        if (project.captionFont) document.getElementById('captionFontFamily').value = project.captionFont;
+                        if (project.captionEnabled !== undefined) {
+                            document.getElementById('captionEnabled').checked = project.captionEnabled;
+                            captionEnabled = project.captionEnabled;
+                        }
+                        if (project.autoCaption) autoCaption = project.autoCaption;
+                        
+                        hotspots = project.hotspots || [];
+                        customFonts = project.customFonts || [];
+                        
+                        hotspotIdCounter = hotspots.length > 0 ? Math.max(...hotspots.map(h => h.id)) + 1 : 0;
+                        
+                        customFonts.forEach(font => {
+                            if (font.url) {
+                                const link = document.createElement('link');
+                                link.href = font.url;
+                                link.rel = 'stylesheet';
+                                document.head.appendChild(link);
+                            }
+                        });
+                        
+                        if (project.imageData) {
+                            imageDataUrl = project.imageData;
+                            loadImageFromDataUrl(project.imageData);
+                        }
+                        
+                        updateHotspotsList();
+                        updateCustomFontsList();
+                        updateDimensionsInfo();
+                        
+                        alert('Project loaded successfully!');
+                    } catch (err) {
+                        alert('Error loading project: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+
+        setInterval(renderPreview, 50);
+        
+        updateHotspotsList();
+        generateEmbedCode();
+    </script>
+</body>
+</html>

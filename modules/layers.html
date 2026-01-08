@@ -1,0 +1,2238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrolltastic Layers</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 30px;
+            align-items: start;
+            transition: grid-template-columns 0.3s ease;
+        }
+
+        .container.controls-hidden {
+            grid-template-columns: 0 1fr;
+        }
+
+        .panel {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .controls {
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .controls.hidden {
+            opacity: 0;
+            transform: translateX(-20px);
+            pointer-events: none;
+        }
+
+        .controls::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .controls::-webkit-scrollbar-track {
+            background: #0f0f0f;
+            border-radius: 4px;
+        }
+
+        .controls::-webkit-scrollbar-thumb {
+            background: #3a3a3a;
+            border-radius: 4px;
+        }
+
+        .toggle-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px 16px;
+            cursor: pointer;
+            z-index: 100;
+            font-size: 14px;
+            color: #e0e0e0;
+            transition: background 0.2s;
+        }
+
+        .toggle-controls:hover {
+            background: #2a2a2a;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 24px;
+            color: #fff;
+        }
+
+        h2 {
+            font-size: 16px;
+            margin: 20px 0 0 0;
+            padding: 12px;
+            color: #fff;
+            background: #0a0a0a;
+            border-radius: 6px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        h2:hover {
+            background: #151515;
+            color: #4a9eff;
+        }
+
+        h2::after {
+            content: '▼';
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        h2.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease;
+            opacity: 0;
+            padding-top: 0;
+        }
+
+        .section-content.expanded {
+            max-height: 2000px;
+            opacity: 1;
+            padding-top: 16px;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            padding-top: 0;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        .upload-area {
+            width: 100%;
+            padding: 30px;
+            background: #0a0a0a;
+            border: 2px dashed #444;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #4a9eff;
+            background: #151515;
+        }
+
+        .upload-area.dragover {
+            border-color: #4a9eff;
+            background: #1a2a3a;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .upload-text {
+            font-size: 14px;
+            color: #e0e0e0;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 11px;
+            color: #666;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        input[type="color"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+        }
+
+        .range-value {
+            float: right;
+            color: #888;
+            font-size: 12px;
+        }
+
+        .split-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #4a9eff;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #3a8eef;
+        }
+
+        button:disabled {
+            background: #2a2a2a;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: #2a2a2a;
+            color: #e0e0e0;
+        }
+
+        button.secondary:hover {
+            background: #3a3a3a;
+        }
+
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+
+        .layer-item {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            transition: border-color 0.2s;
+        }
+
+        .layer-item:hover {
+            border-color: #4a9eff;
+        }
+
+        .layer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .layer-name {
+            font-size: 12px;
+            color: #4a9eff;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .layer-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .icon-btn {
+            background: #2a2a2a;
+            border: none;
+            padding: 3px 6px;
+            border-radius: 4px;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 10px;
+            transition: background 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: #3a3a3a;
+        }
+
+        .layer-details {
+            max-height: 600px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: max-height 0.3s ease-out;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        .layer-details.collapsed {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        /* Text input modal */
+        .text-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .text-modal.active {
+            display: flex;
+        }
+        
+        .text-modal-content {
+            background: #1a1a1a;
+            border: 2px solid #4a9eff;
+            border-radius: 8px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .text-modal h3 {
+            margin: 0 0 16px 0;
+            color: #4a9eff;
+            font-size: 18px;
+        }
+        
+        .text-modal textarea {
+            width: 100%;
+            padding: 12px;
+            background: #0a0a0a;
+            border: 1px solid #4a9eff;
+            color: #fff;
+            border-radius: 4px;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .text-modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .text-modal button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .text-modal .btn-create {
+            background: #4a9eff;
+            color: #000;
+        }
+        
+        .text-modal .btn-cancel {
+            background: #2a2a2a;
+            color: #999;
+        }
+
+        .layer-thumb {
+            width: 100%;
+            height: 60px;
+            object-fit: contain;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            background: #000;
+        }
+
+        .preview-panel {
+            background: #000;
+            border-radius: 12px;
+            border: 1px solid #2a2a2a;
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .preview-wrapper {
+            height: calc(100vh - 40px);
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .preview-wrapper::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .preview-wrapper::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        .preview-wrapper::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 6px;
+        }
+
+        .scroll-content {
+            position: relative;
+        }
+
+        .viewport-container {
+            position: sticky;
+            top: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .viewport-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 98%;
+        }
+
+        .viewport {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .caption-overlay {
+            position: relative;
+            width: 85%;
+            max-width: 700px;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.9);
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: 20;
+            color: #e0e0e0;
+        }
+
+        .caption-overlay.visible {
+            opacity: 1;
+        }
+
+        .caption-credit {
+            color: #999;
+            font-size: 11px;
+            font-style: italic;
+            margin-top: 4px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-content {
+            background: #1a1a1a;
+            padding: 30px 40px;
+            border-radius: 12px;
+            border: 1px solid #2a2a2a;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #2a2a2a;
+            border-top-color: #4a9eff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .info-box {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 11px;
+            color: #888;
+            line-height: 1.5;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 6px;
+        }
+
+        .effect-preset {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .effect-preset:hover {
+            border-color: #4a9eff;
+            background: #0f1a2a;
+        }
+
+        .effect-preset.active {
+            border-color: #4a9eff;
+            background: #0f1a2a;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="toggle-controls" onclick="toggleControls()">☰ Controls</div>
+
+    <div class="container" id="container">
+        <div class="panel controls" id="controls">
+            <h1>Scrolltastic Layers</h1>
+            
+            <h2 onclick="toggleSection(this)">Load Layers</h2>
+            <div class="section-content">
+                <div class="control-group">
+                    <button class="secondary" onclick="loadExampleLayers()" id="loadExampleBtn">Load Example Layers</button>
+                    <button class="secondary" onclick="addTextLayer();" id="addTextBtn" style="background: #4a9eff; color: #000; font-weight: 600;">➕ Add Text Layer</button>
+                    <button class="secondary" onclick="clearAllLayers()" id="clearBtn" disabled>Clear All Layers</button>
+                </div>
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Upload Layer Images</div>
+                    <div class="upload-hint">PNG, JPG • Stacks like Photoshop</div>
+                </div>
+                <input type="file" id="fileInput" multiple accept="image/*" onchange="handleFileUpload(event)">
+                
+                <div style="margin-top: 16px; padding: 16px; background: #1a1a1a; border: 2px dashed #4a9eff; border-radius: 8px;">
+                    <div style="font-size: 13px; color: #4a9eff; margin-bottom: 8px; font-weight: 600;">🔗 Load Image from URL</div>
+                    <div style="font-size: 11px; color: #999; margin-bottom: 12px;">Paste a direct link to any PNG, JPG, or GIF image</div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="url" id="imageUrlInput" placeholder="https://example.com/image.png" 
+                               style="flex: 1; padding: 10px; background: #0a0a0a; border: 1px solid #4a9eff; color: #fff; border-radius: 4px; font-size: 13px;"
+                               onkeypress="if(event.key==='Enter') loadImageFromUrl()">
+                        <button onclick="loadImageFromUrl()" style="padding: 10px 20px; background: #4a9eff; border: none; color: #000; font-weight: 600; cursor: pointer; border-radius: 4px; font-size: 13px;">Load Image</button>
+                    </div>
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection(this)">Custom Fonts</h2>
+            <div class="section-content">
+                <div class="control-group">
+                    <label>Font Family for Text Layers</label>
+                    <select id="fontFamily" onchange="updateGlobalFont()" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #333; color: #fff; border-radius: 4px; margin-top: 8px;">
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Impact">Impact</option>
+                        <option value="Comic Sans MS">Comic Sans MS</option>
+                    </select>
+                </div>
+                
+                <div class="control-group" style="margin-top: 12px;">
+                    <label>Or Upload Custom Font (TTF, OTF, WOFF)</label>
+                    <input type="file" id="fontInput" accept=".ttf,.otf,.woff,.woff2" onchange="handleFontUpload(event)" style="display: none;">
+                    <button onclick="document.getElementById('fontInput').click()" style="width: 100%; margin-top: 8px; padding: 10px; background: #2a2a2a; border: 1px solid #4a9eff; color: #4a9eff; cursor: pointer; border-radius: 4px; font-size: 13px; font-weight: 600;">📤 Upload Font File</button>
+                    <div id="fontStatus" style="font-size: 11px; color: #666; margin-top: 6px; text-align: center;">Using: Arial</div>
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection(this)">Canvas & Display</h2>
+            <div class="section-content">
+                <div class="control-group">
+                    <label>Aspect Ratio <span style="font-size: 10px; color: #666;">(Auto-detected)</span></label>
+                    <select id="aspectRatio" onchange="updateAspectRatio()">
+                        <option value="auto">Auto (From Layers)</option>
+                        <option value="16:9">16:9 Widescreen</option>
+                        <option value="9:16">9:16 Portrait</option>
+                        <option value="4:3">4:3 Standard</option>
+                        <option value="1:1">1:1 Square</option>
+                        <option value="21:9">21:9 Ultrawide</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+
+                <div class="control-group" id="customSizeGroup" style="display: none;">
+                    <label>Custom Size</label>
+                    <div class="split-inputs">
+                        <input type="number" id="canvasWidth" value="1920" onchange="updateCanvas()">
+                        <input type="number" id="canvasHeight" value="1080" onchange="updateCanvas()">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Image Fit</label>
+                    <select id="imageFit" onchange="render()">
+                        <option value="cover">Cover (Fill, may crop)</option>
+                        <option value="contain">Contain (Fit all, may have bars)</option>
+                        <option value="fill">Fill (Stretch to fit)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Background</label>
+                    <input type="color" id="bgColor" value="#000000" onchange="render()">
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection(this)">Global Effects <span style="font-size: 11px; color: #666;">(All Layers)</span></h2>
+            <div class="section-content">
+                <div class="control-group">
+                    <label>Effect Preset</label>
+                    <div class="effect-preset active" onclick="selectEffect('parallax')">
+                        <strong>Parallax Depth</strong> - Layers move at different speeds
+                    </div>
+                    <div class="effect-preset" onclick="selectEffect('zoom')">
+                        <strong>Zoom In</strong> - Entire stack zooms while scrolling
+                    </div>
+                    <div class="effect-preset" onclick="selectEffect('zoom-out')">
+                        <strong>Zoom Out</strong> - Stack starts large, zooms out
+                    </div>
+                    <div class="effect-preset" onclick="selectEffect('blur-reveal')">
+                        <strong>Blur Reveal</strong> - Blurred to sharp focus
+                    </div>
+                    <div class="effect-preset" onclick="selectEffect('fade-in')">
+                        <strong>Fade In Stack</strong> - All layers fade in together
+                    </div>
+                    <div class="effect-preset" onclick="selectEffect('cascade')">
+                        <strong>Cascade</strong> - Layers appear one by one
+                    </div>
+                    <div class="effect-preset" onclick="selectEffect('slide-up')">
+                        <strong>Slide Up</strong> - Stack slides into view
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Effect Intensity <span class="range-value" id="intensityValue">1.0</span></label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="range" id="effectIntensity" min="0" max="2" value="1" step="0.1" oninput="updateIntensity()" style="flex: 1;">
+                        <input type="number" id="effectIntensityNum" min="0" max="2" value="1" step="0.1" oninput="syncIntensityFromNumber(this.value)" style="width: 70px;">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Scroll Duration (px) <span class="range-value" id="scrollValue">5000</span></label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="range" id="scrollDuration" min="2000" max="20000" value="5000" step="100" oninput="updateScrollValue()" style="flex: 1;">
+                        <input type="number" id="scrollDurationNum" min="2000" max="20000" value="5000" step="100" oninput="syncScrollFromNumber(this.value)" style="width: 80px;">
+                    </div>
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection(this)">Caption</h2>
+            <div class="section-content">
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="captionEnabled" onchange="render()"> Enable Caption
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label>Caption Text</label>
+                    <textarea id="captionText" placeholder="Your caption text..." style="min-height: 80px;">Caption goes here, Parallax depth creates immersive scroll storytelling</textarea>
+                </div>
+
+                <div class="control-group">
+                    <label>Caption Credit/Source</label>
+                    <input type="text" id="captionCredit" placeholder="Photo by..." value="Caption credit">
+                </div>
+
+                <div class="control-group">
+                    <label>Show Caption At (%)</label>
+                    <div class="split-inputs">
+                        <input type="number" id="captionStart" value="20" min="0" max="100">
+                        <input type="number" id="captionEnd" value="60" min="0" max="100">
+                    </div>
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection(this)" class="collapsed">Layers <span id="layerCount" style="font-size: 11px; color: #666;">(0)</span></h2>
+            <div class="section-content collapsed" id="layersList">
+                <div class="info-box">
+                    Upload images to see layers here. Layers stack like Photoshop.
+                </div>
+            </div>
+
+            <h2 onclick="toggleSection(this)" class="collapsed">Export</h2>
+            <div class="section-content collapsed">
+                <div class="control-group">
+                    <button onclick="generateEmbedCode()" id="generateBtn" disabled>Generate HTML</button>
+                    <button class="secondary" onclick="saveProject()">Save Project</button>
+                    <button class="secondary" onclick="loadProject()">Load Project</button>
+                </div>
+
+                <div class="control-group">
+                    <label>Embed Code</label>
+                    <textarea id="embedCode" readonly></textarea>
+                    <button class="secondary" onclick="copyCode()">Copy Code</button>
+                    <button class="secondary" onclick="downloadHTML()">Download HTML</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-panel">
+            <div class="preview-wrapper" id="previewWrapper">
+                <div class="scroll-content" id="scrollContent">
+                    <div class="viewport-container">
+                        <div class="viewport-wrapper">
+                            <div class="viewport" id="viewport">
+                                <canvas id="canvas"></canvas>
+                            </div>
+                            <div class="caption-overlay" id="captionOverlay">
+                                <div id="captionTextDisplay"></div>
+                                <div class="caption-credit" id="captionCreditDisplay"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loadingText">Processing...</div>
+        </div>
+    </div>
+
+    <!-- Text Layer Modal -->
+    <div class="text-modal" id="textModal">
+        <div class="text-modal-content">
+            <h3>Create Text Layer</h3>
+            <textarea id="textInput" placeholder="Enter your text here..." autofocus></textarea>
+            <div class="text-modal-buttons">
+                <button class="btn-cancel" onclick="closeTextModal()">Cancel</button>
+                <button class="btn-create" onclick="createTextFromModal()">Create Layer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const previewWrapper = document.getElementById('previewWrapper');
+        const scrollContent = document.getElementById('scrollContent');
+        const viewport = document.getElementById('viewport');
+        const uploadArea = document.getElementById('uploadArea');
+
+        let layers = [];
+        let globalEffect = 'parallax';
+        let effectIntensity = 1.0;
+        let config = {
+            width: 1920,
+            height: 1080,
+            aspectRatio: 'auto',
+            bgColor: '#000000',
+            imageFit: 'cover',
+            scrollDuration: 5000,
+            captionEnabled: false,
+            captionText: 'Caption goes here, Parallax depth creates immersive scroll storytelling',
+            captionCredit: 'Caption credit',
+            captionStart: 20,
+            captionEnd: 60
+        };
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        });
+
+        function toggleControls() {
+            document.getElementById('container').classList.toggle('controls-hidden');
+            document.getElementById('controls').classList.toggle('hidden');
+        }
+
+        function toggleSection(header) {
+            header.classList.toggle('collapsed');
+            const content = header.nextElementSibling;
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                content.classList.add('collapsed');
+            } else {
+                content.classList.remove('collapsed');
+                content.classList.add('expanded');
+            }
+        }
+
+        function selectEffect(effect) {
+            globalEffect = effect;
+            document.querySelectorAll('.effect-preset').forEach(el => el.classList.remove('active'));
+            event.target.closest('.effect-preset').classList.add('active');
+            render();
+        }
+
+        function updateIntensity() {
+            effectIntensity = parseFloat(document.getElementById('effectIntensity').value);
+            document.getElementById('intensityValue').textContent = effectIntensity.toFixed(1);
+            document.getElementById('effectIntensityNum').value = effectIntensity;
+            render();
+        }
+
+        function syncIntensityFromNumber(value) {
+            document.getElementById('effectIntensity').value = value;
+            updateIntensity();
+        }
+
+        function updateScrollValue() {
+            config.scrollDuration = parseInt(document.getElementById('scrollDuration').value);
+            document.getElementById('scrollValue').textContent = config.scrollDuration;
+            document.getElementById('scrollDurationNum').value = config.scrollDuration;
+            scrollContent.style.height = config.scrollDuration + 'px';
+            render();
+        }
+
+        function syncScrollFromNumber(value) {
+            document.getElementById('scrollDuration').value = value;
+            updateScrollValue();
+        }
+
+        function updateAspectRatio() {
+            config.aspectRatio = document.getElementById('aspectRatio').value;
+            const customGroup = document.getElementById('customSizeGroup');
+            
+            if (config.aspectRatio === 'custom') {
+                customGroup.style.display = 'block';
+            } else {
+                customGroup.style.display = 'none';
+            }
+            
+            updateCanvas();
+        }
+
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function handleFileUpload(event) {
+            const files = Array.from(event.target.files);
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        }
+
+        async function handleFiles(files) {
+            showLoading('Loading layers...');
+
+            let maxWidth = 0;
+            let maxHeight = 0;
+            const loadedImages = [];
+
+            for (const file of files) {
+                const dataUrl = await readFileAsDataURL(file);
+                const img = await loadImage(dataUrl);
+                loadedImages.push({ img, dataUrl, name: file.name });
+                maxWidth = Math.max(maxWidth, img.width);
+                maxHeight = Math.max(maxHeight, img.height);
+            }
+
+            // Auto-detect aspect ratio
+            if (config.aspectRatio === 'auto') {
+                config.width = maxWidth;
+                config.height = maxHeight;
+            }
+
+            document.getElementById('canvasWidth').value = maxWidth;
+            document.getElementById('canvasHeight').value = maxHeight;
+
+            // Create layers - stacked centered
+            for (let i = 0; i < loadedImages.length; i++) {
+                const { img, dataUrl, name } = loadedImages[i];
+
+                const layer = {
+                    id: Date.now() + i,
+                    name: name.replace(/\.[^/.]+$/, ""),
+                    image: img,
+                    dataUrl: dataUrl,
+                    visible: true,
+                    opacity: 1,
+                    
+                    left: (config.width - img.width) / 2,
+                    top: (config.height - img.height) / 2,
+                    width: img.width,
+                    height: img.height,
+                    
+                    depth: (i / Math.max(loadedImages.length - 1, 1)),
+                    scale: 1,
+                    rotation: 0
+                };
+
+                layers.push(layer);
+            }
+
+            updateCanvas();
+            updateLayersList();
+            hideLoading();
+        }
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        function updateCanvas() {
+            const aspectRatio = document.getElementById('aspectRatio').value;
+            
+            if (aspectRatio === 'custom') {
+                config.width = parseInt(document.getElementById('canvasWidth').value);
+                config.height = parseInt(document.getElementById('canvasHeight').value);
+            } else if (aspectRatio !== 'auto' && layers.length > 0) {
+                const ratios = {
+                    '16:9': [16, 9],
+                    '9:16': [9, 16],
+                    '4:3': [4, 3],
+                    '1:1': [1, 1],
+                    '21:9': [21, 9]
+                };
+                
+                if (ratios[aspectRatio]) {
+                    const [w, h] = ratios[aspectRatio];
+                    const baseWidth = Math.max(...layers.map(l => l.width));
+                    config.width = baseWidth;
+                    config.height = Math.round(baseWidth * h / w);
+                }
+            }
+            
+            canvas.width = config.width;
+            canvas.height = config.height;
+            
+            // Set viewport dimensions based on aspect ratio
+            const viewportAspect = config.width / config.height;
+            viewport.style.aspectRatio = `${config.width} / ${config.height}`;
+            viewport.style.width = '100%';
+            viewport.style.height = 'auto';
+            
+            scrollContent.style.height = config.scrollDuration + 'px';
+            
+            render();
+        }
+
+        function updateLayersList() {
+            const list = document.getElementById('layersList');
+            document.getElementById('layerCount').textContent = `(${layers.length})`;
+            
+            // Update button states based on layer count
+            const hasLayers = layers.length > 0;
+            const generateBtn = document.getElementById('generateBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            
+            if (generateBtn) {
+                generateBtn.disabled = !hasLayers;
+            }
+            if (clearBtn) {
+                clearBtn.disabled = !hasLayers;
+            }
+            
+            if (layers.length === 0) {
+                list.innerHTML = '<div class="info-box">Upload images to see layers here.</div>';
+                return;
+            }
+
+            list.innerHTML = '';
+            
+            layers.forEach((layer, index) => {
+                const item = document.createElement('div');
+                item.className = 'layer-item';
+                
+                const detailsId = `layer-details-${index}`;
+                
+                item.innerHTML = `
+                    <div class="layer-header" onclick="toggleLayerDetails('${detailsId}')">
+                        <div class="layer-name">
+                            🖼️ ${layer.name}
+                        </div>
+                        <div class="layer-controls" onclick="event.stopPropagation()">
+                            <button class="icon-btn" onclick="moveLayer(${index}, -1)" ${index === 0 ? 'disabled' : ''}>↑</button>
+                            <button class="icon-btn" onclick="moveLayer(${index}, 1)" ${index === layers.length - 1 ? 'disabled' : ''}>↓</button>
+                            <button class="icon-btn" onclick="toggleLayerVisibility(${index})">${layer.visible ? '👁️' : '👁️‍🗨️'}</button>
+                            <button class="icon-btn" onclick="deleteLayer(${index})">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="layer-details collapsed" id="${detailsId}">
+                        ${!layer.isText ? `
+                        <img src="${layer.dataUrl}" class="layer-thumb" alt="${layer.name}">
+                        <div style="font-size: 10px; color: #666;">
+                            Size: ${layer.width}x${layer.height} • Depth: ${(layer.depth * 100).toFixed(0)}%
+                        </div>
+                        ` : ''}
+                        ${layer.isText ? `
+                        <div style="margin-top: 8px; padding: 12px; background: #1a1a1a; border-radius: 4px;">
+                            <div style="font-size: 11px; color: #4a9eff; margin-bottom: 12px; font-weight: 600;">📝 Text Layer Controls</div>
+                            
+                            <div style="margin-bottom: 12px;">
+                                <label style="font-size: 10px; display: block; margin-bottom: 4px;">Text Content</label>
+                                <textarea id="textContent-${index}" style="width: 100%; padding: 8px; background: #0a0a0a; border: 1px solid #333; color: #fff; border-radius: 3px; font-size: 11px; resize: vertical; min-height: 60px; font-family: monospace;">${layer.textContent || ''}</textarea>
+                                <button onclick="updateTextContent(${index})" style="width: 100%; margin-top: 6px; padding: 8px; background: #4a9eff; border: none; color: #000; font-weight: 600; cursor: pointer; border-radius: 3px; font-size: 11px;">Update Text</button>
+                            </div>
+                            
+                            <div style="margin-bottom: 12px;">
+                                <label style="font-size: 10px; display: block; margin-bottom: 6px;">Position X: <span id="textX-${index}" style="color: #4a9eff; font-weight: 600;">${layer.textX || 50}</span>%</label>
+                                <input type="range" min="0" max="100" step="1" value="${layer.textX || 50}"
+                                       oninput="updateTextPositionLive(${index}, 'x', this.value)"
+                                       style="width: 100%;">
+                            </div>
+                            
+                            <div style="margin-bottom: 12px;">
+                                <label style="font-size: 10px; display: block; margin-bottom: 6px;">Position Y: <span id="textY-${index}" style="color: #4a9eff; font-weight: 600;">${layer.textY || 50}</span>%</label>
+                                <input type="range" min="0" max="100" step="1" value="${layer.textY || 50}"
+                                       oninput="updateTextPositionLive(${index}, 'y', this.value)"
+                                       style="width: 100%;">
+                            </div>
+                            
+                            <div style="margin-bottom: 0;">
+                                <label style="font-size: 10px; display: block; margin-bottom: 6px;">Scale: <span id="textScale-${index}" style="color: #4a9eff; font-weight: 600;">${layer.textScale || 100}</span>%</label>
+                                <input type="range" min="10" max="300" step="10" value="${layer.textScale || 100}"
+                                       oninput="updateTextScaleLive(${index}, this.value)"
+                                       style="width: 100%;">
+                            </div>
+                        </div>
+                        ` : ''}
+                        <div style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Opacity</label>
+                            <input type="range" min="0" max="1" step="0.1" value="${layer.opacity}" 
+                                   oninput="updateLayerOpacity(${index}, this.value)" 
+                                   style="width: 100%; margin-top: 4px;">
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Depth (Parallax)</label>
+                            <input type="range" min="0" max="2" step="0.1" value="${layer.depth}" 
+                                   oninput="updateLayerDepth(${index}, this.value)" 
+                                   style="width: 100%; margin-top: 4px;">
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Scroll Speed: <span style="color: #4a9eff;">${((layer.scrollSpeed || 1) * 100).toFixed(0)}%</span></label>
+                            <input type="range" min="0.5" max="2" step="0.1" value="${layer.scrollSpeed || 1}" 
+                                   oninput="updateLayerScrollSpeed(${index}, this.value)" 
+                                   style="width: 100%; margin-top: 4px;">
+                            <div style="font-size: 9px; color: #666; margin-top: 2px;">50% = slower, 100% = normal, 200% = faster</div>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function toggleLayerDetails(id) {
+            document.getElementById(id).classList.toggle('collapsed');
+        }
+
+        function moveLayer(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= layers.length) return;
+            [layers[index], layers[newIndex]] = [layers[newIndex], layers[index]];
+            updateLayersList();
+            render();
+        }
+
+        function toggleLayerVisibility(index) {
+            layers[index].visible = !layers[index].visible;
+            updateLayersList();
+            render();
+        }
+
+        function updateLayerOpacity(index, value) {
+            layers[index].opacity = parseFloat(value);
+            render();
+        }
+
+        function updateLayerDepth(index, value) {
+            layers[index].depth = parseFloat(value);
+            render();
+        }
+
+        function updateLayerScrollSpeed(index, value) {
+            const speed = parseFloat(value);
+            layers[index].scrollSpeed = speed;
+            
+            // Update the display label
+            const label = document.querySelector(`#layer-details-${index} label`);
+            if (label && label.textContent.includes('Scroll Speed')) {
+                const speedPercent = (speed * 100).toFixed(0);
+                label.innerHTML = `Scroll Speed: <span style="color: #4a9eff;">${speedPercent}%</span>`;
+            }
+            
+            render();
+        }
+
+        function deleteLayer(index) {
+            if (confirm('Delete this layer?')) {
+                layers.splice(index, 1);
+                updateLayersList();
+                render();
+            }
+        }
+
+        async function loadImageFromUrl() {
+            const url = document.getElementById('imageUrlInput').value.trim();
+            if (!url) {
+                alert('Please enter an image URL');
+                return;
+            }
+            
+            showLoading('Loading image from URL...');
+            
+            try {
+                const img = await loadImage(url);
+                
+                const layer = {
+                    id: Date.now(),
+                    name: 'URL Image',
+                    image: img,
+                    dataUrl: url,
+                    visible: true,
+                    opacity: 1,
+                    left: 0,
+                    top: 0,
+                    width: img.width,
+                    height: img.height,
+                    depth: layers.length > 0 ? layers.length / 10 : 0,
+                    scale: 1,
+                    rotation: 0
+                };
+                
+                layers.push(layer);
+                
+                // Auto-detect canvas size if first layer
+                if (layers.length === 1) {
+                    config.width = img.width;
+                    config.height = img.height;
+                    document.getElementById('canvasWidth').value = img.width;
+                    document.getElementById('canvasHeight').value = img.height;
+                }
+                
+                updateCanvas();
+                updateLayersList();
+                hideLoading();
+                
+                document.getElementById('imageUrlInput').value = '';
+            } catch (error) {
+                hideLoading();
+                alert('Error loading image from URL: ' + error.message);
+            }
+        }
+
+        let customFont = null;
+        let customFontName = 'CustomFont';
+        let globalFontFamily = 'Arial';
+
+        function updateGlobalFont() {
+            const select = document.getElementById('fontFamily');
+            globalFontFamily = select.value;
+            document.getElementById('fontStatus').textContent = `Using: ${globalFontFamily}`;
+            
+        }
+
+        function handleFontUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fontFace = new FontFace(customFontName, `url(${e.target.result})`);
+                fontFace.load().then(function(loadedFont) {
+                    document.fonts.add(loadedFont);
+                    customFont = customFontName;
+                    globalFontFamily = customFontName;
+                    document.getElementById('fontStatus').textContent = `✓ Custom font loaded: ${file.name}`;
+                    document.getElementById('fontStatus').style.color = '#4a9eff';
+                    
+                    // Add to dropdown
+                    const select = document.getElementById('fontFamily');
+                    const option = new Option(customFontName, customFontName);
+                    select.add(option);
+                    select.value = customFontName;
+                }).catch(function(error) {
+                    alert('Error loading font: ' + error.message);
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateTextContent(index) {
+            const layer = layers[index];
+            if (!layer.isText) return;
+            
+            const textarea = document.getElementById(`textContent-${index}`);
+            const newText = textarea.value.trim();
+            
+            if (!newText) {
+                alert('Text cannot be empty');
+                return;
+            }
+            
+            layer.name = `Text: ${newText.substring(0, 20)}`;
+            layer.textContent = newText;
+            
+            // Regenerate text layer without collapsing
+            regenerateTextLayer(layer, index);
+        }
+
+        function updateTextPositionLive(index, axis, value) {
+            const layer = layers[index];
+            if (!layer.isText) return;
+            
+            if (axis === 'x') {
+                layer.textX = parseFloat(value);
+                document.getElementById(`textX-${index}`).textContent = value;
+            } else {
+                layer.textY = parseFloat(value);
+                document.getElementById(`textY-${index}`).textContent = value;
+            }
+            
+            // Regenerate without collapsing
+            regenerateTextLayer(layer, index);
+        }
+
+        function updateTextScaleLive(index, value) {
+            const layer = layers[index];
+            if (!layer.isText) return;
+            
+            layer.textScale = parseFloat(value);
+            document.getElementById(`textScale-${index}`).textContent = value;
+            
+            // Regenerate without collapsing
+            regenerateTextLayer(layer, index);
+        }
+
+        function regenerateTextLayer(layer, index) {
+            // Regenerate text layer image without refreshing the entire list
+            const width = layer.width;
+            const height = layer.height;
+            const text = layer.textContent;
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const ctx = tempCanvas.getContext('2d');
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            const posX = (layer.textX / 100) * width;
+            const posY = (layer.textY / 100) * height;
+            const scaleFactor = layer.textScale / 100;
+            
+            ctx.save();
+            ctx.translate(posX, posY);
+            ctx.scale(scaleFactor, scaleFactor);
+            
+            const fontFamily = customFont || globalFontFamily;
+            ctx.font = `bold ${layer.fontSize}px ${fontFamily}`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetX = 4;
+            ctx.shadowOffsetY = 4;
+            
+            ctx.fillText(text, 0, 0);
+            ctx.restore();
+            
+            const dataUrl = tempCanvas.toDataURL('image/png');
+            
+            const img = new Image();
+            img.onload = function() {
+                layer.image = img;
+                layer.dataUrl = dataUrl;
+                render(); // Only re-render canvas, don't refresh layer list
+            };
+            img.src = dataUrl;
+        }
+
+        function addTextLayer() {
+            
+            
+            // Open modal instead of prompt
+            const modal = document.getElementById('textModal');
+            const input = document.getElementById('textInput');
+            
+            modal.classList.add('active');
+            input.value = 'Your Text Here';
+            input.focus();
+            input.select();
+            
+            
+        }
+        
+        function closeTextModal() {
+            const modal = document.getElementById('textModal');
+            modal.classList.remove('active');
+            
+        }
+        
+        function createTextFromModal() {
+            const input = document.getElementById('textInput');
+            const text = input.value.trim();
+            
+            
+            
+            if (!text) {
+                alert('Please enter some text');
+                return;
+            }
+            
+            closeTextModal();
+            showLoading('Creating text layer...');
+            
+            // Simple approach - just create it directly
+            setTimeout(() => {
+                
+                
+                // Get canvas size from inputs
+                const width = parseInt(document.getElementById('canvasWidth').value) || 1920;
+                const height = parseInt(document.getElementById('canvasHeight').value) || 1080;
+                
+                
+                
+                // Create a canvas
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = width;
+                tempCanvas.height = height;
+                const ctx = tempCanvas.getContext('2d');
+                
+                // Clear to transparent
+                ctx.clearRect(0, 0, width, height);
+                
+                // Draw text
+                const fontSize = Math.floor(height / 10);
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.shadowBlur = 20;
+                ctx.shadowOffsetX = 4;
+                ctx.shadowOffsetY = 4;
+                
+                ctx.fillText(text, width / 2, height / 2);
+                
+                
+                
+                // Get data URL
+                const dataUrl = tempCanvas.toDataURL('image/png');
+                
+                
+                // Create image
+                const img = new Image();
+                
+                img.onload = function() {
+                    
+                    
+                    const newLayer = {
+                        id: Date.now(),
+                        name: 'Text: ' + text.substring(0, 20),
+                        image: img,
+                        dataUrl: dataUrl,
+                        visible: true,
+                        opacity: 1,
+                        left: 0,
+                        top: 0,
+                        width: width,
+                        height: height,
+                        depth: 1,
+                        scale: 1,
+                        rotation: 0,
+                        isText: true,
+                        textContent: text,
+                        textX: 50,
+                        textY: 50,
+                        textScale: 100,
+                        fontSize: fontSize
+                    };
+                    
+                    
+                    
+                    // Add to layers array
+                    layers.push(newLayer);
+                    
+                    
+                    // Update UI
+                    updateCanvas();
+                    
+                    
+                    updateLayersList();
+                    
+                    
+                    hideLoading();
+                    
+                };
+                
+                img.onerror = function(err) {
+                    hideLoading();
+                    alert('Failed to load text image');
+                };
+                
+                
+                img.src = dataUrl;
+                
+            }, 150);
+        }
+
+        function createTextLayerSync(text, existingLayer = null) {
+            
+            
+            // Get canvas dimensions - check multiple sources
+            let canvasWidth = config.width;
+            let canvasHeight = config.height;
+            
+            if (!canvasWidth || !canvasHeight) {
+                canvasWidth = parseInt(document.getElementById('canvasWidth').value) || 1920;
+                canvasHeight = parseInt(document.getElementById('canvasHeight').value) || 1080;
+            }
+            
+            
+            
+            // Create text canvas
+            const textCanvas = document.createElement('canvas');
+            textCanvas.width = canvasWidth;
+            textCanvas.height = canvasHeight;
+            const textCtx = textCanvas.getContext('2d');
+            
+            // Get text properties
+            const textX = existingLayer?.textX || 50;
+            const textY = existingLayer?.textY || 50;
+            const textScale = existingLayer?.textScale || 100;
+            const fontSize = existingLayer?.fontSize || Math.floor(canvasHeight / 10);
+            
+            
+            
+            // Clear canvas (transparent background)
+            textCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            // Calculate position
+            const posX = (textX / 100) * canvasWidth;
+            const posY = (textY / 100) * canvasHeight;
+            const scaleFactor = textScale / 100;
+            
+            // Apply transformations
+            textCtx.save();
+            textCtx.translate(posX, posY);
+            textCtx.scale(scaleFactor, scaleFactor);
+            
+            // Set text style
+            const fontFamily = customFont || globalFontFamily;
+            textCtx.font = `bold ${fontSize}px ${fontFamily}`;
+            textCtx.fillStyle = '#ffffff';
+            textCtx.textAlign = 'center';
+            textCtx.textBaseline = 'middle';
+            
+            // Add shadow
+            textCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            textCtx.shadowBlur = 20;
+            textCtx.shadowOffsetX = 4;
+            textCtx.shadowOffsetY = 4;
+            
+            // Draw text
+            textCtx.fillText(text, 0, 0);
+            textCtx.restore();
+            
+            
+            
+            // Convert to data URL
+            const dataUrl = textCanvas.toDataURL('image/png');
+            
+            
+            // Create image from data URL
+            const img = new Image();
+            img.onload = () => {
+                
+                
+                if (existingLayer) {
+                    // Update existing layer
+                    existingLayer.image = img;
+                    existingLayer.dataUrl = dataUrl;
+                    existingLayer.textContent = text;
+                    
+                } else {
+                    // Create new layer
+                    const layer = {
+                        id: Date.now(),
+                        name: `Text: ${text.substring(0, 20)}`,
+                        image: img,
+                        dataUrl: dataUrl,
+                        visible: true,
+                        opacity: 1,
+                        left: 0,
+                        top: 0,
+                        width: canvasWidth,
+                        height: canvasHeight,
+                        depth: 1,
+                        scale: 1,
+                        rotation: 0,
+                        isText: true,
+                        textContent: text,
+                        textX: textX,
+                        textY: textY,
+                        textScale: textScale,
+                        fontSize: fontSize
+                    };
+                    
+                    layers.push(layer);
+                    
+                }
+                
+                updateCanvas();
+                updateLayersList();
+                hideLoading();
+                
+            };
+            
+            img.onerror = (error) => {
+                
+                hideLoading();
+                alert('Failed to create text layer image');
+            };
+            
+            img.src = dataUrl;
+        }
+
+        function clearAllLayers() {
+            if (layers.length === 0) return;
+            
+            layers.splice(0, layers.length);
+            updateLayersList();
+            render();
+        }
+
+        async function loadExampleLayers() {
+            showLoading('Creating example layers...');
+
+            const exampleLayers = [];
+            const layerWidth = 1920;
+            const layerHeight = 1080;
+
+            config.width = layerWidth;
+            config.height = layerHeight;
+            document.getElementById('canvasWidth').value = layerWidth;
+            document.getElementById('canvasHeight').value = layerHeight;
+
+            // Layer 1: Deep Background - Starfield
+            {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = layerWidth;
+                tempCanvas.height = layerHeight;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                // Dark gradient background
+                const gradient = tempCtx.createLinearGradient(0, 0, 0, layerHeight);
+                gradient.addColorStop(0, '#0a0a1f');
+                gradient.addColorStop(1, '#1a1a3e');
+                tempCtx.fillStyle = gradient;
+                tempCtx.fillRect(0, 0, layerWidth, layerHeight);
+
+                // Stars
+                for (let i = 0; i < 200; i++) {
+                    tempCtx.fillStyle = 'rgba(255, 255, 255, ' + (Math.random() * 0.5 + 0.2) + ')';
+                    tempCtx.beginPath();
+                    tempCtx.arc(
+                        Math.random() * layerWidth,
+                        Math.random() * layerHeight,
+                        Math.random() * 2,
+                        0,
+                        Math.PI * 2
+                    );
+                    tempCtx.fill();
+                }
+
+                const dataUrl = tempCanvas.toDataURL();
+                const img = await loadImage(dataUrl);
+                exampleLayers.push({
+                    id: Date.now(),
+                    name: 'Background Stars',
+                    image: img,
+                    dataUrl: dataUrl,
+                    visible: true,
+                    opacity: 1,
+                    left: 0,
+                    top: 0,
+                    width: layerWidth,
+                    height: layerHeight,
+                    depth: 0,
+                    scale: 1,
+                    rotation: 0
+                });
+            }
+
+            // Layer 2: Distant Mountains
+            {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = layerWidth;
+                tempCanvas.height = layerHeight;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                // Mountain silhouettes
+                tempCtx.fillStyle = 'rgba(30, 40, 80, 0.8)';
+                tempCtx.beginPath();
+                tempCtx.moveTo(0, layerHeight);
+                tempCtx.lineTo(0, layerHeight * 0.6);
+                tempCtx.quadraticCurveTo(layerWidth * 0.2, layerHeight * 0.4, layerWidth * 0.35, layerHeight * 0.55);
+                tempCtx.quadraticCurveTo(layerWidth * 0.5, layerHeight * 0.7, layerWidth * 0.65, layerHeight * 0.5);
+                tempCtx.quadraticCurveTo(layerWidth * 0.8, layerHeight * 0.3, layerWidth, layerHeight * 0.65);
+                tempCtx.lineTo(layerWidth, layerHeight);
+                tempCtx.closePath();
+                tempCtx.fill();
+
+                const dataUrl = tempCanvas.toDataURL();
+                const img = await loadImage(dataUrl);
+                exampleLayers.push({
+                    id: Date.now() + 1,
+                    name: 'Distant Mountains',
+                    image: img,
+                    dataUrl: dataUrl,
+                    visible: true,
+                    opacity: 1,
+                    left: 0,
+                    top: 0,
+                    width: layerWidth,
+                    height: layerHeight,
+                    depth: 0.3,
+                    scale: 1,
+                    rotation: 0
+                });
+            }
+
+            // Layer 3: Midground - Floating Islands
+            {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = layerWidth;
+                tempCanvas.height = layerHeight;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                // Draw floating islands
+                const islands = [
+                    { x: 200, y: 300, w: 180, h: 80 },
+                    { x: 600, y: 450, w: 220, h: 100 },
+                    { x: 1200, y: 350, w: 200, h: 90 },
+                    { x: 1600, y: 500, w: 160, h: 70 }
+                ];
+
+                islands.forEach(island => {
+                    // Island shape
+                    tempCtx.fillStyle = '#4a5568';
+                    tempCtx.beginPath();
+                    tempCtx.ellipse(island.x, island.y, island.w / 2, island.h / 2, 0, 0, Math.PI * 2);
+                    tempCtx.fill();
+
+                    // Grass on top
+                    tempCtx.fillStyle = '#2d3748';
+                    tempCtx.beginPath();
+                    tempCtx.ellipse(island.x, island.y - island.h * 0.3, island.w / 2.2, island.h / 4, 0, 0, Math.PI * 2);
+                    tempCtx.fill();
+
+                    // Highlight
+                    tempCtx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                    tempCtx.beginPath();
+                    tempCtx.ellipse(island.x - island.w * 0.1, island.y - island.h * 0.1, island.w / 3, island.h / 3, 0, 0, Math.PI * 2);
+                    tempCtx.fill();
+                });
+
+                const dataUrl = tempCanvas.toDataURL();
+                const img = await loadImage(dataUrl);
+                exampleLayers.push({
+                    id: Date.now() + 2,
+                    name: 'Floating Islands',
+                    image: img,
+                    dataUrl: dataUrl,
+                    visible: true,
+                    opacity: 1,
+                    left: 0,
+                    top: 0,
+                    width: layerWidth,
+                    height: layerHeight,
+                    depth: 0.6,
+                    scale: 1,
+                    rotation: 0
+                });
+            }
+
+            // Layer 4: Foreground - Geometric Crystals
+            {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = layerWidth;
+                tempCanvas.height = layerHeight;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                // Draw crystal shapes
+                const crystals = [
+                    { x: 150, y: 700, size: 80, color: '#667eea' },
+                    { x: 400, y: 650, size: 120, color: '#764ba2' },
+                    { x: 950, y: 720, size: 100, color: '#f093fb' },
+                    { x: 1400, y: 680, size: 90, color: '#4facfe' },
+                    { x: 1700, y: 750, size: 70, color: '#00f2fe' }
+                ];
+
+                crystals.forEach(crystal => {
+                    // Crystal facets
+                    tempCtx.save();
+                    tempCtx.translate(crystal.x, crystal.y);
+                    
+                    // Main crystal shape
+                    tempCtx.fillStyle = crystal.color;
+                    tempCtx.globalAlpha = 0.8;
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(0, -crystal.size);
+                    tempCtx.lineTo(crystal.size * 0.4, -crystal.size * 0.3);
+                    tempCtx.lineTo(crystal.size * 0.5, crystal.size * 0.3);
+                    tempCtx.lineTo(0, crystal.size * 0.5);
+                    tempCtx.lineTo(-crystal.size * 0.5, crystal.size * 0.3);
+                    tempCtx.lineTo(-crystal.size * 0.4, -crystal.size * 0.3);
+                    tempCtx.closePath();
+                    tempCtx.fill();
+
+                    // Highlight facet
+                    tempCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(0, -crystal.size);
+                    tempCtx.lineTo(crystal.size * 0.4, -crystal.size * 0.3);
+                    tempCtx.lineTo(0, 0);
+                    tempCtx.closePath();
+                    tempCtx.fill();
+
+                    // Shadow facet
+                    tempCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(0, 0);
+                    tempCtx.lineTo(crystal.size * 0.5, crystal.size * 0.3);
+                    tempCtx.lineTo(0, crystal.size * 0.5);
+                    tempCtx.closePath();
+                    tempCtx.fill();
+
+                    tempCtx.restore();
+                });
+
+                const dataUrl = tempCanvas.toDataURL();
+                const img = await loadImage(dataUrl);
+                exampleLayers.push({
+                    id: Date.now() + 3,
+                    name: 'Crystal Foreground',
+                    image: img,
+                    dataUrl: dataUrl,
+                    visible: true,
+                    opacity: 1,
+                    left: 0,
+                    top: 0,
+                    width: layerWidth,
+                    height: layerHeight,
+                    depth: 1,
+                    scale: 1,
+                    rotation: 0
+                });
+            }
+
+            // Layer 5: Near Elements - Floating Particles
+            {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = layerWidth;
+                tempCanvas.height = layerHeight;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                // Floating light particles
+                for (let i = 0; i < 40; i++) {
+                    const x = Math.random() * layerWidth;
+                    const y = Math.random() * layerHeight;
+                    const size = Math.random() * 30 + 10;
+                    const hue = Math.random() * 60 + 180; // Blue to cyan range
+                    
+                    // Glow
+                    const gradient = tempCtx.createRadialGradient(x, y, 0, x, y, size);
+                    gradient.addColorStop(0, `hsla(${hue}, 80%, 70%, 0.6)`);
+                    gradient.addColorStop(0.5, `hsla(${hue}, 70%, 60%, 0.3)`);
+                    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                    tempCtx.fillStyle = gradient;
+                    tempCtx.beginPath();
+                    tempCtx.arc(x, y, size, 0, Math.PI * 2);
+                    tempCtx.fill();
+
+                    // Core
+                    tempCtx.fillStyle = `hsla(${hue}, 90%, 80%, 0.9)`;
+                    tempCtx.beginPath();
+                    tempCtx.arc(x, y, size * 0.3, 0, Math.PI * 2);
+                    tempCtx.fill();
+                }
+
+                const dataUrl = tempCanvas.toDataURL();
+                const img = await loadImage(dataUrl);
+                exampleLayers.push({
+                    id: Date.now() + 4,
+                    name: 'Light Particles',
+                    image: img,
+                    dataUrl: dataUrl,
+                    visible: true,
+                    opacity: 1,
+                    left: 0,
+                    top: 0,
+                    width: layerWidth,
+                    height: layerHeight,
+                    depth: 1.5,
+                    scale: 1,
+                    rotation: 0
+                });
+            }
+
+            layers = exampleLayers;
+
+            updateCanvas();
+            updateLayersList();
+            hideLoading();
+
+            // Set example caption
+            document.getElementById('captionEnabled').checked = true;
+            document.getElementById('captionText').value = 'Caption goes here, Parallax depth creates immersive scroll storytelling';
+            document.getElementById('captionCredit').value = 'Caption credit';
+        }
+
+        function render() {
+            const scrollTop = previewWrapper.scrollTop;
+            const scrollProgress = Math.min(scrollTop / config.scrollDuration, 1);
+            
+            config.bgColor = document.getElementById('bgColor').value;
+            config.imageFit = document.getElementById('imageFit').value;
+            
+            ctx.fillStyle = config.bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            let globalScale = 1;
+            let globalBlur = 0;
+            let globalAlpha = 1;
+            let globalOffsetY = 0;
+
+            switch (globalEffect) {
+                case 'zoom':
+                    // Zoom within container - scale from 1.5x to 1x (zooming in from cropped state)
+                    globalScale = 1.5 - (scrollProgress * 0.5 * effectIntensity);
+                    break;
+                case 'zoom-out':
+                    // Zoom out from 1x to smaller
+                    globalScale = 1 + scrollProgress * effectIntensity;
+                    break;
+                case 'blur-reveal':
+                    // Ends at 50% scroll - very fast resolve
+                    const blurProgress = Math.max(0, 1 - (scrollProgress * 2));
+                    globalBlur = blurProgress * blurProgress * 30 * effectIntensity;
+                    break;
+                case 'fade-in':
+                    // This wasn't working - now it will
+                    globalAlpha = scrollProgress;
+                    break;
+                case 'slide-up':
+                    // Will be handled per-layer below
+                    break;
+            }
+
+            if (globalBlur > 0) {
+                ctx.filter = `blur(${globalBlur}px)`;
+            }
+
+            ctx.save();
+
+            layers.forEach((layer, index) => {
+                if (!layer.visible || !layer.image) return;
+
+                ctx.save();
+                
+                // Apply per-layer scroll speed multiplier
+                const layerScrollSpeed = layer.scrollSpeed || 1;
+                const adjustedScrollProgress = Math.min(scrollProgress * layerScrollSpeed, 1);
+
+                let layerAlpha = layer.opacity * globalAlpha;
+                let offsetX = 0;
+                let offsetY = globalOffsetY;
+                let scale = globalScale;
+
+                if (globalEffect === 'parallax') {
+                    const depthOffset = (adjustedScrollProgress - 0.5) * canvas.height * 0.3 * layer.depth * effectIntensity;
+                    offsetY += depthOffset;
+                    scale *= 1 - (layer.depth * 0.1 * effectIntensity);
+                } else if (globalEffect === 'cascade') {
+                    // Each layer appears progressively
+                    const layerProgress = Math.max(0, Math.min(1, adjustedScrollProgress * layers.length - index));
+                    layerAlpha = layer.opacity * layerProgress;
+                } else if (globalEffect === 'slide-up') {
+                    // One layer at a time, bottom to top (reverse index order)
+                    const reverseIndex = layers.length - 1 - index;
+                    const layerStartProgress = reverseIndex / layers.length;
+                    const layerDuration = 0.25; // Each layer takes 25% of scroll
+                    const layerProgress = Math.max(0, Math.min(1, (adjustedScrollProgress - layerStartProgress) / layerDuration));
+                    offsetY = (1 - layerProgress) * canvas.height * 1.5;
+                    layerAlpha = layer.opacity * Math.min(layerProgress * 3, 1); // Quick fade
+                }
+
+                ctx.globalAlpha = layerAlpha;
+
+                // Apply image fit
+                let drawWidth = layer.width;
+                let drawHeight = layer.height;
+                let drawX = layer.left;
+                let drawY = layer.top;
+
+                if (config.imageFit === 'cover' || config.imageFit === 'contain') {
+                    const layerAspect = layer.width / layer.height;
+                    const canvasAspect = canvas.width / canvas.height;
+                    
+                    if (config.imageFit === 'cover') {
+                        if (layerAspect > canvasAspect) {
+                            drawHeight = canvas.height;
+                            drawWidth = drawHeight * layerAspect;
+                        } else {
+                            drawWidth = canvas.width;
+                            drawHeight = drawWidth / layerAspect;
+                        }
+                    } else { // contain
+                        if (layerAspect > canvasAspect) {
+                            drawWidth = canvas.width;
+                            drawHeight = drawWidth / layerAspect;
+                        } else {
+                            drawHeight = canvas.height;
+                            drawWidth = drawHeight * layerAspect;
+                        }
+                    }
+                    
+                    drawX = (canvas.width - drawWidth) / 2;
+                    drawY = (canvas.height - drawHeight) / 2;
+                } else if (config.imageFit === 'fill') {
+                    drawWidth = canvas.width;
+                    drawHeight = canvas.height;
+                    drawX = 0;
+                    drawY = 0;
+                }
+
+                // Add overscan for effects to prevent edge exposure
+                if (globalEffect === 'parallax') {
+                    // Calculate maximum offset this layer will experience
+                    const maxOffset = canvas.height * 0.3 * layer.depth * effectIntensity * 0.5;
+                    // Scale up the layer to cover edges during movement
+                    const overscanFactor = 1 + (maxOffset * 2.5 / Math.min(drawWidth, drawHeight));
+                    const originalDrawWidth = drawWidth;
+                    const originalDrawHeight = drawHeight;
+                    drawWidth *= overscanFactor;
+                    drawHeight *= overscanFactor;
+                    // Recenter after scaling
+                    drawX -= (drawWidth - originalDrawWidth) / 2;
+                    drawY -= (drawHeight - originalDrawHeight) / 2;
+                } else if (globalEffect === 'zoom') {
+                    // For zoom effect, make layers larger so zoom stays within container
+                    const zoomOverscan = 1.5;
+                    const originalDrawWidth = drawWidth;
+                    const originalDrawHeight = drawHeight;
+                    drawWidth *= zoomOverscan;
+                    drawHeight *= zoomOverscan;
+                    drawX -= (drawWidth - originalDrawWidth) / 2;
+                    drawY -= (drawHeight - originalDrawHeight) / 2;
+                } else if (globalEffect === 'slide-up') {
+                    // Add overscan for vertical movement
+                    const slideOverscan = 1.3;
+                    const originalDrawHeight = drawHeight;
+                    drawHeight *= slideOverscan;
+                    drawY -= (drawHeight - originalDrawHeight) / 2;
+                }
+
+                const x = drawX + offsetX;
+                const y = drawY + offsetY;
+
+                ctx.translate(x + drawWidth / 2, y + drawHeight / 2);
+                ctx.scale(scale, scale);
+                ctx.rotate(layer.rotation);
+                ctx.drawImage(layer.image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+
+                ctx.restore();
+            });
+
+            ctx.restore();
+            ctx.filter = 'none';
+
+            updateCaption(scrollProgress);
+        }
+
+        function updateCaption(scrollProgress) {
+            config.captionEnabled = document.getElementById('captionEnabled').checked;
+            config.captionText = document.getElementById('captionText').value;
+            config.captionCredit = document.getElementById('captionCredit').value;
+            config.captionStart = parseInt(document.getElementById('captionStart').value) / 100;
+            config.captionEnd = parseInt(document.getElementById('captionEnd').value) / 100;
+
+            const captionOverlay = document.getElementById('captionOverlay');
+            const captionTextDisplay = document.getElementById('captionTextDisplay');
+            const captionCreditDisplay = document.getElementById('captionCreditDisplay');
+
+            if (config.captionEnabled && config.captionText && 
+                scrollProgress >= config.captionStart && scrollProgress <= config.captionEnd) {
+                captionTextDisplay.textContent = config.captionText;
+                captionCreditDisplay.textContent = config.captionCredit;
+                captionOverlay.classList.add('visible');
+            } else {
+                captionOverlay.classList.remove('visible');
+            }
+        }
+
+        previewWrapper.addEventListener('scroll', render);
+        window.addEventListener('resize', updateCanvas);
+
+        function generateEmbedCode() {
+            if (layers.length === 0) {
+                alert('Add some layers first!');
+                return;
+            }
+
+            showLoading('Generating HTML...');
+
+            setTimeout(() => {
+                const layersData = layers.map(l => ({
+                    name: l.name,
+                    dataUrl: l.dataUrl,
+                    visible: l.visible,
+                    opacity: l.opacity,
+                    left: l.left,
+                    top: l.top,
+                    width: l.width,
+                    height: l.height,
+                    depth: l.depth,
+                    scale: l.scale,
+                    rotation: l.rotation
+                }));
+
+                const code = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scrolltastic Story</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:${config.bgColor};overflow-x:hidden}.scroll-container{position:relative;height:${config.scrollDuration}px}.viewport-container{position:sticky;top:0;width:100%;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}.viewport-wrapper{position:relative;display:flex;flex-direction:column;align-items:center;width:98%}.viewport{position:relative;width:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;aspect-ratio:${config.width}/${config.height}}canvas{display:block;width:100%;height:100%;object-fit:contain}.caption{position:relative;width:85%;max-width:700px;padding:10px 16px;background:rgba(0,0,0,.9);font-size:13px;line-height:1.5;opacity:0;transition:opacity .5s;color:#e0e0e0;z-index:20}.caption.visible{opacity:1}.caption-credit{color:#999;font-size:11px;font-style:italic;margin-top:4px}</style></head><body><div class="scroll-container"><div class="viewport-container"><div class="viewport-wrapper"><div class="viewport"><canvas id="canvas"></canvas></div><div class="caption" id="caption"><div id="captionText"></div><div class="caption-credit" id="captionCredit"></div></div></div></div></div><script>const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');canvas.width=${config.width};canvas.height=${config.height};const config=${JSON.stringify({width:config.width,height:config.height,bgColor:config.bgColor,imageFit:config.imageFit,scrollDuration:config.scrollDuration,captionEnabled:config.captionEnabled,captionText:config.captionText,captionCredit:config.captionCredit,captionStart:config.captionStart,captionEnd:config.captionEnd})};const layersData=${JSON.stringify(layersData)};const layers=[];const globalEffect='${globalEffect}';const effectIntensity=${effectIntensity};let loadedCount=0;layersData.forEach(l=>{const img=new Image();img.onload=()=>{loadedCount++;if(loadedCount===layersData.length)render()};img.src=l.dataUrl;layers.push({...l,image:img})});function render(){const scrollProgress=Math.min(window.pageYOffset/config.scrollDuration,1);ctx.fillStyle=config.bgColor;ctx.fillRect(0,0,canvas.width,canvas.height);let globalScale=1,globalBlur=0,globalAlpha=1,globalOffsetY=0;switch(globalEffect){case 'zoom':globalScale=1.5-scrollProgress*.5*effectIntensity;break;case 'zoom-out':globalScale=1+scrollProgress*effectIntensity;break;case 'blur-reveal':const blurProgress=1-scrollProgress*scrollProgress;globalBlur=blurProgress*30*effectIntensity;break;case 'fade-in':globalAlpha=scrollProgress;break;case 'slide-up':globalOffsetY=(1-scrollProgress)*canvas.height*1.2;globalAlpha=Math.min(scrollProgress*2,1);break}if(globalBlur>0)ctx.filter=\`blur(\${globalBlur}px)\`;ctx.save();layers.forEach((layer,index)=>{if(!layer.visible||!layer.image)return;ctx.save();let layerAlpha=layer.opacity*globalAlpha,offsetX=0,offsetY=globalOffsetY,scale=globalScale;if(globalEffect==='parallax'){const depthOffset=(scrollProgress-.5)*canvas.height*.3*layer.depth*effectIntensity;offsetY+=depthOffset;scale*=1-layer.depth*.1*effectIntensity}else if(globalEffect==='cascade'){const layerProgress=Math.max(0,Math.min(1,scrollProgress*layers.length-index));layerAlpha=layer.opacity*layerProgress}else if(globalEffect==='slide-up'){const layerDelay=index/layers.length*.3;const layerProgress=Math.max(0,Math.min(1,(scrollProgress-layerDelay)/.7));offsetY=(1-layerProgress)*canvas.height*1.2;layerAlpha=layer.opacity*Math.min(layerProgress*2,1)}ctx.globalAlpha=layerAlpha;let drawWidth=layer.width,drawHeight=layer.height,drawX=layer.left,drawY=layer.top;if(config.imageFit==='cover'||config.imageFit==='contain'){const layerAspect=layer.width/layer.height,canvasAspect=canvas.width/canvas.height;if(config.imageFit==='cover'){if(layerAspect>canvasAspect){drawHeight=canvas.height;drawWidth=drawHeight*layerAspect}else{drawWidth=canvas.width;drawHeight=drawWidth/layerAspect}}else{if(layerAspect>canvasAspect){drawWidth=canvas.width;drawHeight=drawWidth/layerAspect}else{drawHeight=canvas.height;drawWidth=drawHeight*layerAspect}}drawX=(canvas.width-drawWidth)/2;drawY=(canvas.height-drawHeight)/2}else if(config.imageFit==='fill'){drawWidth=canvas.width;drawHeight=canvas.height;drawX=0;drawY=0}if(globalEffect==='parallax'){const maxOffset=canvas.height*.3*layer.depth*effectIntensity*.5;const overscanFactor=1+maxOffset*2.5/Math.min(drawWidth,drawHeight);const originalDrawWidth=drawWidth,originalDrawHeight=drawHeight;drawWidth*=overscanFactor;drawHeight*=overscanFactor;drawX-=(drawWidth-originalDrawWidth)/2;drawY-=(drawHeight-originalDrawHeight)/2}else if(globalEffect==='zoom'){const zoomOverscan=1.5;const originalDrawWidth=drawWidth,originalDrawHeight=drawHeight;drawWidth*=zoomOverscan;drawHeight*=zoomOverscan;drawX-=(drawWidth-originalDrawWidth)/2;drawY-=(drawHeight-originalDrawHeight)/2}else if(globalEffect==='slide-up'){const slideOverscan=1.3;const originalDrawHeight=drawHeight;drawHeight*=slideOverscan;drawY-=(drawHeight-originalDrawHeight)/2}const x=drawX+offsetX,y=drawY+offsetY;ctx.translate(x+drawWidth/2,y+drawHeight/2);ctx.scale(scale,scale);ctx.rotate(layer.rotation);ctx.drawImage(layer.image,-drawWidth/2,-drawHeight/2,drawWidth,drawHeight);ctx.restore()});ctx.restore();ctx.filter='none';const caption=document.getElementById('caption'),captionText=document.getElementById('captionText'),captionCredit=document.getElementById('captionCredit');if(config.captionEnabled&&config.captionText&&scrollProgress>=config.captionStart&&scrollProgress<=config.captionEnd){captionText.textContent=config.captionText;captionCredit.textContent=config.captionCredit;caption.classList.add('visible')}else{caption.classList.remove('visible')}}let raf;window.addEventListener('scroll',()=>{if(!raf)raf=requestAnimationFrame(()=>{render();raf=null})})<\/script></body></html>`;
+
+                document.getElementById('embedCode').value = code;
+                hideLoading();
+            }, 100);
+        }
+
+        function copyCode() {
+            const textarea = document.getElementById('embedCode');
+            if (!textarea.value) {
+                alert('Generate HTML first!');
+                return;
+            }
+            textarea.select();
+            document.execCommand('copy');
+            alert('Code copied!');
+        }
+
+        function downloadHTML() {
+            const code = document.getElementById('embedCode').value;
+            if (!code) {
+                alert('Generate HTML first!');
+                return;
+            }
+            const blob = new Blob([code], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'scrolltastic-story.html';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function saveProject() {
+            const project = {
+                version: 4,
+                config: config,
+                globalEffect: globalEffect,
+                effectIntensity: effectIntensity,
+                layers: layers.map(l => {
+                    const copy = { ...l };
+                    delete copy.image;
+                    return copy;
+                })
+            };
+            const json = JSON.stringify(project, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'scrolltastic-project.json';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function loadProject() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                showLoading('Loading project...');
+                try {
+                    const text = await file.text();
+                    const project = JSON.parse(text);
+                    config = project.config;
+                    globalEffect = project.globalEffect || 'parallax';
+                    effectIntensity = project.effectIntensity || 1;
+                    
+                    document.getElementById('aspectRatio').value = config.aspectRatio || 'auto';
+                    document.getElementById('canvasWidth').value = config.width;
+                    document.getElementById('canvasHeight').value = config.height;
+                    document.getElementById('bgColor').value = config.bgColor;
+                    document.getElementById('imageFit').value = config.imageFit;
+                    document.getElementById('scrollDuration').value = config.scrollDuration;
+                    document.getElementById('scrollValue').textContent = config.scrollDuration;
+                    document.getElementById('effectIntensity').value = effectIntensity;
+                    document.getElementById('intensityValue').textContent = effectIntensity.toFixed(1);
+                    document.getElementById('captionEnabled').checked = config.captionEnabled;
+                    document.getElementById('captionText').value = config.captionText || '';
+                    document.getElementById('captionCredit').value = config.captionCredit || '';
+                    document.getElementById('captionStart').value = (config.captionStart * 100) || 20;
+                    document.getElementById('captionEnd').value = (config.captionEnd * 100) || 60;
+                    
+                    layers = project.layers;
+                    for (const layer of layers) {
+                        layer.image = await loadImage(layer.dataUrl);
+                    }
+                    
+                    updateCanvas();
+                    updateLayersList();
+                    hideLoading();
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                    hideLoading();
+                }
+            };
+            input.click();
+        }
+
+        updateCanvas();
+        updateLayersList(); // Initialize button states on page load
+    </script>
+</body>
+</html>
