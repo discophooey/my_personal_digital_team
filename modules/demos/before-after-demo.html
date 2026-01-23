@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Before/After Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 340px; height: 220px; position: relative; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.layer { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.after-layer { background: linear-gradient(135deg, #2d5a3d, #1a472a); }
+.before-layer { background: linear-gradient(135deg, #3a3a3a, #2a2a2a); }
+.label { position: absolute; bottom: 12px; padding: 6px 12px; background: rgba(0,0,0,0.6); border-radius: 6px; font-size: 12px; font-weight: 600; }
+.label.after { right: 12px; color: #4ade80; }
+.label.before { left: 12px; color: #f87171; }
+.slider-line { position: absolute; top: 0; bottom: 0; width: 3px; background: #fff; transform: translateX(-50%); box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+.slider-handle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 36px; height: 36px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3); color: #333; font-size: 14px; }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+/* Building styles */
+.building { width: 120px; height: 90px; position: relative; }
+.building-body { position: absolute; bottom: 0; left: 20px; width: 80px; height: 60px; border-radius: 2px; }
+.building-roof { position: absolute; bottom: 60px; left: 0; width: 0; height: 0; border-left: 60px solid transparent; border-right: 60px solid transparent; }
+.window { position: absolute; width: 18px; height: 18px; border-radius: 2px; }
+.window.tl { top: 10px; left: 30px; }
+.window.tr { top: 10px; right: 30px; }
+.door { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 22px; height: 30px; border-radius: 2px 2px 0 0; }
+.tree { position: absolute; bottom: -15px; }
+.tree-trunk { width: 8px; height: 20px; margin: 0 auto; }
+.tree-top { width: 30px; height: 30px; border-radius: 50%; margin-bottom: -5px; }
+.tree.left { left: -40px; }
+.tree.right { right: -40px; }
+/* After (restored) colors */
+.after-layer .building-body { background: #D2691E; }
+.after-layer .building-roof { border-bottom: 25px solid #8B4513; }
+.after-layer .window { background: #87CEEB; }
+.after-layer .door { background: #4a3728; }
+.after-layer .tree-trunk { background: #8B4513; }
+.after-layer .tree-top { background: #228B22; }
+/* Before (damaged) colors */
+.before-layer .building-body { background: #696969; }
+.before-layer .building-roof { border-bottom: 25px solid #4a4a4a; }
+.before-layer .window { background: #3a3a3a; }
+.before-layer .door { background: #3a3a3a; }
+.before-layer .tree-trunk { background: #5a4a3a; }
+.before-layer .tree-top { background: transparent; border-left: 2px solid #5a4a3a; height: 25px; width: 0; border-radius: 0; }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Before / After</div>
+    <div class="subtitle">Scroll-driven comparison slider</div>
+    <div class="demo">
+        <div class="layer after-layer">
+            <div class="building">
+                <div class="building-roof"></div>
+                <div class="building-body">
+                    <div class="window tl"></div>
+                    <div class="window tr"></div>
+                    <div class="door"></div>
+                </div>
+                <div class="tree left"><div class="tree-top"></div><div class="tree-trunk"></div></div>
+                <div class="tree right"><div class="tree-top"></div><div class="tree-trunk"></div></div>
+            </div>
+            <div class="label after">AFTER</div>
+        </div>
+        <div class="layer before-layer" id="beforeLayer">
+            <div class="building">
+                <div class="building-roof"></div>
+                <div class="building-body">
+                    <div class="window tl"></div>
+                    <div class="window tr"></div>
+                    <div class="door"></div>
+                </div>
+                <div class="tree left"><div class="tree-top"></div><div class="tree-trunk"></div></div>
+                <div class="tree right"><div class="tree-top"></div><div class="tree-trunk"></div></div>
+            </div>
+            <div class="label before">BEFORE</div>
+        </div>
+        <div class="slider-line" id="sliderLine">
+            <div class="slider-handle">⟷</div>
+        </div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll to reveal</div>
+</div>
+<script>
+let pos = 50, dir = 1;
+const beforeLayer = document.getElementById('beforeLayer');
+const sliderLine = document.getElementById('sliderLine');
+
+function animate() {
+    pos += dir * 0.6;
+    if (pos >= 85) dir = -1;
+    if (pos <= 15) dir = 1;
+    beforeLayer.style.clipPath = `inset(0 ${100 - pos}% 0 0)`;
+    sliderLine.style.left = pos + '%';
+    requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

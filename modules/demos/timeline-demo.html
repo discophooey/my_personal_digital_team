@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timeline Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 380px; height: 300px; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #1a1a2a, #0a0a1a); box-shadow: 0 20px 60px rgba(0,0,0,0.5); padding: 30px; display: flex; flex-direction: column; justify-content: center; }
+.timeline { position: relative; padding-left: 30px; }
+.timeline-line { position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #2a2a3a; }
+.timeline-progress { position: absolute; left: 8px; top: 0; width: 2px; background: #4a9eff; transition: height 0.1s; }
+.event { position: relative; padding-bottom: 25px; opacity: 0.3; transform: translateX(-10px); transition: all 0.4s; }
+.event.active { opacity: 1; transform: translateX(0); }
+.event-dot { position: absolute; left: -26px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #2a2a3a; border: 2px solid #2a2a3a; transition: all 0.3s; }
+.event.active .event-dot { background: #4a9eff; border-color: #4a9eff; box-shadow: 0 0 15px rgba(74,158,255,0.5); }
+.event-date { font-size: 11px; color: #4a9eff; margin-bottom: 4px; }
+.event-title { font-size: 14px; color: #fff; font-weight: 500; }
+.event-desc { font-size: 12px; color: #666; margin-top: 4px; }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Timeline</div>
+    <div class="subtitle">Vertical timeline with events that reveal on scroll</div>
+    <div class="demo">
+        <div class="timeline">
+            <div class="timeline-line"></div>
+            <div class="timeline-progress" id="progress"></div>
+            <div class="event" id="e1">
+                <div class="event-dot"></div>
+                <div class="event-date">January 2024</div>
+                <div class="event-title">First Event</div>
+                <div class="event-desc">The beginning of something</div>
+            </div>
+            <div class="event" id="e2">
+                <div class="event-dot"></div>
+                <div class="event-date">March 2024</div>
+                <div class="event-title">Second Event</div>
+                <div class="event-desc">Development continues</div>
+            </div>
+            <div class="event" id="e3">
+                <div class="event-dot"></div>
+                <div class="event-date">June 2024</div>
+                <div class="event-title">Third Event</div>
+                <div class="event-desc">Major milestone reached</div>
+            </div>
+            <div class="event" id="e4">
+                <div class="event-dot"></div>
+                <div class="event-date">September 2024</div>
+                <div class="event-title">Final Event</div>
+                <div class="event-desc">Project completion</div>
+            </div>
+        </div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll through time</div>
+</div>
+<script>
+const events = [
+    document.getElementById('e1'),
+    document.getElementById('e2'),
+    document.getElementById('e3'),
+    document.getElementById('e4')
+];
+const progress = document.getElementById('progress');
+const totalHeight = 220;
+
+let scrollPos = 0;
+let dir = 1;
+
+function animate() {
+    scrollPos += dir * 1.5;
+    if (scrollPos >= 100) dir = -1;
+    if (scrollPos <= 0) dir = 1;
+    
+    const progressHeight = (scrollPos / 100) * totalHeight;
+    progress.style.height = progressHeight + 'px';
+    
+    events.forEach((event, i) => {
+        const threshold = (i / (events.length - 1)) * 100;
+        event.classList.toggle('active', scrollPos >= threshold);
+    });
+    
+    requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

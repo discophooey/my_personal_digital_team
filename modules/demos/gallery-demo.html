@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gallery Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 340px; height: 240px; border-radius: 12px; overflow: hidden; background: #1a1a1a; box-shadow: 0 20px 60px rgba(0,0,0,0.5); position: relative; }
+.slide { position: absolute; inset: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: 48px; opacity: 0; transition: opacity 0.6s ease; }
+.slide.active { opacity: 1; }
+.slide-1 { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+.slide-2 { background: linear-gradient(135deg, #3498db, #2980b9); }
+.slide-3 { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+.slide-4 { background: linear-gradient(135deg, #f39c12, #d68910); }
+.dots { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #555; transition: background 0.3s, transform 0.3s; }
+.dot.active { background: #fff; transform: scale(1.2); }
+.caption { position: absolute; bottom: 50px; left: 0; right: 0; color: #fff; font-size: 14px; opacity: 0; transition: opacity 0.6s; }
+.caption.active { opacity: 0.8; }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Gallery</div>
+    <div class="subtitle">Scroll-driven image sequence with transitions</div>
+    <div class="demo">
+        <div class="slide slide-1 active" id="slide1">1</div>
+        <div class="slide slide-2" id="slide2">2</div>
+        <div class="slide slide-3" id="slide3">3</div>
+        <div class="slide slide-4" id="slide4">4</div>
+        <div class="caption active" id="caption">Image 1 of 4</div>
+        <div class="dots">
+            <div class="dot active" id="dot1"></div>
+            <div class="dot" id="dot2"></div>
+            <div class="dot" id="dot3"></div>
+            <div class="dot" id="dot4"></div>
+        </div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll through images</div>
+</div>
+<script>
+const slides = [document.getElementById('slide1'), document.getElementById('slide2'), document.getElementById('slide3'), document.getElementById('slide4')];
+const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3'), document.getElementById('dot4')];
+const caption = document.getElementById('caption');
+let current = 0;
+
+function showSlide(index) {
+    slides.forEach((s, i) => s.classList.toggle('active', i === index));
+    dots.forEach((d, i) => d.classList.toggle('active', i === index));
+    caption.textContent = `Image ${index + 1} of 4`;
+}
+
+function animate() {
+    current = (current + 1) % 4;
+    showSlide(current);
+}
+
+setInterval(animate, 2000);
+</script>
+</body>
+</html>

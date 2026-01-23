@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Responsive Preview - Presentation Disco</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; }
+
+.header { background: #1a1a1a; border-bottom: 1px solid #2a2a2a; padding: 12px 20px; display: flex; align-items: center; gap: 16px; }
+.back-btn { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; }
+.back-btn:hover { background: #3a3a3a; color: #fff; }
+h1 { color: #4a9eff; font-size: 18px; }
+
+.mode-toggle { display: flex; background: #0a0a0a; border-radius: 6px; padding: 2px; margin-left: 16px; }
+.mode-btn { padding: 6px 12px; background: transparent; border: none; border-radius: 4px; color: #888; cursor: pointer; font-size: 12px; }
+.mode-btn.active { background: #4a9eff; color: #000; font-weight: 600; }
+
+.header-actions { display: flex; gap: 8px; margin-left: auto; }
+.header-btn { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.header-btn:hover { background: #3a3a3a; color: #fff; }
+
+.main { display: flex; flex: 1; overflow: hidden; }
+
+.sidebar { width: 280px; background: #151515; border-right: 1px solid #2a2a2a; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+.section-title { color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+.code-input { width: 100%; height: 150px; background: #0a0a0a; border: 1px solid #2a2a2a; color: #fff; padding: 10px; border-radius: 6px; font-size: 11px; font-family: monospace; resize: vertical; }
+.code-input:focus { outline: none; border-color: #4a9eff; }
+.url-input { width: 100%; background: #0a0a0a; border: 1px solid #2a2a2a; color: #fff; padding: 10px 12px; border-radius: 6px; font-size: 13px; }
+.url-input:focus { outline: none; border-color: #4a9eff; }
+
+.input-actions { display: flex; gap: 8px; margin-top: 8px; }
+.btn { padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; border: none; }
+.btn-primary { background: #4a9eff; color: #000; font-weight: 600; flex: 1; }
+.btn-primary:hover { background: #357abd; }
+.btn-secondary { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; }
+.btn-secondary:hover { background: #3a3a3a; color: #fff; }
+
+.device-list { display: flex; flex-direction: column; gap: 4px; }
+.device-btn { width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 6px; color: #888; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.device-btn:hover { background: #2a2a2a; color: #fff; }
+.device-btn.active { background: #2a2a2a; color: #fff; }
+.device-size { color: #555; font-size: 10px; }
+
+.custom-size { display: flex; gap: 8px; }
+.custom-field { flex: 1; }
+.custom-field label { color: #555; font-size: 10px; display: block; margin-bottom: 4px; }
+.custom-field input { width: 100%; background: #0a0a0a; border: 1px solid #2a2a2a; color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 13px; }
+.custom-field input:focus { outline: none; border-color: #4a9eff; }
+
+.zoom-section { margin-top: auto; }
+.zoom-label { color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+.zoom-slider { width: 100%; margin-bottom: 8px; }
+.zoom-presets { display: flex; justify-content: space-between; }
+.zoom-btn { background: #2a2a2a; border: none; color: #888; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+.zoom-btn:hover { background: #3a3a3a; color: #fff; }
+.zoom-btn.active { background: #4a9eff; color: #000; }
+
+.preview-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; overflow: auto; background: #0a0a0a; }
+
+.device-frame-wrapper { position: relative; }
+.size-label { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); color: #666; font-size: 12px; white-space: nowrap; }
+.device-frame { background: #1a1a1a; border-radius: 24px; padding: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.device-screen { background: #fff; border-radius: 12px; overflow: hidden; position: relative; }
+.device-screen iframe { border: none; }
+.home-indicator { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); height: 4px; background: #333; border-radius: 2px; }
+
+.empty-preview { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #f5f5f5, #e0e0e0); color: #999; }
+.empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-text { font-size: 14px; font-weight: 500; }
+.empty-hint { font-size: 12px; margin-top: 8px; color: #bbb; text-align: center; padding: 0 20px; }
+
+.footer { background: #151515; border-top: 1px solid #2a2a2a; padding: 8px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #666; }
+.footer-tip { color: #4a9eff; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <a href="index.html" class="back-btn">← Hub</a>
+    <h1>Responsive Preview</h1>
+    <div class="mode-toggle">
+        <button class="mode-btn active" id="modeCode" onclick="setMode('code')">Paste Code</button>
+        <button class="mode-btn" id="modeUrl" onclick="setMode('url')">URL</button>
+    </div>
+    <div class="header-actions">
+        <button class="header-btn" onclick="toggleOrientation()">🔄 <span id="orientationLabel">Landscape</span></button>
+    </div>
+</div>
+
+<div class="main">
+    <div class="sidebar">
+        <div id="codeSection">
+            <div class="section-title">Paste HTML Code</div>
+            <textarea class="code-input" id="codeInput" placeholder="Paste exported module HTML here..."></textarea>
+            <div class="input-actions">
+                <button class="btn btn-primary" onclick="loadPreview()">Load Preview</button>
+                <button class="btn btn-secondary" onclick="clearPreview()">Clear</button>
+            </div>
+        </div>
+        <div id="urlSection" style="display: none;">
+            <div class="section-title">Enter URL</div>
+            <input type="text" class="url-input" id="urlInput" placeholder="https://example.com" />
+            <div class="input-actions">
+                <button class="btn btn-primary" onclick="loadPreview()">Load Preview</button>
+                <button class="btn btn-secondary" onclick="clearPreview()">Clear</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-title">Devices</div>
+            <div class="device-list" id="deviceList"></div>
+        </div>
+
+        <div>
+            <div class="section-title">Custom Size</div>
+            <div class="custom-size">
+                <div class="custom-field">
+                    <label>W</label>
+                    <input type="number" id="customWidth" value="390" onchange="setCustomSize()" />
+                </div>
+                <div class="custom-field">
+                    <label>H</label>
+                    <input type="number" id="customHeight" value="844" onchange="setCustomSize()" />
+                </div>
+            </div>
+        </div>
+
+        <div class="zoom-section">
+            <div class="zoom-label">Zoom: <span id="zoomValue">75</span>%</div>
+            <input type="range" class="zoom-slider" id="zoomSlider" min="25" max="150" value="75" onchange="setZoom(this.value)" />
+            <div class="zoom-presets">
+                <button class="zoom-btn" onclick="setZoom(50)">50%</button>
+                <button class="zoom-btn active" onclick="setZoom(75)">75%</button>
+                <button class="zoom-btn" onclick="setZoom(100)">100%</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-area">
+        <div class="device-frame-wrapper">
+            <div class="size-label" id="sizeLabel">390 × 844 (iPhone 14)</div>
+            <div class="device-frame" id="deviceFrame">
+                <div class="device-screen" id="deviceScreen">
+                    <div class="empty-preview" id="emptyPreview">
+                        <div class="empty-icon">📱</div>
+                        <div class="empty-text">Paste code or enter URL</div>
+                        <div class="empty-hint">Test your scroll modules at different screen sizes</div>
+                    </div>
+                    <iframe id="previewIframe" style="display: none;"></iframe>
+                </div>
+                <div class="home-indicator" id="homeIndicator"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <div>Viewport: <span id="footerSize">390×844</span> | Zoom: <span id="footerZoom">75</span>% | <span id="footerOrientation">portrait</span></div>
+    <div class="footer-tip">Tip: Copy HTML from any module's export and paste here to test</div>
+</div>
+
+<script>
+const devices = [
+    { name: 'iPhone SE', width: 375, height: 667, icon: '📱' },
+    { name: 'iPhone 14', width: 390, height: 844, icon: '📱' },
+    { name: 'iPhone 14 Pro Max', width: 430, height: 932, icon: '📱' },
+    { name: 'iPad Mini', width: 768, height: 1024, icon: '📱' },
+    { name: 'iPad Pro 11"', width: 834, height: 1194, icon: '⬛' },
+    { name: 'iPad Pro 12.9"', width: 1024, height: 1366, icon: '⬛' },
+    { name: 'Desktop HD', width: 1280, height: 800, icon: '🖥' },
+    { name: 'Desktop Full HD', width: 1920, height: 1080, icon: '🖥' },
+];
+
+let mode = 'code';
+let currentDevice = devices[1];
+let isCustom = false;
+let customWidth = 390;
+let customHeight = 844;
+let orientation = 'portrait';
+let zoom = 75;
+let previewContent = '';
+
+function setMode(newMode) {
+    mode = newMode;
+    document.getElementById('modeCode').classList.toggle('active', mode === 'code');
+    document.getElementById('modeUrl').classList.toggle('active', mode === 'url');
+    document.getElementById('codeSection').style.display = mode === 'code' ? 'block' : 'none';
+    document.getElementById('urlSection').style.display = mode === 'url' ? 'block' : 'none';
+}
+
+function selectDevice(index) {
+    currentDevice = devices[index];
+    isCustom = false;
+    document.getElementById('customWidth').value = currentDevice.width;
+    document.getElementById('customHeight').value = currentDevice.height;
+    renderDeviceList();
+    updatePreview();
+}
+
+function setCustomSize() {
+    customWidth = parseInt(document.getElementById('customWidth').value) || 390;
+    customHeight = parseInt(document.getElementById('customHeight').value) || 844;
+    isCustom = true;
+    renderDeviceList();
+    updatePreview();
+}
+
+function toggleOrientation() {
+    orientation = orientation === 'portrait' ? 'landscape' : 'portrait';
+    document.getElementById('orientationLabel').textContent = orientation === 'portrait' ? 'Landscape' : 'Portrait';
+    document.getElementById('footerOrientation').textContent = orientation;
+    updatePreview();
+}
+
+function setZoom(value) {
+    zoom = parseInt(value);
+    document.getElementById('zoomSlider').value = zoom;
+    document.getElementById('zoomValue').textContent = zoom;
+    document.getElementById('footerZoom').textContent = zoom;
+    
+    // Update zoom button states
+    document.querySelectorAll('.zoom-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === zoom + '%');
+    });
+    
+    updatePreview();
+}
+
+function loadPreview() {
+    if (mode === 'code') {
+        previewContent = document.getElementById('codeInput').value.trim();
+    } else {
+        previewContent = document.getElementById('urlInput').value.trim();
+    }
+    updatePreview();
+}
+
+function clearPreview() {
+    previewContent = '';
+    document.getElementById('codeInput').value = '';
+    document.getElementById('urlInput').value = '';
+    updatePreview();
+}
+
+function updatePreview() {
+    const baseWidth = isCustom ? customWidth : currentDevice.width;
+    const baseHeight = isCustom ? customHeight : currentDevice.height;
+    
+    const displayWidth = orientation === 'portrait' ? baseWidth : baseHeight;
+    const displayHeight = orientation === 'portrait' ? baseHeight : baseWidth;
+    
+    const scaledWidth = displayWidth * (zoom / 100);
+    const scaledHeight = displayHeight * (zoom / 100);
+    
+    // Update size label
+    const deviceName = isCustom ? 'custom' : currentDevice.name;
+    document.getElementById('sizeLabel').textContent = `${displayWidth} × ${displayHeight} (${deviceName})`;
+    document.getElementById('footerSize').textContent = `${displayWidth}×${displayHeight}`;
+    
+    // Update device frame
+    const frame = document.getElementById('deviceFrame');
+    frame.style.width = (scaledWidth + 24) + 'px';
+    frame.style.height = (scaledHeight + 24) + 'px';
+    
+    // Update screen
+    const screen = document.getElementById('deviceScreen');
+    screen.style.width = scaledWidth + 'px';
+    screen.style.height = scaledHeight + 'px';
+    
+    // Update home indicator
+    const homeIndicator = document.getElementById('homeIndicator');
+    homeIndicator.style.width = (scaledWidth * 0.35) + 'px';
+    homeIndicator.style.display = displayWidth < 500 ? 'block' : 'none';
+    
+    // Update iframe
+    const iframe = document.getElementById('previewIframe');
+    const emptyPreview = document.getElementById('emptyPreview');
+    
+    if (previewContent) {
+        emptyPreview.style.display = 'none';
+        iframe.style.display = 'block';
+        iframe.style.width = displayWidth + 'px';
+        iframe.style.height = displayHeight + 'px';
+        iframe.style.transform = `scale(${zoom / 100})`;
+        iframe.style.transformOrigin = 'top left';
+        
+        if (mode === 'code' || !previewContent.startsWith('http')) {
+            iframe.srcdoc = previewContent;
+        } else {
+            iframe.src = previewContent;
+        }
+    } else {
+        emptyPreview.style.display = 'flex';
+        iframe.style.display = 'none';
+    }
+}
+
+function renderDeviceList() {
+    const container = document.getElementById('deviceList');
+    container.innerHTML = devices.map((d, i) => `
+        <button class="device-btn ${!isCustom && currentDevice.name === d.name ? 'active' : ''}" onclick="selectDevice(${i})">
+            <span>${d.icon} ${d.name}</span>
+            <span class="device-size">${d.width}×${d.height}</span>
+        </button>
+    `).join('');
+}
+
+// Init
+renderDeviceList();
+updatePreview();
+</script>
+</body>
+</html>

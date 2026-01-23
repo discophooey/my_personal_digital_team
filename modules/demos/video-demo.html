@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 380px; height: 260px; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 20px 60px rgba(0,0,0,0.5); position: relative; }
+.video-frame { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transition: background 0.1s; }
+.play-icon { width: 60px; height: 60px; background: rgba(255,255,255,0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.play-icon::after { content: ''; width: 0; height: 0; border-top: 12px solid transparent; border-bottom: 12px solid transparent; border-left: 20px solid #000; margin-left: 4px; }
+.video-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s; }
+.caption-box { position: absolute; bottom: 50px; left: 20px; right: 20px; background: rgba(0,0,0,0.8); color: #fff; padding: 12px 16px; border-radius: 6px; font-size: 14px; opacity: 0; transform: translateY(10px); transition: all 0.3s; }
+.caption-box.visible { opacity: 1; transform: translateY(0); }
+.progress-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: #333; }
+.progress-fill { height: 100%; background: #e74c3c; transition: width 0.1s linear; }
+.time-display { position: absolute; bottom: 10px; right: 15px; color: #fff; font-size: 12px; font-family: monospace; }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Video</div>
+    <div class="subtitle">Scroll-controlled video playback with overlays</div>
+    <div class="demo">
+        <div class="video-frame" id="videoFrame">
+            <div class="play-icon" id="playIcon"></div>
+        </div>
+        <div class="caption-box" id="caption">Caption appears at key moments...</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="time-display" id="timeDisplay">0:00 / 0:30</div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll to scrub video</div>
+</div>
+<script>
+const videoFrame = document.getElementById('videoFrame');
+const playIcon = document.getElementById('playIcon');
+const progressFill = document.getElementById('progressFill');
+const timeDisplay = document.getElementById('timeDisplay');
+const caption = document.getElementById('caption');
+
+const captions = [
+    { start: 0, end: 20, text: 'The scene begins...' },
+    { start: 20, end: 50, text: 'Action intensifies...' },
+    { start: 50, end: 80, text: 'The climax approaches...' },
+    { start: 80, end: 100, text: 'Resolution.' }
+];
+
+let progress = 0;
+let dir = 1;
+
+function formatTime(percent) {
+    const seconds = Math.floor(percent * 0.3);
+    return `0:${seconds.toString().padStart(2, '0')} / 0:30`;
+}
+
+function animate() {
+    progress += dir * 0.5;
+    if (progress >= 100) dir = -1;
+    if (progress <= 0) dir = 1;
+    
+    // Update visuals
+    const hue = progress * 2;
+    videoFrame.style.background = `hsl(${hue}, 40%, 25%)`;
+    progressFill.style.width = progress + '%';
+    timeDisplay.textContent = formatTime(progress);
+    
+    // Hide play icon when "playing"
+    playIcon.style.opacity = progress < 5 ? 1 : 0;
+    
+    // Show captions
+    const currentCaption = captions.find(c => progress >= c.start && progress < c.end);
+    if (currentCaption) {
+        caption.textContent = currentCaption.text;
+        caption.classList.add('visible');
+    } else {
+        caption.classList.remove('visible');
+    }
+    
+    requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zoom Detail Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 380px; height: 260px; border-radius: 12px; overflow: hidden; background: #1a1a1a; box-shadow: 0 20px 60px rgba(0,0,0,0.5); position: relative; }
+.image-container { position: absolute; inset: 0; overflow: hidden; }
+.zoomable-image { width: 100%; height: 100%; background: linear-gradient(135deg, #2a4a6a 0%, #1a3a5a 100%); position: relative; transform-origin: 70% 35%; }
+.scene-element { position: absolute; background: #3a5a7a; border-radius: 4px; }
+.building-1 { width: 60px; height: 100px; bottom: 40px; left: 20%; }
+.building-2 { width: 45px; height: 70px; bottom: 40px; left: 35%; }
+.building-3 { width: 80px; height: 130px; bottom: 40px; left: 55%; background: #4a6a8a; }
+.building-4 { width: 50px; height: 85px; bottom: 40px; right: 15%; }
+.ground { position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: #2a3a4a; }
+.detail-target { position: absolute; top: 30%; left: 65%; width: 30px; height: 30px; border: 3px solid #4a9eff; border-radius: 50%; transition: opacity 0.3s; }
+.detail-target::before { content: ''; position: absolute; inset: 4px; border: 1px solid #4a9eff; border-radius: 50%; }
+.detail-point { position: absolute; top: 35%; left: 70%; width: 10px; height: 10px; background: #e74c3c; border-radius: 50%; box-shadow: 0 0 15px #e74c3c; }
+.zoom-indicator { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-family: monospace; }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Zoom Detail</div>
+    <div class="subtitle">Progressive zoom into a specific image region</div>
+    <div class="demo">
+        <div class="image-container">
+            <div class="zoomable-image" id="zoomImage">
+                <div class="scene-element building-1"></div>
+                <div class="scene-element building-2"></div>
+                <div class="scene-element building-3"></div>
+                <div class="scene-element building-4"></div>
+                <div class="ground"></div>
+                <div class="detail-target" id="target"></div>
+                <div class="detail-point"></div>
+            </div>
+        </div>
+        <div class="zoom-indicator" id="zoomLevel">1.0x</div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll to zoom</div>
+</div>
+<script>
+const zoomImage = document.getElementById('zoomImage');
+const target = document.getElementById('target');
+const zoomLevel = document.getElementById('zoomLevel');
+
+let zoom = 1;
+let dir = 1;
+
+function animate() {
+    zoom += dir * 0.015;
+    if (zoom >= 4) dir = -1;
+    if (zoom <= 1) dir = 1;
+    
+    zoomImage.style.transform = `scale(${zoom})`;
+    zoomLevel.textContent = zoom.toFixed(1) + 'x';
+    
+    // Fade out target circle as we zoom in
+    target.style.opacity = Math.max(0, 1 - (zoom - 1) / 1.5);
+    
+    requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

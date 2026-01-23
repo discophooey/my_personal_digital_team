@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stat Counter Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 380px; height: 260px; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #1a1a2a, #0a0a1a); box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; gap: 30px; padding: 20px; }
+.stat { text-align: center; }
+.stat-number { font-size: 42px; font-weight: 700; font-family: 'SF Mono', 'Monaco', monospace; color: #4a9eff; line-height: 1; }
+.stat-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
+.stat-bar { width: 80px; height: 4px; background: #2a2a3a; border-radius: 2px; margin-top: 12px; overflow: hidden; }
+.stat-bar-fill { height: 100%; background: #4a9eff; border-radius: 2px; transition: width 0.1s; }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Stat Counter</div>
+    <div class="subtitle">Animated number counters that increment on scroll</div>
+    <div class="demo">
+        <div class="stat">
+            <div class="stat-number" id="stat1">0</div>
+            <div class="stat-label">Displaced</div>
+            <div class="stat-bar"><div class="stat-bar-fill" id="bar1"></div></div>
+        </div>
+        <div class="stat">
+            <div class="stat-number" id="stat2">0%</div>
+            <div class="stat-label">Affected</div>
+            <div class="stat-bar"><div class="stat-bar-fill" id="bar2"></div></div>
+        </div>
+        <div class="stat">
+            <div class="stat-number" id="stat3">$0</div>
+            <div class="stat-label">Damages</div>
+            <div class="stat-bar"><div class="stat-bar-fill" id="bar3"></div></div>
+        </div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll to count</div>
+</div>
+<script>
+const targets = [
+    { el: document.getElementById('stat1'), bar: document.getElementById('bar1'), target: 12847, prefix: '', suffix: '', decimals: 0 },
+    { el: document.getElementById('stat2'), bar: document.getElementById('bar2'), target: 73, prefix: '', suffix: '%', decimals: 0 },
+    { el: document.getElementById('stat3'), bar: document.getElementById('bar3'), target: 4.2, prefix: '$', suffix: 'B', decimals: 1 }
+];
+
+let progress = 0;
+let dir = 1;
+
+function formatNumber(num, decimals) {
+    if (decimals > 0) return num.toFixed(decimals);
+    return Math.floor(num).toLocaleString();
+}
+
+function animate() {
+    progress += dir * 0.008;
+    if (progress >= 1) { dir = -1; progress = 1; }
+    if (progress <= 0) { dir = 1; progress = 0; }
+    
+    // Easing
+    const eased = progress < 0.5 
+        ? 4 * progress * progress * progress 
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+    
+    targets.forEach(t => {
+        const current = t.target * eased;
+        t.el.textContent = t.prefix + formatNumber(current, t.decimals) + t.suffix;
+        t.bar.style.width = (eased * 100) + '%';
+    });
+    
+    requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

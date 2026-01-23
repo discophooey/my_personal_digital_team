@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrolltastic Doc Module</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; padding-top: 41px; }
+.app { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 41px); transition: grid-template-columns 0.3s; }
+.app.controls-hidden { grid-template-columns: 0 1fr; }
+.controls { background: #111; padding: 20px; overflow-y: auto; border-right: 1px solid #222; transition: opacity 0.3s, padding 0.3s; }
+.app.controls-hidden .controls { opacity: 0; padding: 0; overflow: hidden; }
+.toggle-btn { position: fixed; top: 10px; left: 10px; z-index: 100; width: 36px; height: 36px; padding: 0; border-radius: 50%; font-size: 16px; background: #333; border: none; color: #fff; cursor: pointer; }
+.toggle-btn:hover { background: #4a9eff; }
+h1 { font-size: 18px; color: #4a9eff; margin-bottom: 20px; }
+h2 { font-size: 11px; color: #888; margin: 16px 0 10px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #1a1a1a; border-radius: 4px; }
+h2:hover { background: #222; }
+h2::after { content: '▼'; font-size: 9px; transition: transform 0.2s; }
+h2.collapsed::after { transform: rotate(-90deg); }
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0; }
+.control-group { margin-bottom: 12px; }
+label { display: block; font-size: 11px; color: #888; margin-bottom: 4px; }
+input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 8px 10px; background: #1a1a1a; border: 1px solid #333; color: #fff; border-radius: 4px; font-size: 12px; }
+input[type="range"] { width: 100%; }
+input[type="color"] { width: 50px; height: 28px; border: none; background: none; cursor: pointer; }
+input[type="checkbox"] { margin-right: 6px; }
+button { width: 100%; padding: 10px; background: #4a9eff; border: none; color: #000; font-weight: 600; border-radius: 4px; cursor: pointer; font-size: 12px; margin-bottom: 8px; }
+button:hover { background: #357abd; }
+button.secondary { background: #333; color: #fff; }
+button.small { width: auto; padding: 4px 10px; font-size: 11px; }
+.row { display: flex; gap: 8px; align-items: flex-start; }
+.row > * { flex: 1; }
+.hint { font-size: 10px; color: #666; margin-top: 4px; }
+.range-val { font-size: 10px; color: #4a9eff; float: right; }
+
+.highlight-item { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+.highlight-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; cursor: pointer; }
+.highlight-header:hover { background: #222; }
+.highlight-header span { font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.highlight-body { padding: 12px; border-top: 1px solid #333; display: none; }
+.highlight-body.open { display: block; }
+
+.preview-area { background: #000; display: flex; flex-direction: column; overflow: hidden; }
+.preview-header { padding: 10px 16px; background: #111; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #666; }
+#progressDisplay { color: #4a9eff; font-weight: bold; }
+.preview-scroll { flex: 1; overflow-y: auto; }
+.preview-container { position: relative; }
+.preview-stage { position: sticky; top: 0; height: 100vh; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.preview-matte { position: relative; overflow: hidden; background: #000; }
+.preview-matte img { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.preview-inner { position: relative; width: 100%; height: 100%; }
+.preview-inner img { display: block; cursor: crosshair; transform-origin: center center; }
+.preview-vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 150px 60px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.3s; z-index: 5; }
+.preview-vignette.on { opacity: 1; }
+.preview-paper { position: absolute; inset: 0; pointer-events: none; opacity: 0; z-index: 4; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); mix-blend-mode: multiply; }
+.preview-caption { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 650px; background: rgba(0,0,0,0.85); padding: 12px 16px; border-radius: 6px; opacity: 0; transition: opacity 0.3s; z-index: 10; }
+.preview-caption.on { opacity: 1; }
+.cap-text { font-size: 13px; line-height: 1.5; color: #e0e0e0; }
+.cap-credit { font-size: 11px; color: #888; font-style: italic; margin-top: 6px; }
+
+.doc-highlight { position: absolute; pointer-events: none; overflow: hidden; }
+.doc-highlight .hl-bar { height: 100%; width: 0%; }
+.doc-highlight.placing { outline: 2px dashed #4a9eff; }
+
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+.modal.active { display: flex; }
+.modal-content { background: #111; border-radius: 12px; padding: 24px; width: 90%; max-width: 800px; max-height: 85vh; overflow: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-close { background: none; border: none; color: #666; font-size: 28px; cursor: pointer; width: auto; padding: 0; }
+textarea.code { width: 100%; height: 300px; background: #0a0a0a; border: 1px solid #333; color: #4a9eff; font-family: monospace; font-size: 11px; padding: 12px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#111;border-bottom:1px solid #2a2a2a;display:flex;overflow-x:auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<a href="index.html" style="padding:10px 16px;color:#4a9eff;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;">← Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Zoom Detail</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:#888;text-decoration:none;font-size:11px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:#fff!important;background:#1a1a1a;}</style>
+<button class="toggle-btn" onclick="toggleControls()">☰</button>
+<div class="app" id="app">
+    <div class="controls">
+        <h1>📄 Doc Module</h1>
+        
+        <h2 onclick="toggleSection(this)">Image Source</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Image URL</label>
+                <input type="text" id="imageUrl" placeholder="https://example.com/document.jpg">
+            </div>
+            <button onclick="loadImage()">Load Image</button>
+            <div class="hint">Upload document image via CDN, S3, or direct URL</div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Image Controls</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Output Aspect Ratio</label>
+                <select id="outputAspect" onchange="rebuildPreview()">
+                    <option value="auto" selected>Auto (match image)</option>
+                    <option value="16:9">16:9 Widescreen</option>
+                    <option value="4:3">4:3 Standard</option>
+                    <option value="1:1">1:1 Square</option>
+                    <option value="21:9">21:9 Ultrawide</option>
+                    <option value="9:16">9:16 Vertical</option>
+                    <option value="3:2">3:2 Photo</option>
+                    <option value="full">Full Viewport</option>
+                </select>
+                <div class="hint">Widescreen crops the view - use Scale/Position to frame</div>
+            </div>
+            <div class="control-group">
+                <label>Scale <span class="range-val" id="scaleVal">1.0x</span></label>
+                <input type="range" id="imageScale" min="0.5" max="3" step="0.05" value="1" oninput="document.getElementById('scaleVal').textContent=parseFloat(this.value).toFixed(2)+'x'; rebuildPreview();">
+            </div>
+            <div class="control-group">
+                <label>X Position <span class="range-val" id="posXVal">50%</span></label>
+                <input type="range" id="imagePosX" min="0" max="100" value="50" oninput="document.getElementById('posXVal').textContent=this.value+'%'; rebuildPreview();">
+            </div>
+            <div class="control-group">
+                <label>Y Position <span class="range-val" id="posYVal">50%</span></label>
+                <input type="range" id="imagePosY" min="0" max="100" value="50" oninput="document.getElementById('posYVal').textContent=this.value+'%'; rebuildPreview();">
+            </div>
+            <div class="control-group">
+                <label>Background Color</label>
+                <input type="color" id="bgColor" value="#000000" onchange="document.getElementById('previewStage').style.background=this.value;">
+            </div>
+            <div class="control-group">
+                <label><input type="checkbox" id="vignetteEnabled" onchange="updateVignette()"> Enable Vignette</label>
+            </div>
+            <div class="control-group">
+                <label>Paper Texture <span class="range-val" id="paperAmountVal">0%</span></label>
+                <input type="range" id="paperAmount" min="0" max="30" step="1" value="0" oninput="document.getElementById('paperAmountVal').textContent=this.value+'%'; updatePaperOverlay();">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Keyframes (Zoom/Pan Animation)</h2>
+        <div class="section">
+            <div class="hint" style="margin-bottom:10px;">Add keyframes to animate scale/position as user scrolls. Uses current Scale/X/Y values above.</div>
+            <button onclick="addKeyframe()">+ Add Keyframe at Current Scroll</button>
+            <div id="keyframeList" style="margin-top:10px;"></div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Highlights</h2>
+        <div class="section">
+            <button onclick="addHighlight()">+ Add Highlight</button>
+            <div class="hint">Click on image to position highlight</div>
+            <div id="highlightList" style="margin-top:10px;"></div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Caption</h2>
+        <div class="section">
+            <div class="control-group">
+                <label><input type="checkbox" id="captionEnabled" checked onchange="updateCaption()"> Enable Caption</label>
+            </div>
+            <div class="control-group">
+                <label>Caption Text</label>
+                <textarea id="captionText" rows="2" oninput="updateCaption()">Document highlights animate as you scroll, drawing attention to key passages and evidence.</textarea>
+            </div>
+            <div class="control-group">
+                <label>Credit</label>
+                <input type="text" id="captionCredit" value="Marshall Ritzel" oninput="updateCaption()">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Export</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Scroll Duration (vh) <span class="range-val" id="scrollDurVal">300</span></label>
+                <input type="range" id="scrollDuration" min="150" max="500" value="300" oninput="document.getElementById('scrollDurVal').textContent=this.value;document.getElementById('scrollDurationNum').value=this.value;setPreviewHeight();">
+            </div>
+            <div class="control-group">
+                <label>Mobile Top Offset (px)</label>
+                <input type="number" id="stickyOffset" value="200" min="0" max="300">
+                <div class="hint">Default 200px for AP mobile nav</div>
+            </div>
+            <div class="control-group">
+                <label>Mobile Width Multiplier <span class="range-val" id="mobileWidthVal">1.0x</span></label>
+                <input type="range" id="mobileWidthMult" min="0.5" max="2" step="0.1" value="1" oninput="document.getElementById('mobileWidthVal').textContent=parseFloat(this.value).toFixed(1)+'x';">
+                <div class="hint">Scale highlight width on mobile (>1 = wider, <1 = narrower)</div>
+            </div>
+            <button onclick="generateExport()">Generate HTML</button>
+            <button class="secondary" onclick="copyCode()">📋 Copy Code</button>
+            <button class="secondary" onclick="downloadCode()">💾 Download</button>
+            <button class="secondary" onclick="resetModule()" style="margin-top:8px;">↺ Reset</button>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Project</h2>
+        <div class="section">
+            <div class="row">
+                <button class="secondary" onclick="saveProject()">💾 Save</button>
+                <button class="secondary" onclick="loadProject()">📂 Load</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="preview-area">
+        <div class="preview-header">
+            <span>Preview (scroll to test)</span>
+            <span>Scroll: <span id="progressDisplay">0%</span></span>
+        </div>
+        <div class="preview-scroll" id="previewScroll">
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-stage" id="previewStage">
+                    <div class="preview-matte" id="previewMatte">
+                        <div style="color:#666;text-align:center;padding:40vh 20px;">Load a document image</div>
+                        <div class="preview-vignette" id="previewVignette"></div>
+                    </div>
+                    <div class="preview-caption" id="previewCaption">
+                        <div class="cap-text" id="capText"></div>
+                        <div class="cap-credit" id="capCredit"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h1>Export Code</h1>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <textarea class="code" id="exportCode" readonly></textarea>
+        <div style="margin-top:12px; display:flex; gap:8px;">
+            <button onclick="copyCode()">📋 Copy</button>
+            <button class="secondary" onclick="downloadCode()">💾 Download</button>
+            <button class="secondary" onclick="sendToStackBuilder()">📚 Stack</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// STATE
+let imageUrl = null;
+let imageNaturalWidth = 0;
+let imageNaturalHeight = 0;
+let highlights = [];
+let placingId = null;
+let keyframes = []; // {scrollPct, scale, posX, posY}
+let currentScrollPct = 0;
+
+function toggleControls() { 
+    document.getElementById('app').classList.toggle('controls-hidden'); 
+}
+
+function toggleSection(el) {
+    el.classList.toggle('collapsed');
+    el.nextElementSibling.classList.toggle('collapsed');
+}
+
+// IMAGE
+function loadImage() {
+    let url = document.getElementById('imageUrl').value.trim();
+    if (!url) return alert('Enter image URL');
+    if (url.includes('github.com') && url.includes('/blob/')) {
+        url = url.replace('github.com','raw.githubusercontent.com').replace('/blob/','/').split('?')[0];
+    }
+    const img = new Image();
+    img.onload = () => { 
+        imageUrl = url; 
+        imageNaturalWidth = img.naturalWidth;
+        imageNaturalHeight = img.naturalHeight;
+        rebuildPreview(); 
+    };
+    img.onerror = () => alert('Failed to load image');
+    img.src = url;
+}
+
+// KEYFRAMES
+function addKeyframe() {
+    const scrollPct = currentScrollPct;
+    const scale = parseFloat(document.getElementById('imageScale').value) || 1;
+    const posX = parseFloat(document.getElementById('imagePosX').value) || 50;
+    const posY = parseFloat(document.getElementById('imagePosY').value) || 50;
+    
+    // Check if keyframe exists at this scroll position (within 2%)
+    const existing = keyframes.findIndex(k => Math.abs(k.scrollPct - scrollPct) < 2);
+    if (existing >= 0) {
+        // Update existing
+        keyframes[existing] = { scrollPct, scale, posX, posY };
+    } else {
+        keyframes.push({ scrollPct, scale, posX, posY });
+    }
+    
+    // Sort by scroll position
+    keyframes.sort((a, b) => a.scrollPct - b.scrollPct);
+    renderKeyframeList();
+}
+
+function removeKeyframe(index) {
+    keyframes.splice(index, 1);
+    renderKeyframeList();
+    rebuildPreview();
+}
+
+function renderKeyframeList() {
+    const list = document.getElementById('keyframeList');
+    if (keyframes.length === 0) {
+        list.innerHTML = '<div style="color:#666;font-size:12px;">No keyframes. Scale/position will be static.</div>';
+        return;
+    }
+    list.innerHTML = keyframes.map((k, i) => `
+        <div class="highlight-item" style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#2a2a2a;border-radius:4px;margin-bottom:4px;">
+            <span style="font-size:12px;">
+                <strong>${k.scrollPct.toFixed(0)}%</strong> → 
+                Scale ${k.scale.toFixed(2)}x, X ${k.posX}%, Y ${k.posY}%
+            </span>
+            <button onclick="removeKeyframe(${i})" style="background:#c44;border:none;color:#fff;padding:2px 6px;border-radius:3px;cursor:pointer;">×</button>
+        </div>
+    `).join('');
+}
+
+function getInterpolatedTransform(scrollPct) {
+    // Returns {scale, posX, posY} interpolated between keyframes
+    if (keyframes.length === 0) {
+        return {
+            scale: parseFloat(document.getElementById('imageScale').value) || 1,
+            posX: parseFloat(document.getElementById('imagePosX').value) || 50,
+            posY: parseFloat(document.getElementById('imagePosY').value) || 50
+        };
+    }
+    
+    if (keyframes.length === 1) {
+        return { scale: keyframes[0].scale, posX: keyframes[0].posX, posY: keyframes[0].posY };
+    }
+    
+    // Find surrounding keyframes
+    let before = keyframes[0];
+    let after = keyframes[keyframes.length - 1];
+    
+    for (let i = 0; i < keyframes.length - 1; i++) {
+        if (scrollPct >= keyframes[i].scrollPct && scrollPct <= keyframes[i + 1].scrollPct) {
+            before = keyframes[i];
+            after = keyframes[i + 1];
+            break;
+        }
+    }
+    
+    // Before first keyframe
+    if (scrollPct <= keyframes[0].scrollPct) {
+        return { scale: keyframes[0].scale, posX: keyframes[0].posX, posY: keyframes[0].posY };
+    }
+    
+    // After last keyframe
+    if (scrollPct >= keyframes[keyframes.length - 1].scrollPct) {
+        const last = keyframes[keyframes.length - 1];
+        return { scale: last.scale, posX: last.posX, posY: last.posY };
+    }
+    
+    // Interpolate
+    const range = after.scrollPct - before.scrollPct;
+    const progress = range > 0 ? (scrollPct - before.scrollPct) / range : 0;
+    
+    return {
+        scale: before.scale + (after.scale - before.scale) * progress,
+        posX: before.posX + (after.posX - before.posX) * progress,
+        posY: before.posY + (after.posY - before.posY) * progress
+    };
+}
+
+// HIGHLIGHT CRUD
+function addHighlight() {
+    if (!imageUrl) return alert('Load image first');
+    const index = highlights.length;
+    const appearAt = Math.min(10 + index * 15, 85);
+    
+    // Inherit from previous highlight if exists, else use defaults
+    const prev = highlights[highlights.length - 1];
+    const newHighlight = prev ? {
+        id: Date.now(),
+        x: 10,
+        y: 20 + (index * 8) % 60,
+        width: prev.width,
+        height: prev.height,
+        color: prev.color,
+        opacity: prev.opacity,
+        blendMode: prev.blendMode,
+        appearAt: appearAt
+    } : {
+        id: Date.now(),
+        x: 10,
+        y: 20,
+        width: 30,
+        height: 20,
+        color: '#ffff00',
+        opacity: 0.4,
+        blendMode: 'multiply',
+        appearAt: appearAt
+    };
+    
+    highlights.push(newHighlight);
+    placingId = newHighlight.id;
+    renderList();
+    rebuildPreview();
+}
+
+function removeHighlight(id) {
+    highlights = highlights.filter(h => h.id !== id);
+    renderList();
+    rebuildPreview();
+}
+
+function updateHighlight(id, prop, val) {
+    const h = highlights.find(h => h.id === id);
+    if (!h) return;
+    if (['x', 'y', 'width', 'height', 'opacity', 'appearAt'].includes(prop)) {
+        h[prop] = parseFloat(val) || 0;
+    } else {
+        h[prop] = val;
+    }
+    rebuildPreview();
+}
+
+// LIST UI
+function toggleBody(id) {
+    document.querySelectorAll('.highlight-body').forEach(el => {
+        el.classList.toggle('open', el.id === 'body-' + id && !el.classList.contains('open'));
+    });
+}
+
+function renderList() {
+    const list = document.getElementById('highlightList');
+    if (!highlights.length) { 
+        list.innerHTML = '<div class="hint">No highlights added</div>'; 
+        return; 
+    }
+    const blendOpts = ['multiply','screen','overlay','darken','lighten','color-dodge','color-burn','hard-light','soft-light','difference','exclusion','hue','saturation','color','luminosity','normal'];
+    list.innerHTML = highlights.map((h, i) => `
+        <div class="highlight-item">
+            <div class="highlight-header" onclick="toggleBody(${h.id})">
+                <span><span style="background:${h.color};opacity:${h.opacity};width:20px;height:10px;display:inline-block;border-radius:2px;"></span> Highlight ${i+1}</span>
+                <button class="small" style="background:#c0392b;color:#fff;" onclick="event.stopPropagation();removeHighlight(${h.id})">×</button>
+            </div>
+            <div class="highlight-body" id="body-${h.id}">
+                <div class="row">
+                    <div class="control-group">
+                        <label>Color</label>
+                        <input type="color" value="${h.color}" oninput="updateHighlight(${h.id},'color',this.value)">
+                    </div>
+                    <div class="control-group">
+                        <label>Opacity: ${h.opacity.toFixed(2)}</label>
+                        <input type="range" min="0.1" max="1" step="0.05" value="${h.opacity}" oninput="this.previousElementSibling.textContent='Opacity: '+parseFloat(this.value).toFixed(2);updateHighlight(${h.id},'opacity',this.value)">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Blend Mode</label>
+                    <select onchange="updateHighlight(${h.id},'blendMode',this.value)">
+                        ${blendOpts.map(b => `<option value="${b}"${(h.blendMode||'multiply')===b?' selected':''}>${b}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>X Position</label>
+                    <div class="row" style="align-items:center;">
+                        <input type="range" min="0" max="100" step="0.5" value="${h.x}" oninput="document.getElementById('xnum-${h.id}').value=parseFloat(this.value).toFixed(1);updateHighlight(${h.id},'x',this.value)">
+                        <input type="number" id="xnum-${h.id}" min="0" max="100" step="0.5" value="${h.x.toFixed(1)}" style="width:60px;" oninput="document.querySelector('#body-${h.id} input[type=range]').value=this.value;updateHighlight(${h.id},'x',this.value)">
+                        <span style="font-size:10px;color:#666;">%</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Y Position</label>
+                    <div class="row" style="align-items:center;">
+                        <input type="range" min="0" max="100" step="0.5" value="${h.y}" class="y-slider" oninput="document.getElementById('ynum-${h.id}').value=parseFloat(this.value).toFixed(1);updateHighlight(${h.id},'y',this.value)">
+                        <input type="number" id="ynum-${h.id}" min="0" max="100" step="0.5" value="${h.y.toFixed(1)}" style="width:60px;" oninput="document.querySelector('#body-${h.id} .y-slider').value=this.value;updateHighlight(${h.id},'y',this.value)">
+                        <span style="font-size:10px;color:#666;">%</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Width: ${h.width.toFixed(0)}%</label>
+                    <input type="range" min="5" max="80" step="1" value="${h.width}" oninput="this.previousElementSibling.textContent='Width: '+this.value+'%';updateHighlight(${h.id},'width',this.value)">
+                </div>
+                <div class="control-group">
+                    <label>Height: ${h.height}px <span style="color:#666;font-weight:normal;">(scales on mobile)</span></label>
+                    <input type="range" min="8" max="60" step="1" value="${h.height}" oninput="this.previousElementSibling.innerHTML='Height: '+this.value+'px <span style=\\'color:#666;font-weight:normal;\\'>(scales on mobile)</span>';updateHighlight(${h.id},'height',this.value)">
+                </div>
+                <div class="control-group">
+                    <label>Appear At: ${h.appearAt}%</label>
+                    <input type="range" min="0" max="95" step="1" value="${h.appearAt}" oninput="this.previousElementSibling.textContent='Appear At: '+this.value+'%';updateHighlight(${h.id},'appearAt',this.value)">
+                </div>
+                <div class="hint"><a href="#" onclick="event.preventDefault();placingId=${h.id};rebuildPreview();" style="color:#4a9eff;">Click image to reposition</a></div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// PREVIEW
+function setPreviewHeight() {
+    const vh = parseInt(document.getElementById('scrollDuration').value) || 300;
+    document.getElementById('previewContainer').style.height = vh + 'vh';
+}
+
+function rebuildPreview() {
+    const matte = document.getElementById('previewMatte');
+    if (!imageUrl) {
+        matte.innerHTML = '<div style="color:#666;text-align:center;padding:40vh 20px;">Load a document image</div><div class="preview-vignette" id="previewVignette"></div>';
+        matte.style.cssText = '';
+        return;
+    }
+    
+    const scale = parseFloat(document.getElementById('imageScale').value) || 1;
+    const posX = parseFloat(document.getElementById('imagePosX').value);
+    const posY = parseFloat(document.getElementById('imagePosY').value);
+    const outputAspect = document.getElementById('outputAspect').value;
+    
+    // Calculate pan offset from center (50% = no pan)
+    const panX = (posX - 50) * (scale - 1) / scale;
+    const panY = (posY - 50) * (scale - 1) / scale;
+    
+    // Content wrapper gets image aspect ratio and transform
+    const contentTransform = `transform:scale(${scale}) translate(${-panX}%, ${-panY}%);transform-origin:${posX}% ${posY}%;`;
+    const imgAspect = imageNaturalWidth && imageNaturalHeight ? `${imageNaturalWidth}/${imageNaturalHeight}` : '4/3';
+    
+    // Content maintains image proportions, centered in matte
+    let html = `<div class="preview-content" style="aspect-ratio:${imgAspect};max-width:100%;max-height:100%;position:relative;${contentTransform}">`;
+    html += `<img src="${imageUrl}" style="width:100%;height:100%;display:block;" onclick="handleClick(event)">`;
+    
+    // Highlights inside content wrapper
+    highlights.forEach(h => {
+        const blend = h.blendMode || 'multiply';
+        const heightPct = imageNaturalHeight > 0 ? (h.height / imageNaturalHeight) * 100 : 2;
+        html += `<div class="doc-highlight${placingId===h.id?' placing':''}" data-appear="${h.appearAt}" 
+            style="left:${h.x}%;top:${h.y}%;width:${h.width}%;height:${heightPct.toFixed(2)}%;mix-blend-mode:${blend};">
+            <div class="hl-bar" style="background:${h.color};opacity:${h.opacity};"></div>
+        </div>`;
+    });
+    html += '</div>';
+    
+    // Vignette and paper overlay outside content
+    html += '<div class="preview-vignette" id="previewVignette"></div>';
+    html += '<div class="preview-paper" id="previewPaper"></div>';
+    
+    matte.innerHTML = html;
+    
+    // Matte clips to output aspect ratio, flexbox centers content
+    let matteStyle = 'position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;';
+    if (outputAspect === 'auto' || outputAspect === 'full') {
+        matteStyle += 'width:100%;height:100%;';
+    } else {
+        // Fixed aspect ratio - fill width, let height be determined by ratio
+        matteStyle += `width:100%;aspect-ratio:${outputAspect.replace(':', '/')};`;
+    }
+    matte.style.cssText = matteStyle;
+    
+    updateCaption();
+    updateVignette();
+    updatePaperOverlay();
+    handleScroll();
+}
+
+function handleClick(e) {
+    if (!placingId) return;
+    const rect = e.target.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const h = highlights.find(h => h.id === placingId);
+    if (h) { h.x = x; h.y = y; }
+    placingId = null;
+    renderList();
+    rebuildPreview();
+}
+
+function updateCaption() {
+    const enabled = document.getElementById('captionEnabled').checked;
+    const caption = document.getElementById('previewCaption');
+    caption.style.display = enabled ? 'block' : 'none';
+    document.getElementById('capText').textContent = document.getElementById('captionText').value;
+    document.getElementById('capCredit').textContent = document.getElementById('captionCredit').value;
+}
+
+function updateVignette() {
+    const enabled = document.getElementById('vignetteEnabled').checked;
+    const el = document.getElementById('previewVignette');
+    if (el) el.classList.toggle('on', enabled);
+}
+
+function updatePaperOverlay() {
+    const amount = parseFloat(document.getElementById('paperAmount').value) / 100;
+    const el = document.getElementById('previewPaper');
+    if (el) {
+        el.style.opacity = amount;
+    }
+}
+
+// SCROLL - Animate highlights
+function handleScroll() {
+    const scroller = document.getElementById('previewScroll');
+    const container = document.getElementById('previewContainer');
+    const scrollTop = scroller.scrollTop;
+    const scrollMax = container.offsetHeight - scroller.clientHeight;
+    const pct = scrollMax > 0 ? (scrollTop / scrollMax) * 100 : 0;
+    
+    currentScrollPct = pct;
+    document.getElementById('progressDisplay').textContent = Math.round(pct) + '%';
+    document.getElementById('previewCaption').classList.toggle('on', pct > 5);
+    
+    // Apply keyframe transform if keyframes exist
+    if (keyframes.length > 0) {
+        const t = getInterpolatedTransform(pct);
+        const panX = (t.posX - 50) * (t.scale - 1) / t.scale;
+        const panY = (t.posY - 50) * (t.scale - 1) / t.scale;
+        const content = document.querySelector('#previewMatte .preview-content');
+        if (content) {
+            content.style.transform = `scale(${t.scale}) translate(${-panX}%, ${-panY}%)`;
+            content.style.transformOrigin = `${t.posX}% ${t.posY}%`;
+        }
+    }
+    
+    document.querySelectorAll('#previewMatte .doc-highlight').forEach(el => {
+        const appear = parseFloat(el.dataset.appear) || 0;
+        const placing = el.classList.contains('placing');
+        const bar = el.querySelector('.hl-bar');
+        
+        if (placing) {
+            bar.style.width = '100%';
+            return;
+        }
+        
+        const animProgress = Math.max(0, Math.min(1, (pct - appear) / 15));
+        const eased = 1 - Math.pow(1 - animProgress, 3);
+        bar.style.width = (eased * 100) + '%';
+    });
+}
+
+document.getElementById('previewScroll').addEventListener('scroll', handleScroll, { passive: true });
+
+// EXPORT
+function generateExport() {
+    if (!imageUrl) return alert('Load image first');
+    const dur = document.getElementById('scrollDuration').value;
+    const offset = document.getElementById('stickyOffset').value;
+    const capEnabled = document.getElementById('captionEnabled').checked;
+    const capText = document.getElementById('captionText').value;
+    const capCredit = document.getElementById('captionCredit').value;
+    const bgColor = document.getElementById('bgColor').value;
+    const scale = parseFloat(document.getElementById('imageScale').value) || 1;
+    const posX = parseFloat(document.getElementById('imagePosX').value);
+    const posY = parseFloat(document.getElementById('imagePosY').value);
+    const vignetteOn = document.getElementById('vignetteEnabled').checked;
+    const paperAmount = parseFloat(document.getElementById('paperAmount').value) / 100;
+    const outputAspect = document.getElementById('outputAspect').value;
+    const mobileWidthMult = parseFloat(document.getElementById('mobileWidthMult').value) || 1;
+    const sm = parseInt(dur) / 100;
+    const uid = 'doc' + Math.random().toString(36).substr(2, 9);
+    
+    // Calculate pan offset from center (50% = no pan)
+    const panX = (posX - 50) * (scale - 1) / scale;
+    const panY = (posY - 50) * (scale - 1) / scale;
+    
+    // Highlights inside content wrapper - no individual transform needed
+    const hlHtml = highlights.map((h, i) => {
+        const blend = h.blendMode || 'multiply';
+        const heightPct = imageNaturalHeight > 0 ? (h.height / imageNaturalHeight) * 100 : 2;
+        return `<div class="hl hl-${i}" data-a="${h.appearAt}" style="left:${h.x.toFixed(1)}%;top:${h.y.toFixed(1)}%;width:${h.width}%;height:${heightPct.toFixed(2)}%;mix-blend-mode:${blend};">` +
+        `<div class="hl-bar" style="background:${h.color};opacity:${h.opacity};"></div></div>`;
+    }).join('\n');
+    
+    // Generate mobile width overrides
+    let mobileHlCss = '';
+    if (mobileWidthMult !== 1) {
+        mobileHlCss = highlights.map((h, i) => {
+            const mobileWidth = Math.min(100, h.width * mobileWidthMult);
+            return `#${uid} .hl-${i}{width:${mobileWidth.toFixed(1)}%}`;
+        }).join('');
+    }
+    
+    // Mobile content offset compensation - shift content up to compensate for sticky offset
+    const mobileContentOffset = parseFloat(offset) / 2;
+    const mobileContentCss = mobileContentOffset > 0 ? `#${uid} .content{transform:scale(${scale}) translate(${(-panX).toFixed(2)}%, ${(-panY).toFixed(2)}%) translateY(-${mobileContentOffset}px);transform-origin:${posX}% ${posY}%}` : '';
+    
+    const capHtml = capEnabled ? 
+        `<div class="cap"><div class="cap-t">${capText}</div>${capCredit?`<div class="cap-c">${capCredit}</div>`:''}</div>` : '';
+    
+    const vigHtml = vignetteOn ? `<div class="vig"></div>` : '';
+    const vigCss = vignetteOn ? `#${uid} .vig{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 150px 60px rgba(0,0,0,0.5);z-index:5}\n` : '';
+    
+    const paperHtml = paperAmount > 0 ? `<div class="paper"></div>` : '';
+    const paperCss = paperAmount > 0 ? `#${uid} .paper{position:absolute;inset:0;pointer-events:none;opacity:${paperAmount};z-index:4;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");mix-blend-mode:multiply}\n` : '';
+    
+    // Image aspect ratio for content
+    const imgAspect = imageNaturalWidth && imageNaturalHeight ? `${imageNaturalWidth}/${imageNaturalHeight}` : '4/3';
+    
+    // Matte CSS - clips to output aspect ratio
+    let matteCss = '';
+    if (outputAspect === 'auto' || outputAspect === 'full') {
+        matteCss = `#${uid} .matte{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}`;
+    } else {
+        // Fixed aspect ratio - fill width for maximum size
+        matteCss = `#${uid} .matte{position:relative;width:100%;aspect-ratio:${outputAspect.replace(':', '/')};display:flex;align-items:center;justify-content:center;overflow:hidden}`;
+    }
+    
+    // Content transform for scale and pan (only used if no keyframes)
+    const contentTransform = keyframes.length === 0 ? `transform:scale(${scale}) translate(${(-panX).toFixed(2)}%, ${(-panY).toFixed(2)}%);transform-origin:${posX}% ${posY}%` : '';
+    
+    // Generate keyframe JS if needed
+    let keyframeJs = '';
+    if (keyframes.length > 0) {
+        const kfData = JSON.stringify(keyframes);
+        keyframeJs = `
+var kf=${kfData};
+function lerp(a,b,t){return a+(b-a)*t;}
+function getT(p){
+if(kf.length===0)return{s:${scale},x:${posX},y:${posY}};
+if(kf.length===1)return{s:kf[0].scale,x:kf[0].posX,y:kf[0].posY};
+if(p<=kf[0].scrollPct)return{s:kf[0].scale,x:kf[0].posX,y:kf[0].posY};
+if(p>=kf[kf.length-1].scrollPct){var l=kf[kf.length-1];return{s:l.scale,x:l.posX,y:l.posY};}
+for(var i=0;i<kf.length-1;i++){
+if(p>=kf[i].scrollPct&&p<=kf[i+1].scrollPct){
+var rng=kf[i+1].scrollPct-kf[i].scrollPct;
+var pr=rng>0?(p-kf[i].scrollPct)/rng:0;
+return{s:lerp(kf[i].scale,kf[i+1].scale,pr),x:lerp(kf[i].posX,kf[i+1].posX,pr),y:lerp(kf[i].posY,kf[i+1].posY,pr)};
+}}
+return{s:${scale},x:${posX},y:${posY}};
+}`;
+    }
+    
+    const code = `<style>
+#${uid}{position:relative}
+#${uid} .stage{position:sticky;top:0;height:100vh;background:${bgColor};display:flex;align-items:center;justify-content:center;overflow:hidden}
+${matteCss}
+#${uid} .content{aspect-ratio:${imgAspect};max-width:100%;max-height:100%;position:relative;${contentTransform}}
+#${uid} .content img{width:100%;height:100%;display:block}
+#${uid} .hl{position:absolute;pointer-events:none;overflow:hidden}
+#${uid} .hl-bar{height:100%;width:0%}
+${vigCss}${paperCss}#${uid} .cap{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:85%;max-width:650px;background:rgba(0,0,0,.85);padding:12px 16px;border-radius:6px;opacity:0;transition:opacity .3s;z-index:10}
+#${uid} .cap.on{opacity:1}
+#${uid} .cap-t{font:13px/1.5 system-ui,sans-serif;color:#e0e0e0}
+#${uid} .cap-c{font:11px system-ui,sans-serif;color:#888;font-style:italic;margin-top:6px}
+@media(max-width:768px){#${uid} .stage{top:${offset}px;height:calc(100vh - ${offset}px)}${mobileContentCss}${mobileHlCss}#${uid} .cap{width:92%;bottom:8px;padding:10px 14px}#${uid} .cap-t{font-size:12px}#${uid} .cap-c{font-size:10px}}
+</style>
+<div id="${uid}">
+<div class="stage">
+<div class="matte">
+<div class="content">
+<img src="${imageUrl}" alt="">
+${hlHtml}
+</div>
+${vigHtml}
+${paperHtml}
+</div>
+${capHtml}
+</div>
+</div>
+<scr` + `ipt>
+(function(){
+var w=document.getElementById('${uid}'),st=w.querySelector('.stage'),ct=w.querySelector('.content');
+w.style.height=(st.offsetHeight*${sm})+'px';
+window.addEventListener('resize',function(){w.style.height=(st.offsetHeight*${sm})+'px';});
+function ease(t){return 1-Math.pow(1-t,3);}${keyframeJs}
+function upd(){
+var r=w.getBoundingClientRect();
+var scrolled=Math.max(0,-r.top);
+var range=w.offsetHeight-window.innerHeight;
+var p=range>0?(scrolled/range)*100:0;${keyframes.length > 0 ? `
+var t=getT(p);
+var panX=(t.x-50)*(t.s-1)/t.s;
+var panY=(t.y-50)*(t.s-1)/t.s;
+ct.style.transform='scale('+t.s+') translate('+(-panX)+'%, '+(-panY)+'%)';
+ct.style.transformOrigin=t.x+'% '+t.y+'%';` : ''}
+w.querySelectorAll('.hl').forEach(function(el){
+var a=parseFloat(el.dataset.a)||0;
+var prog=Math.max(0,Math.min(1,(p-a)/15));
+el.querySelector('.hl-bar').style.width=(ease(prog)*100)+'%';
+});
+var c=w.querySelector('.cap');if(c)c.classList.toggle('on',p>5);
+}
+window.addEventListener('scroll',upd,{passive:true});
+upd();
+})();
+<\/scr` + `ipt>`;
+
+    document.getElementById('exportCode').value = code;
+    document.getElementById('exportModal').classList.add('active');
+}
+
+// MODAL
+function closeModal() { document.getElementById('exportModal').classList.remove('active'); }
+function copyCode() { 
+    const code = document.getElementById('exportCode');
+    if (!code.value) { generateExport(); return; }
+    code.select(); 
+    document.execCommand('copy'); 
+    alert('Copied!'); 
+}
+function downloadCode() {
+    const code = document.getElementById('exportCode').value;
+    if (!code) { generateExport(); return; }
+    const filename = prompt('Save export as:', 'doc-module');
+    if (!filename) return;
+    const blob = new Blob([code], {type:'text/html'});
+    const safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = safeName + '.html'; a.click();
+}
+function sendToStackBuilder() {
+    var code = document.getElementById('exportCode').value;
+    if (!code) { alert('Generate HTML first'); return; }
+    var queue = JSON.parse(localStorage.getItem('disco_stack_queue') || '[]');
+    queue.push({ name: 'Doc Module', html: code, timestamp: Date.now() });
+    localStorage.setItem('disco_stack_queue', JSON.stringify(queue));
+    if (confirm('Sent to Stack Builder!\n\nOpen Stack Builder now?')) {
+        window.location.href = 'stack-builder-clean.html';
+    }
+}
+
+// SAVE/LOAD PROJECT
+function saveProject() {
+    const defaultName = 'doc-module-project';
+    const filename = prompt('Save project as:', defaultName);
+    if (!filename) return; // User cancelled
+    
+    const project = { 
+        imageUrl,
+        imageNaturalWidth,
+        imageNaturalHeight,
+        highlights,
+        keyframes,
+        settings: {
+            outputAspect: document.getElementById('outputAspect').value,
+            imageScale: document.getElementById('imageScale').value,
+            imagePosX: document.getElementById('imagePosX').value,
+            imagePosY: document.getElementById('imagePosY').value,
+            bgColor: document.getElementById('bgColor').value,
+            vignetteEnabled: document.getElementById('vignetteEnabled').checked,
+            paperAmount: document.getElementById('paperAmount').value,
+            captionEnabled: document.getElementById('captionEnabled').checked,
+            captionText: document.getElementById('captionText').value,
+            captionCredit: document.getElementById('captionCredit').value,
+            scrollDuration: document.getElementById('scrollDuration').value,
+            stickyOffset: document.getElementById('stickyOffset').value,
+            mobileWidthMult: document.getElementById('mobileWidthMult').value
+        }
+    };
+    const blob = new Blob([JSON.stringify(project,null,2)], {type:'application/json'});
+    const safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = safeName + '.json'; a.click();
+}
+
+function loadProject() {
+    const input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+    input.onchange = e => {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try {
+                const proj = JSON.parse(ev.target.result);
+                imageUrl = proj.imageUrl;
+                imageNaturalWidth = proj.imageNaturalWidth || 0;
+                imageNaturalHeight = proj.imageNaturalHeight || 0;
+                highlights = proj.highlights || [];
+                keyframes = proj.keyframes || [];
+                if (proj.settings) {
+                    document.getElementById('outputAspect').value = proj.settings.outputAspect || proj.settings.aspectRatio || 'auto';
+                    document.getElementById('imageScale').value = proj.settings.imageScale || 1;
+                    document.getElementById('scaleVal').textContent = parseFloat(proj.settings.imageScale || 1).toFixed(2) + 'x';
+                    document.getElementById('imagePosX').value = proj.settings.imagePosX || 50;
+                    document.getElementById('posXVal').textContent = (proj.settings.imagePosX || 50) + '%';
+                    document.getElementById('imagePosY').value = proj.settings.imagePosY || 50;
+                    document.getElementById('posYVal').textContent = (proj.settings.imagePosY || 50) + '%';
+                    document.getElementById('bgColor').value = proj.settings.bgColor || '#000000';
+                    document.getElementById('vignetteEnabled').checked = proj.settings.vignetteEnabled || false;
+                    document.getElementById('paperAmount').value = proj.settings.paperAmount || 0;
+                    document.getElementById('paperAmountVal').textContent = (proj.settings.paperAmount || 0) + '%';
+                    document.getElementById('captionEnabled').checked = proj.settings.captionEnabled !== false;
+                    document.getElementById('captionText').value = proj.settings.captionText || '';
+                    document.getElementById('captionCredit').value = proj.settings.captionCredit || '';
+                    document.getElementById('scrollDuration').value = proj.settings.scrollDuration || 300;
+                    document.getElementById('scrollDurVal').textContent = proj.settings.scrollDuration || 300;
+                    document.getElementById('stickyOffset').value = proj.settings.stickyOffset || 200;
+                    document.getElementById('mobileWidthMult').value = proj.settings.mobileWidthMult || 1;
+                    document.getElementById('mobileWidthVal').textContent = parseFloat(proj.settings.mobileWidthMult || 1).toFixed(1) + 'x';
+                }
+                document.getElementById('imageUrl').value = imageUrl || '';
+                renderList();
+                renderKeyframeList();
+                rebuildPreview();
+                setPreviewHeight();
+            } catch(err) { alert('Invalid project file'); }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+// PERSISTENCE
+(function() {
+    var KEY = 'disco_doc-module';
+    
+    function saveState() {
+        var state = { inputs: {} };
+        state.imageUrl = imageUrl;
+        state.imageNaturalWidth = imageNaturalWidth;
+        state.imageNaturalHeight = imageNaturalHeight;
+        state.highlights = highlights;
+        state.keyframes = keyframes;
+        document.querySelectorAll('input[id], select[id], textarea[id]').forEach(function(el) {
+            if (el.type === 'checkbox') state.inputs[el.id] = el.checked;
+            else if (el.type === 'file') return;
+            else state.inputs[el.id] = el.value;
+        });
+        try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {}
+    }
+    
+    function loadState() {
+        try {
+            var saved = localStorage.getItem(KEY);
+            if (!saved) return;
+            var state = JSON.parse(saved);
+            
+            if (state.imageUrl !== undefined) imageUrl = state.imageUrl;
+            if (state.imageNaturalWidth !== undefined) imageNaturalWidth = state.imageNaturalWidth;
+            if (state.imageNaturalHeight !== undefined) imageNaturalHeight = state.imageNaturalHeight;
+            if (state.highlights) highlights = state.highlights;
+            if (state.keyframes) keyframes = state.keyframes;
+            
+            Object.keys(state.inputs || {}).forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    if (el.type === 'checkbox') el.checked = state.inputs[id];
+                    else if (el.type === 'file') return;
+                    else el.value = state.inputs[id];
+                }
+            });
+            
+            if (state.imageUrl) { document.getElementById('imageUrl').value = state.imageUrl; loadImage(); }
+            
+            // Update display values
+            document.getElementById('scaleVal').textContent = parseFloat(document.getElementById('imageScale').value).toFixed(2) + 'x';
+            document.getElementById('posXVal').textContent = document.getElementById('imagePosX').value + '%';
+            document.getElementById('posYVal').textContent = document.getElementById('imagePosY').value + '%';
+            document.getElementById('scrollDurVal').textContent = document.getElementById('scrollDuration').value;
+            document.getElementById('mobileWidthVal').textContent = parseFloat(document.getElementById('mobileWidthMult').value).toFixed(1) + 'x';
+            
+            renderList();
+            renderKeyframeList();
+            rebuildPreview();
+            setPreviewHeight();
+            updateVignette();
+        } catch(e) { console.warn('Load state error:', e); }
+    }
+    
+    window.resetModule = function() {
+        if (confirm('Reset all settings to defaults?')) {
+            localStorage.removeItem(KEY);
+            location.reload();
+        }
+    };
+    
+    var _orig_addHighlight = window.addHighlight;
+    window.addHighlight = function() { var r = _orig_addHighlight.apply(this, arguments); saveState(); return r; };
+    var _orig_removeHighlight = window.removeHighlight;
+    window.removeHighlight = function() { var r = _orig_removeHighlight.apply(this, arguments); saveState(); return r; };
+    var _orig_addKeyframe = window.addKeyframe;
+    window.addKeyframe = function() { var r = _orig_addKeyframe.apply(this, arguments); saveState(); return r; };
+    var _orig_removeKeyframe = window.removeKeyframe;
+    window.removeKeyframe = function() { var r = _orig_removeKeyframe.apply(this, arguments); saveState(); return r; };
+    
+    document.addEventListener('change', saveState);
+    document.addEventListener('input', saveState);
+    
+    setTimeout(loadState, 150);
+})();
+
+// INIT
+setPreviewHeight();
+renderList();
+renderKeyframeList();
+updateCaption();
+</script>
+</body>
+</html>

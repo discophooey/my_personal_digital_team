@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matte Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 380px; height: 260px; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; position: relative; }
+.matte-bg { position: absolute; inset: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 1; }
+.matte-surround { position: absolute; inset: 0; background: #000; z-index: 2; opacity: 0; transition: opacity 0.3s ease; }
+.matte-text { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; }
+.matte-letter { display: inline-block; font-family: 'Arial Black', sans-serif; font-size: 72px; font-weight: 900; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; background-clip: text; color: transparent; opacity: 0; transition: opacity 0.3s ease; }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Matte</div>
+    <div class="subtitle">Text reveals with background clipping effect</div>
+    <div class="demo">
+        <div class="matte-bg"></div>
+        <div class="matte-surround" id="surround"></div>
+        <div class="matte-text" id="matteText"></div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll to reveal</div>
+</div>
+<script>
+const text = "REVEAL";
+const matteText = document.getElementById('matteText');
+const surround = document.getElementById('surround');
+
+// Create letters
+text.split('').forEach((char, i) => {
+    const span = document.createElement('span');
+    span.className = 'matte-letter';
+    span.textContent = char;
+    span.dataset.index = i;
+    matteText.appendChild(span);
+});
+
+const letters = document.querySelectorAll('.matte-letter');
+const letterOrder = [];
+for (let i = 0; i < text.length; i++) letterOrder.push(i);
+// Shuffle for random order
+for (let i = letterOrder.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [letterOrder[i], letterOrder[j]] = [letterOrder[j], letterOrder[i]];
+}
+
+let progress = 0;
+let direction = 1;
+
+function animate() {
+    progress += direction * 0.015;
+    if (progress >= 1) { progress = 1; setTimeout(() => direction = -1, 1500); }
+    if (progress <= 0) { progress = 0; setTimeout(() => direction = 1, 500); }
+    
+    // Surround fades in
+    surround.style.opacity = Math.pow(progress, 0.7);
+    
+    // Staggered letter reveal
+    letters.forEach((letter, i) => {
+        const orderIndex = letterOrder.indexOf(i);
+        const staggerOffset = (orderIndex / letters.length) * 0.5;
+        const letterProgress = Math.max(0, Math.min(1, (progress - staggerOffset) / 0.3));
+        const eased = 1 - Math.pow(1 - letterProgress, 3);
+        letter.style.opacity = eased;
+    });
+    
+    requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presentation Planner - Presentation Disco</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; min-height: 100vh; padding: 24px; }
+
+.header { max-width: 900px; margin: 0 auto 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.header-left { display: flex; align-items: center; gap: 12px; }
+.back-btn { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; }
+.back-btn:hover { background: #3a3a3a; color: #fff; }
+.title-input { background: transparent; border: none; color: #4a9eff; font-size: 24px; font-weight: 600; outline: none; width: 300px; }
+.subtitle { color: #666; font-size: 13px; margin-top: 4px; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; border: none; }
+.btn-ghost { background: transparent; border: 1px solid #3a3a3a; color: #888; }
+.btn-ghost:hover { background: #2a2a2a; color: #fff; }
+.btn-secondary { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; }
+.btn-secondary:hover { background: #3a3a3a; color: #fff; }
+.btn-primary { background: #4a9eff; color: #000; font-weight: 600; }
+.btn-primary:hover { background: #357abd; }
+.btn-success { background: #2ecc71; color: #000; }
+.btn-export { background: #9b59b6; color: #fff; font-weight: 600; }
+.btn-export:hover { background: #8e44ad; }
+
+.take-bar { max-width: 900px; margin: 0 auto 16px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; }
+.take-bar label { color: #888; font-size: 13px; }
+.take-select { background: #2a2a2a; border: 1px solid #3a3a3a; color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 13px; }
+.take-info { color: #666; font-size: 12px; margin-left: auto; }
+
+.container { max-width: 900px; margin: 0 auto; }
+
+.section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; margin-bottom: 12px; overflow: hidden; cursor: grab; }
+.section.dragging { opacity: 0.5; }
+.section.dimmed { opacity: 0.4; }
+.section-header { padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.section-header:hover { background: #1f1f1f; }
+.drag-handle { color: #555; cursor: grab; }
+.module-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; min-width: 100px; text-align: center; }
+.take-badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; background: #333; color: #888; margin-left: -4px; }
+.take-badge.active { background: #9b59b6; color: #fff; }
+.section-title-input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; font-weight: 500; outline: none; }
+.section-duration { color: #666; font-size: 12px; }
+.section-actions { display: flex; gap: 4px; }
+.section-btn { background: transparent; border: none; color: #555; cursor: pointer; padding: 4px 8px; font-size: 14px; }
+.section-btn:hover { color: #fff; }
+.section-btn.edit-active { background: #4a9eff; color: #000; border-radius: 4px; }
+
+.section-edit { padding: 16px; background: #151515; border-top: 1px solid #2a2a2a; display: none; }
+.section-edit.active { display: block; }
+.edit-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.edit-field { }
+.edit-field label { color: #666; font-size: 11px; display: block; margin-bottom: 6px; text-transform: uppercase; }
+.edit-field input, .edit-field select, .edit-field textarea { width: 100%; background: #2a2a2a; border: 1px solid #3a3a3a; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-family: inherit; }
+.edit-field textarea { min-height: 60px; resize: vertical; }
+.edit-field input:focus, .edit-field textarea:focus { border-color: #4a9eff; outline: none; }
+.color-options { display: flex; gap: 6px; }
+.color-btn { width: 24px; height: 24px; border: 2px solid transparent; border-radius: 4px; cursor: pointer; }
+.color-btn.active { border-color: #fff; }
+
+.module-inputs { margin-top: 16px; padding-top: 16px; border-top: 1px solid #2a2a2a; }
+.module-inputs-title { color: #4a9eff; font-size: 12px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.input-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
+.input-row .edit-field { flex: 1; }
+.input-row .btn { padding: 8px 12px; height: 38px; }
+.items-list { margin-top: 12px; }
+.item-row { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: #1a1a1a; border-radius: 4px; margin-bottom: 6px; font-size: 13px; }
+.item-row .item-text { flex: 1; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-row .item-sub { color: #666; font-size: 11px; margin-left: 8px; }
+.item-row button { background: #333; border: none; color: #888; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.item-row button:hover { background: #444; color: #fff; }
+
+.notes-preview { padding: 0 16px 12px 48px; color: #666; font-size: 13px; }
+.content-preview { padding: 0 16px 12px 48px; color: #4a9eff; font-size: 12px; }
+
+.add-section-btn { width: 100%; padding: 16px; background: transparent; border: 2px dashed #2a2a2a; border-radius: 8px; color: #555; cursor: pointer; font-size: 14px; margin-top: 8px; }
+.add-section-btn:hover { border-color: #4a9eff; color: #4a9eff; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: #666; }
+.empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+
+/* Modal */
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000; }
+.modal.active { display: flex; }
+.modal-content { background: #1a1a1a; border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 80vh; overflow: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h3 { color: #4a9eff; margin: 0; }
+.modal-close { background: transparent; border: none; color: #888; font-size: 20px; cursor: pointer; }
+.modal-textarea { width: 100%; height: 200px; background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px; color: #ccc; padding: 16px; font-size: 13px; font-family: monospace; resize: none; margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 8px; }
+.modal-actions .btn { flex: 1; padding: 12px; }
+
+.share-url-box { background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; margin-bottom: 16px; word-break: break-all; font-family: monospace; font-size: 12px; color: #888; max-height: 100px; overflow: auto; }
+
+.load-item { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 8px; padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.load-item:hover { border-color: #4a9eff; }
+.load-item-title { color: #fff; font-weight: 500; }
+.load-item-meta { color: #666; font-size: 12px; }
+
+.import-label { display: block; padding: 12px; background: #2a2a2a; border: 1px dashed #3a3a3a; border-radius: 8px; text-align: center; color: #888; cursor: pointer; margin-top: 16px; }
+.import-label:hover { border-color: #4a9eff; color: #4a9eff; }
+.import-label input { display: none; }
+
+.export-result { margin-top: 16px; padding: 12px; background: #1a2a1a; border: 1px solid #2a3a2a; border-radius: 8px; }
+.export-result-title { color: #2ecc71; font-size: 13px; margin-bottom: 8px; }
+.export-result-item { color: #888; font-size: 12px; padding: 4px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <div class="header-left">
+            <a href="index.html" class="back-btn">← Hub</a>
+            <input type="text" class="title-input" id="projectTitle" value="Untitled Presentation" />
+        </div>
+        <div class="subtitle"><span id="sectionCount">0</span> sections · ~<span id="totalDuration">0</span>s scroll</div>
+    </div>
+    <div class="header-actions">
+        <button class="btn btn-ghost" onclick="newProject()">New</button>
+        <button class="btn btn-secondary" onclick="openLoadModal()">Load</button>
+        <button class="btn btn-secondary" onclick="openSaveShareModal()">Save / Share</button>
+        <button class="btn btn-export" onclick="exportToModules()">⬆ Export to Modules</button>
+        <button class="btn btn-primary" onclick="addSection()">+ Add</button>
+    </div>
+</div>
+
+<div class="take-bar">
+    <label>Active Take:</label>
+    <select class="take-select" id="currentTake" onchange="renderSections()">
+        <option value="1">Take 1</option>
+        <option value="2">Take 2</option>
+        <option value="3">Take 3</option>
+        <option value="4">Take 4</option>
+        <option value="5">Take 5</option>
+    </select>
+    <span class="take-info" id="takeInfo">All sections shown</span>
+</div>
+
+<div class="container">
+    <div id="sectionsContainer">
+        <div class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <p>Start planning your scroll presentation.<br>Click "+ Add" to create your first section.</p>
+        </div>
+    </div>
+    <button class="add-section-btn" onclick="addSection()">+ Add Section</button>
+</div>
+
+<!-- Share Modal -->
+<div class="modal" id="shareModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Save / Share</h3>
+            <button class="modal-close" onclick="closeModal('shareModal')">×</button>
+        </div>
+        <div class="edit-field" style="margin-bottom:16px;">
+            <label>Project Name</label>
+            <input type="text" id="saveProjectName" style="margin-bottom:0;">
+        </div>
+        <div class="modal-actions" style="margin-bottom:16px;">
+            <button class="btn btn-primary" id="saveBtn" onclick="saveAndDownload()">💾 Save & Download</button>
+        </div>
+        <div style="border-top:1px solid #2a2a2a;padding-top:16px;margin-top:8px;">
+            <label style="color:#666;font-size:11px;display:block;margin-bottom:8px;text-transform:uppercase;">Share Options</label>
+            <div id="shareUrlBox" class="share-url-box"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="copyShareUrl()">📋 Copy Share URL</button>
+                <button class="btn btn-secondary" onclick="copyShareText()">📄 Copy as Text</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Load Modal -->
+<div class="modal" id="loadModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Load Project</h3>
+            <button class="modal-close" onclick="closeModal('loadModal')">×</button>
+        </div>
+        <div id="savedProjectsList"></div>
+        <label class="import-label">
+            Import from JSON file
+            <input type="file" accept=".json" onchange="importJSON(event)" />
+        </label>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Export to Modules</h3>
+            <button class="modal-close" onclick="closeModal('exportModal')">×</button>
+        </div>
+        <div id="exportResult"></div>
+        <div class="modal-actions" style="margin-top:16px;">
+            <button class="btn btn-primary" onclick="closeModal('exportModal')">Done</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const moduleTypes = [
+    { id: 'single-image', name: 'Single Image', color: '#e74c3c' },
+    { id: 'layers', name: 'Layers', color: '#3498db' },
+    { id: 'before-after', name: 'Before/After', color: '#e74c3c' },
+    { id: 'video', name: 'Video', color: '#e74c3c' },
+    { id: 'pull-quote', name: 'Pull Quote', color: '#9b59b6' },
+    { id: 'gallery', name: 'Gallery', color: '#2ecc71' },
+    { id: 'hotspots', name: 'Hotspots', color: '#e67e22' },
+    { id: 'stat-counter', name: 'Stat Counter', color: '#f39c12' },
+    { id: 'timeline', name: 'Timeline', color: '#1abc9c' },
+    { id: 'chart', name: 'Chart', color: '#f39c12' },
+    { id: 'card-stack', name: 'Card Stack', color: '#9b59b6' },
+    { id: 'globe', name: 'Globe', color: '#1abc9c' },
+    { id: 'collage', name: 'Collage', color: '#3498db' },
+    { id: 'zoom-detail', name: 'Zoom Detail', color: '#2ecc71' },
+    { id: 'matte', name: 'Matte', color: '#9b59b6' },
+    { id: 'text', name: 'Text Block', color: '#95a5a6' },
+];
+
+const colors = ['#e74c3c', '#e67e22', '#f39c12', '#2ecc71', '#1abc9c', '#3498db', '#9b59b6', '#95a5a6'];
+
+let sections = [];
+let sectionIdCounter = 0;
+let draggedId = null;
+let editingId = null;
+
+// Check for shared project in URL
+function loadFromUrl() {
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+        try {
+            const json = LZString.decompressFromEncodedURIComponent(hash);
+            const data = JSON.parse(json);
+            if (data.title && data.sections) {
+                document.getElementById('projectTitle').value = data.title;
+                sections = data.sections;
+                sectionIdCounter = Math.max(...sections.map(s => s.id), 0);
+                history.replaceState(null, '', window.location.pathname);
+                return true;
+            }
+        } catch (e) {
+            console.warn('Could not load from URL:', e);
+        }
+    }
+    return false;
+}
+
+function getModuleInfo(typeId) {
+    return moduleTypes.find(m => m.id === typeId) || moduleTypes[0];
+}
+
+function getTakeCount(moduleType) {
+    return sections.filter(s => s.moduleType === moduleType).length;
+}
+
+function getNextTake(moduleType) {
+    const existing = sections.filter(s => s.moduleType === moduleType);
+    if (existing.length === 0) return 1;
+    const takes = existing.map(s => s.take || 1);
+    return Math.max(...takes) + 1;
+}
+
+function addSection() {
+    const section = {
+        id: ++sectionIdCounter,
+        moduleType: 'single-image',
+        title: 'New Section',
+        notes: '',
+        color: '#e74c3c',
+        duration: '2s',
+        take: 1,
+        content: {}
+    };
+    sections.push(section);
+    editingId = section.id;
+    renderSections();
+}
+
+function removeSection(id, e) {
+    e.stopPropagation();
+    if (confirm('Remove this section?')) {
+        sections = sections.filter(s => s.id !== id);
+        renderSections();
+    }
+}
+
+function toggleEdit(id) {
+    editingId = editingId === id ? null : id;
+    renderSections();
+}
+
+function updateSection(id, field, value) {
+    const section = sections.find(s => s.id === id);
+    if (section) {
+        if (field === 'moduleType') {
+            section.moduleType = value;
+            section.color = getModuleInfo(value).color;
+            section.content = {};
+            // Check if this creates a duplicate, assign next take
+            const sameType = sections.filter(s => s.id !== id && s.moduleType === value);
+            if (sameType.length > 0) {
+                const existingTakes = sameType.map(s => s.take || 1);
+                section.take = Math.max(...existingTakes) + 1;
+            } else {
+                section.take = 1;
+            }
+        } else {
+            section[field] = value;
+        }
+        renderSections();
+    }
+}
+
+function updateContent(id, field, value) {
+    const section = sections.find(s => s.id === id);
+    if (section) {
+        if (!section.content) section.content = {};
+        section.content[field] = value;
+    }
+}
+
+function addContentItem(sectionId, field) {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+    if (!section.content) section.content = {};
+    if (!section.content[field]) section.content[field] = [];
+    
+    const inputId = `input_${sectionId}_${field}`;
+    const input = document.getElementById(inputId);
+    if (!input || !input.value.trim()) return;
+    
+    section.content[field].push(input.value.trim());
+    input.value = '';
+    renderSections();
+}
+
+function addContentObject(sectionId, field, obj) {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+    if (!section.content) section.content = {};
+    if (!section.content[field]) section.content[field] = [];
+    section.content[field].push(obj);
+    renderSections();
+}
+
+function removeContentItem(sectionId, field, index) {
+    const section = sections.find(s => s.id === sectionId);
+    if (section && section.content && section.content[field]) {
+        section.content[field].splice(index, 1);
+        renderSections();
+    }
+}
+
+function getModuleInputsHtml(section) {
+    const c = section.content || {};
+    const id = section.id;
+    
+    switch(section.moduleType) {
+        case 'single-image':
+            return `
+                <div class="edit-field">
+                    <label>Image URL</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Image caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'layers':
+            return `
+                <div class="input-row">
+                    <div class="edit-field">
+                        <label>Add Layer Image URL</label>
+                        <input type="text" id="input_${id}_images" placeholder="https://...">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addContentItem(${id}, 'images')">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.images || []).map((url, i) => `
+                        <div class="item-row">
+                            <span class="item-text">Layer ${i+1}: ${url}</span>
+                            <button onclick="removeContentItem(${id}, 'images', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="edit-field" style="margin-top:12px;">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'before-after':
+            return `
+                <div class="edit-field">
+                    <label>Before Image URL</label>
+                    <input type="text" value="${c.beforeUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'beforeUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>After Image URL</label>
+                    <input type="text" value="${c.afterUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'afterUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Image caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'video':
+            return `
+                <div class="edit-field">
+                    <label>Video URL</label>
+                    <input type="text" value="${c.videoUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'videoUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Video caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Video: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'pull-quote':
+            return `
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Quote Text</label>
+                    <textarea onchange="updateContent(${id}, 'quote', this.value)" placeholder="Enter the quote...">${c.quote || ''}</textarea>
+                </div>
+                <div class="edit-field">
+                    <label>Attribution</label>
+                    <input type="text" value="${c.attribution || ''}" placeholder="— Speaker Name" onchange="updateContent(${id}, 'attribution', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Background Image URL</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>`;
+        
+        case 'gallery':
+            return `
+                <div class="input-row">
+                    <div class="edit-field">
+                        <label>Add Gallery Image URL</label>
+                        <input type="text" id="input_${id}_images" placeholder="https://...">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addContentItem(${id}, 'images')">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.images || []).map((url, i) => `
+                        <div class="item-row">
+                            <span class="item-text">Image ${i+1}: ${url}</span>
+                            <button onclick="removeContentItem(${id}, 'images', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="edit-field" style="margin-top:12px;">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Gallery caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'hotspots':
+            return `
+                <div class="edit-field">
+                    <label>Background Image URL</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'stat-counter':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:0.5;">
+                        <label>Value</label>
+                        <input type="number" id="input_${id}_value" placeholder="100">
+                    </div>
+                    <div class="edit-field" style="flex:0.3;">
+                        <label>Prefix</label>
+                        <input type="text" id="input_${id}_prefix" placeholder="$">
+                    </div>
+                    <div class="edit-field" style="flex:0.3;">
+                        <label>Suffix</label>
+                        <input type="text" id="input_${id}_suffix" placeholder="%">
+                    </div>
+                    <div class="edit-field" style="flex:1;">
+                        <label>Label</label>
+                        <input type="text" id="input_${id}_label" placeholder="Revenue">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addStatItem(${id})">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.stats || []).map((s, i) => `
+                        <div class="item-row">
+                            <span class="item-text">${s.prefix}${s.value}${s.suffix}</span>
+                            <span class="item-sub">${s.label}</span>
+                            <button onclick="removeContentItem(${id}, 'stats', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'timeline':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:0.4;">
+                        <label>Date</label>
+                        <input type="text" id="input_${id}_date" placeholder="2024">
+                    </div>
+                    <div class="edit-field" style="flex:1;">
+                        <label>Title</label>
+                        <input type="text" id="input_${id}_title" placeholder="Event title">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addTimelineItem(${id})">Add</button>
+                </div>
+                <div class="input-row">
+                    <div class="edit-field" style="flex:1;">
+                        <label>Description</label>
+                        <input type="text" id="input_${id}_desc" placeholder="Event description">
+                    </div>
+                    <div class="edit-field" style="flex:1;">
+                        <label>Image URL (optional)</label>
+                        <input type="text" id="input_${id}_image" placeholder="https://...">
+                    </div>
+                </div>
+                <div class="items-list">
+                    ${(c.events || []).map((e, i) => `
+                        <div class="item-row">
+                            <span class="item-text">${e.date}: ${e.title}</span>
+                            <span class="item-sub">${e.text || ''}</span>
+                            <button onclick="removeContentItem(${id}, 'events', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'chart':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:0.5;">
+                        <label>Chart Type</label>
+                        <select id="input_${id}_chartType" onchange="updateContent(${id}, 'chartType', this.value)">
+                            <option value="bar" ${c.chartType === 'bar' ? 'selected' : ''}>Bar</option>
+                            <option value="pie" ${c.chartType === 'pie' ? 'selected' : ''}>Pie</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-row">
+                    <div class="edit-field" style="flex:1;">
+                        <label>Label</label>
+                        <input type="text" id="input_${id}_label" placeholder="Category">
+                    </div>
+                    <div class="edit-field" style="flex:0.5;">
+                        <label>Value</label>
+                        <input type="number" id="input_${id}_value" placeholder="50">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addChartItem(${id})">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.data || []).map((d, i) => `
+                        <div class="item-row">
+                            <span class="item-text">${d.label}: ${d.value}</span>
+                            <button onclick="removeContentItem(${id}, 'data', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'card-stack':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:1;">
+                        <label>Card Text</label>
+                        <input type="text" id="input_${id}_text" placeholder="Card content">
+                    </div>
+                    <div class="edit-field" style="flex:1;">
+                        <label>Image URL (optional)</label>
+                        <input type="text" id="input_${id}_image" placeholder="https://...">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addCardItem(${id})">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.cards || []).map((card, i) => `
+                        <div class="item-row">
+                            <span class="item-text">Card ${i+1}: ${card.text || card.image || '(empty)'}</span>
+                            <button onclick="removeContentItem(${id}, 'cards', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'globe':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:1;">
+                        <label>Coordinates</label>
+                        <input type="text" id="input_${id}_coords" placeholder="40.71, -74.00 | 40°42'N 74°0'W | Google Maps paste">
+                    </div>
+                    <div class="edit-field" style="flex:0.8;">
+                        <label>Label</label>
+                        <input type="text" id="input_${id}_label" placeholder="New York">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addGlobeItem(${id})">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.points || []).map((p, i) => `
+                        <div class="item-row">
+                            <span class="item-text">${p.label || 'Point ' + (i+1)}</span>
+                            <span class="item-sub">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
+                            <button onclick="removeContentItem(${id}, 'points', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'collage':
+            return `
+                <div class="input-row">
+                    <div class="edit-field">
+                        <label>Add Collage Image URL</label>
+                        <input type="text" id="input_${id}_images" placeholder="https://...">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addContentItem(${id}, 'images')">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.images || []).map((url, i) => `
+                        <div class="item-row">
+                            <span class="item-text">Image ${i+1}: ${url}</span>
+                            <button onclick="removeContentItem(${id}, 'images', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="edit-field" style="margin-top:12px;">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Collage caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'zoom-detail':
+            return `
+                <div class="edit-field">
+                    <label>Image URL</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'matte':
+            return `
+                <div class="edit-field">
+                    <label>Background Image URL</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Matte Text</label>
+                    <input type="text" value="${c.matteText || ''}" placeholder="REVEAL" onchange="updateContent(${id}, 'matteText', this.value)">
+                </div>`;
+        
+        case 'text':
+        default:
+            return `<p style="color:#666;font-size:12px;">Text blocks don't export to modules — use the notes field for planning.</p>`;
+    }
+}
+
+// Helper functions for complex items
+function addStatItem(sectionId) {
+    const value = document.getElementById(`input_${sectionId}_value`).value;
+    const prefix = document.getElementById(`input_${sectionId}_prefix`).value;
+    const suffix = document.getElementById(`input_${sectionId}_suffix`).value;
+    const label = document.getElementById(`input_${sectionId}_label`).value;
+    if (!value) return;
+    addContentObject(sectionId, 'stats', { value: parseFloat(value), prefix, suffix, label, decimals: 0 });
+    document.getElementById(`input_${sectionId}_value`).value = '';
+    document.getElementById(`input_${sectionId}_prefix`).value = '';
+    document.getElementById(`input_${sectionId}_suffix`).value = '';
+    document.getElementById(`input_${sectionId}_label`).value = '';
+}
+
+function addTimelineItem(sectionId) {
+    const date = document.getElementById(`input_${sectionId}_date`).value;
+    const title = document.getElementById(`input_${sectionId}_title`).value;
+    const desc = document.getElementById(`input_${sectionId}_desc`).value;
+    const image = document.getElementById(`input_${sectionId}_image`).value;
+    if (!date || !title) return;
+    addContentObject(sectionId, 'events', { date, title, text: desc, image });
+    document.getElementById(`input_${sectionId}_date`).value = '';
+    document.getElementById(`input_${sectionId}_title`).value = '';
+    document.getElementById(`input_${sectionId}_desc`).value = '';
+    document.getElementById(`input_${sectionId}_image`).value = '';
+}
+
+function addChartItem(sectionId) {
+    const label = document.getElementById(`input_${sectionId}_label`).value;
+    const value = document.getElementById(`input_${sectionId}_value`).value;
+    if (!label || !value) return;
+    addContentObject(sectionId, 'data', { label, value: parseFloat(value), color: colors[Math.floor(Math.random() * colors.length)] });
+    document.getElementById(`input_${sectionId}_label`).value = '';
+    document.getElementById(`input_${sectionId}_value`).value = '';
+}
+
+function addCardItem(sectionId) {
+    const text = document.getElementById(`input_${sectionId}_text`).value;
+    const image = document.getElementById(`input_${sectionId}_image`).value;
+    if (!text && !image) return;
+    addContentObject(sectionId, 'cards', { text, image });
+    document.getElementById(`input_${sectionId}_text`).value = '';
+    document.getElementById(`input_${sectionId}_image`).value = '';
+}
+
+function parseCoordinates(str) {
+    if (!str) return null;
+    str = str.trim();
+    
+    // Try decimal format: "40.71, -74.00" or "40.71 -74.00"
+    let match = str.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+    if (match) {
+        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    }
+    
+    // Try DMS format: 40°42'N 74°0'W or 40°42'46"N 74°0'22"W
+    match = str.match(/(\d+)[°](\d+)?['′]?(\d+\.?\d*)?["″]?\s*([NSns])[,\s]+(\d+)[°](\d+)?['′]?(\d+\.?\d*)?["″]?\s*([EWew])/);
+    if (match) {
+        let lat = parseFloat(match[1]) + (parseFloat(match[2] || 0) / 60) + (parseFloat(match[3] || 0) / 3600);
+        let lng = parseFloat(match[5]) + (parseFloat(match[6] || 0) / 60) + (parseFloat(match[7] || 0) / 3600);
+        if (match[4].toUpperCase() === 'S') lat = -lat;
+        if (match[8].toUpperCase() === 'W') lng = -lng;
+        return { lat, lng };
+    }
+    
+    // Try Google Maps URL paste: contains @40.7,-74.0 or !3d40.7!4d-74.0
+    match = str.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (match) {
+        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    }
+    match = str.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+    if (match) {
+        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    }
+    
+    return null;
+}
+
+function addGlobeItem(sectionId) {
+    const coordsInput = document.getElementById(`input_${sectionId}_coords`).value;
+    const label = document.getElementById(`input_${sectionId}_label`).value;
+    
+    const coords = parseCoordinates(coordsInput);
+    if (!coords) {
+        alert('Could not parse coordinates. Try formats like:\n• 40.71, -74.00\n• 40°42\'N 74°0\'W\n• Paste Google Maps URL');
+        return;
+    }
+    
+    addContentObject(sectionId, 'points', { lat: coords.lat, lng: coords.lng, label: label || '', id: Date.now() });
+    document.getElementById(`input_${sectionId}_coords`).value = '';
+    document.getElementById(`input_${sectionId}_label`).value = '';
+}
+
+function getContentPreview(section) {
+    const c = section.content || {};
+    switch(section.moduleType) {
+        case 'single-image':
+        case 'zoom-detail':
+        case 'hotspots':
+            return c.imageUrl ? '🖼 Image set' : '';
+        case 'layers':
+        case 'gallery':
+        case 'collage':
+            return (c.images && c.images.length) ? `🖼 ${c.images.length} images` : '';
+        case 'before-after':
+            return (c.beforeUrl && c.afterUrl) ? '🖼 Before/After set' : '';
+        case 'video':
+            return c.videoUrl ? '🎬 Video set' : '';
+        case 'pull-quote':
+            return c.quote ? `"${c.quote.substring(0, 30)}..."` : '';
+        case 'stat-counter':
+            return (c.stats && c.stats.length) ? `📊 ${c.stats.length} stats` : '';
+        case 'timeline':
+            return (c.events && c.events.length) ? `📅 ${c.events.length} events` : '';
+        case 'chart':
+            return (c.data && c.data.length) ? `📈 ${c.data.length} data points` : '';
+        case 'card-stack':
+            return (c.cards && c.cards.length) ? `🃏 ${c.cards.length} cards` : '';
+        case 'globe':
+            return (c.points && c.points.length) ? `🌍 ${c.points.length} locations` : '';
+        case 'matte':
+            return c.matteText ? `✨ "${c.matteText}"` : '';
+        default:
+            return '';
+    }
+}
+
+function renderSections() {
+    const container = document.getElementById('sectionsContainer');
+    const currentTake = parseInt(document.getElementById('currentTake').value);
+    
+    document.getElementById('sectionCount').textContent = sections.length;
+    const totalDuration = sections.reduce((acc, s) => acc + parseInt(s.duration || 0), 0);
+    document.getElementById('totalDuration').textContent = totalDuration;
+    
+    // Update take info
+    const takeCount = sections.filter(s => (s.take || 1) === currentTake).length;
+    document.getElementById('takeInfo').textContent = `Take ${currentTake}: ${takeCount} section${takeCount !== 1 ? 's' : ''} will export`;
+
+    if (sections.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📝</div>
+                <p>Start planning your scroll presentation.<br>Click "+ Add" to create your first section.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    sections.forEach((section, index) => {
+        const mod = getModuleInfo(section.moduleType);
+        const isEditing = editingId === section.id;
+        const sectionTake = section.take || 1;
+        const isActiveTake = sectionTake === currentTake;
+        const hasDuplicates = sections.filter(s => s.moduleType === section.moduleType).length > 1;
+        const contentPreview = getContentPreview(section);
+        
+        html += `
+            <div class="section ${draggedId === section.id ? 'dragging' : ''} ${!isActiveTake ? 'dimmed' : ''}" 
+                 draggable="true" 
+                 data-id="${section.id}"
+                 ondragstart="handleDragStart(event, ${section.id})"
+                 ondragover="handleDragOver(event, ${section.id})"
+                 ondragend="handleDragEnd()"
+                 style="border-left: 4px solid ${section.color};">
+                <div class="section-header" ondblclick="toggleEdit(${section.id})">
+                    <span class="drag-handle">⋮⋮</span>
+                    <span class="module-badge" style="background: ${section.color}33; color: ${section.color};">
+                        ${mod.name}
+                    </span>
+                    ${hasDuplicates ? `<span class="take-badge ${isActiveTake ? 'active' : ''}">T${sectionTake}</span>` : ''}
+                    <input type="text" class="section-title-input" value="${section.title}" 
+                           onchange="updateSection(${section.id}, 'title', this.value)"
+                           onclick="event.stopPropagation()" />
+                    <span class="section-duration">${section.duration}</span>
+                    <div class="section-actions">
+                        <button class="section-btn ${isEditing ? 'edit-active' : ''}" onclick="event.stopPropagation(); toggleEdit(${section.id})">
+                            ${isEditing ? 'Done' : '✎'}
+                        </button>
+                        <button class="section-btn" onclick="removeSection(${section.id}, event)">×</button>
+                    </div>
+                </div>
+                <div class="section-edit ${isEditing ? 'active' : ''}">
+                    <div class="edit-grid">
+                        <div class="edit-field">
+                            <label>Module Type</label>
+                            <select onchange="updateSection(${section.id}, 'moduleType', this.value)">
+                                ${moduleTypes.map(m => `<option value="${m.id}" ${section.moduleType === m.id ? 'selected' : ''}>${m.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="edit-field">
+                            <label>Duration</label>
+                            <select onchange="updateSection(${section.id}, 'duration', this.value)">
+                                ${['1s','2s','3s','4s','5s','6s','8s','10s'].map(d => `<option value="${d}" ${section.duration === d ? 'selected' : ''}>${d}</option>`).join('')}
+                            </select>
+                        </div>
+                        ${hasDuplicates ? `
+                        <div class="edit-field">
+                            <label>Take</label>
+                            <select onchange="updateSection(${section.id}, 'take', parseInt(this.value))">
+                                ${[1,2,3,4,5].map(t => `<option value="${t}" ${sectionTake === t ? 'selected' : ''}>Take ${t}</option>`).join('')}
+                            </select>
+                        </div>
+                        ` : ''}
+                        <div class="edit-field">
+                            <label>Color</label>
+                            <div class="color-options">
+                                ${colors.map(c => `<button class="color-btn ${section.color === c ? 'active' : ''}" style="background: ${c};" onclick="updateSection(${section.id}, 'color', '${c}')"></button>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="module-inputs">
+                        <div class="module-inputs-title">Module Content</div>
+                        ${getModuleInputsHtml(section)}
+                    </div>
+                    <div class="edit-field" style="margin-top:16px;">
+                        <label>Notes</label>
+                        <textarea placeholder="Planning notes..." 
+                                  onchange="updateSection(${section.id}, 'notes', this.value)">${section.notes || ''}</textarea>
+                    </div>
+                </div>
+                ${!isEditing && contentPreview ? `<div class="content-preview">${contentPreview}</div>` : ''}
+                ${!isEditing && section.notes ? `<div class="notes-preview">${section.notes.length > 100 ? section.notes.slice(0, 100) + '...' : section.notes}</div>` : ''}
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Export to Modules
+function exportToModules() {
+    const currentTake = parseInt(document.getElementById('currentTake').value);
+    const exportSections = sections.filter(s => (s.take || 1) === currentTake && s.moduleType !== 'text');
+    
+    if (exportSections.length === 0) {
+        alert('No sections to export in Take ' + currentTake);
+        return;
+    }
+    
+    const results = [];
+    const exportedTypes = new Set();
+    
+    exportSections.forEach(section => {
+        if (exportedTypes.has(section.moduleType)) return; // Skip duplicates within same take
+        exportedTypes.add(section.moduleType);
+        
+        const state = buildModuleState(section);
+        if (state) {
+            const key = 'disco_' + section.moduleType;
+            try {
+                localStorage.setItem(key, JSON.stringify(state));
+                results.push({ module: getModuleInfo(section.moduleType).name, success: true });
+            } catch(e) {
+                results.push({ module: getModuleInfo(section.moduleType).name, success: false, error: e.message });
+            }
+        }
+    });
+    
+    // Show results
+    let html = '<div class="export-result"><div class="export-result-title">✓ Exported Take ' + currentTake + ' to Modules</div>';
+    results.forEach(r => {
+        html += `<div class="export-result-item">${r.success ? '✓' : '✗'} ${r.module}${r.error ? ' - ' + r.error : ''}</div>`;
+    });
+    html += '<p style="color:#888;font-size:12px;margin-top:12px;">Visit each module to see pre-populated content.</p></div>';
+    
+    document.getElementById('exportResult').innerHTML = html;
+    document.getElementById('exportModal').classList.add('active');
+}
+
+function buildModuleState(section) {
+    const c = section.content || {};
+    
+    switch(section.moduleType) {
+        case 'single-image':
+            if (!c.imageUrl) return null;
+            return {
+                imageUrl: c.imageUrl,
+                inputs: { 
+                    imageUrl: c.imageUrl,
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'layers':
+            if (!c.images || !c.images.length) return null;
+            return {
+                layers: c.images.map((url, i) => ({
+                    id: Date.now() + i,
+                    url: url,
+                    depth: i / (c.images.length || 1),
+                    opacity: 1,
+                    fadeIn: 0,
+                    fadeOut: 100,
+                    blend: 'normal'
+                })),
+                textLayers: [],
+                inputs: {
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'before-after':
+            if (!c.beforeUrl || !c.afterUrl) return null;
+            return {
+                beforeUrl: c.beforeUrl,
+                afterUrl: c.afterUrl,
+                inputs: { 
+                    beforeUrl: c.beforeUrl, 
+                    afterUrl: c.afterUrl,
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'video':
+            if (!c.videoUrl) return null;
+            return {
+                videoUrl: c.videoUrl,
+                inputs: { 
+                    videoUrl: c.videoUrl,
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'pull-quote':
+            if (!c.quote) return null;
+            return {
+                inputs: {
+                    quoteText: c.quote,
+                    attribution: c.attribution || ''
+                },
+                bgImageData: c.imageUrl || ''
+            };
+        
+        case 'gallery':
+            if (!c.images || !c.images.length) return null;
+            var now = Date.now();
+            // Convert GitHub URLs to raw URLs
+            function convertGithubUrl(url) {
+                if (!url) return url;
+                if (url.includes('github.com') && url.includes('/blob/')) {
+                    return url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/').split('?')[0];
+                }
+                return url;
+            }
+            return {
+                images: c.images.map(function(url, i) {
+                    var convertedUrl = convertGithubUrl(url);
+                    return {
+                        id: now + i * 1000,
+                        src: convertedUrl,
+                        name: (convertedUrl && typeof convertedUrl === 'string') ? (convertedUrl.split('/').pop() || 'Image') : 'Image',
+                        textEnabled: false,
+                        text: '',
+                        textSize: 32,
+                        textColor: '#ffffff',
+                        textAlign: 'center',
+                        textPosition: 'bottom',
+                        textX: 0,
+                        textY: 0,
+                        textBgEnabled: true,
+                        textBgOpacity: 80,
+                        textLineHeight: 1.4,
+                        textLetterSpacing: 0,
+                        captionEnabled: true,
+                        caption: c.caption || '',
+                        credit: c.captionCredit || '',
+                        link: '',
+                        startScroll: Math.round(i * 100 / c.images.length),
+                        endScroll: Math.round((i + 1) * 100 / c.images.length)
+                    };
+                }),
+                inputs: {
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'hotspots':
+            if (!c.imageUrl) return null;
+            return {
+                imageUrl: c.imageUrl,
+                hotspots: [],
+                inputs: { 
+                    imageUrl: c.imageUrl,
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'stat-counter':
+            if (!c.stats || !c.stats.length) return null;
+            return {
+                stats: c.stats,
+                inputs: {}
+            };
+        
+        case 'timeline':
+            if (!c.events || !c.events.length) return null;
+            return {
+                events: c.events,
+                inputs: {}
+            };
+        
+        case 'chart':
+            if (!c.data || !c.data.length) return null;
+            return {
+                data: c.data,
+                chartType: c.chartType || 'bar',
+                orientation: 'horizontal',
+                pieStyle: 'pie',
+                stagger: true,
+                sizing: 'fit',
+                inputs: {}
+            };
+        
+        case 'card-stack':
+            if (!c.cards || !c.cards.length) return null;
+            return {
+                cards: c.cards.map((card, i) => ({
+                    id: Date.now() + i,
+                    text: card.text || '',
+                    image: card.image || '',
+                    bgColor: '#1a1a1a'
+                })),
+                inputs: {}
+            };
+        
+        case 'globe':
+            if (!c.points || !c.points.length) return null;
+            return {
+                points: c.points.map(function(p) {
+                    return {
+                        id: p.id || Date.now(),
+                        label: p.label || '',
+                        lat: p.lat,
+                        lng: p.lng,
+                        color: p.color || '#ff3333',
+                        size: p.size || 8,
+                        showLabel: p.showLabel !== false
+                    };
+                }),
+                lines: [],
+                inputs: {}
+            };
+        
+        case 'collage':
+            if (!c.images || !c.images.length) return null;
+            return {
+                images: c.images.map((url, i) => ({
+                    id: Date.now() + i,
+                    url: url,
+                    x: 10 + (i % 3) * 30,
+                    y: 10 + Math.floor(i / 3) * 30,
+                    width: 35,
+                    height: 35,
+                    rotation: 0,
+                    zIndex: i
+                })),
+                inputs: {
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'zoom-detail':
+            if (!c.imageUrl) return null;
+            return {
+                imageUrl: c.imageUrl,
+                inputs: { 
+                    imageUrl: c.imageUrl,
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'matte':
+            return {
+                config: {
+                    matteSource: 'text',
+                    matteText: c.matteText || 'REVEAL',
+                    fontSize: 120,
+                    fontSizeMobile: 65,
+                    textAnim: 'random',
+                    textPosition: 'center',
+                    letterStagger: 50,
+                    letterOrder: [],
+                    matteImageUrl: '',
+                    bgImageUrl: c.imageUrl || '',
+                    surroundColor: '#000000',
+                    sizing: 'contain',
+                    containerHeight: 500
+                },
+                inputs: {
+                    'matte-text': c.matteText || 'REVEAL',
+                    'bg-image-url': c.imageUrl || ''
+                },
+                textAnim: 'random',
+                textPosition: 'center',
+                sizing: 'contain'
+            };
+        
+        default:
+            return null;
+    }
+}
+
+// Drag and drop
+function handleDragStart(e, id) {
+    draggedId = id;
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(e, targetId) {
+    e.preventDefault();
+    if (draggedId === targetId) return;
+    
+    const draggedIndex = sections.findIndex(s => s.id === draggedId);
+    const targetIndex = sections.findIndex(s => s.id === targetId);
+    
+    const [dragged] = sections.splice(draggedIndex, 1);
+    sections.splice(targetIndex, 0, dragged);
+    renderSections();
+}
+
+function handleDragEnd() {
+    draggedId = null;
+    renderSections();
+}
+
+// Save/Load
+function newProject() {
+    if (sections.length > 0 && !confirm('Start a new project? Unsaved changes will be lost.')) return;
+    document.getElementById('projectTitle').value = 'Untitled Presentation';
+    sections = [];
+    sectionIdCounter = 0;
+    editingId = null;
+    renderSections();
+}
+
+function openLoadModal() {
+    const saved = JSON.parse(localStorage.getItem('disco_planner_projects') || '[]');
+    const container = document.getElementById('savedProjectsList');
+    
+    if (saved.length === 0) {
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">No saved projects yet</p>';
+    } else {
+        container.innerHTML = saved.map(p => `
+            <div class="load-item" onclick="loadProject('${p.id}')">
+                <div>
+                    <div class="load-item-title">${p.title}</div>
+                    <div class="load-item-meta">${p.sections.length} sections · ${new Date(p.savedAt).toLocaleDateString()}</div>
+                </div>
+                <button class="section-btn" onclick="event.stopPropagation(); deleteProject('${p.id}')">×</button>
+            </div>
+        `).join('');
+    }
+    
+    document.getElementById('loadModal').classList.add('active');
+}
+
+function loadProject(projectId) {
+    const saved = JSON.parse(localStorage.getItem('disco_planner_projects') || '[]');
+    const project = saved.find(p => p.id === projectId);
+    if (project) {
+        document.getElementById('projectTitle').value = project.title;
+        sections = project.sections;
+        sectionIdCounter = Math.max(...sections.map(s => s.id), 0);
+        editingId = null;
+        renderSections();
+        closeModal('loadModal');
+    }
+}
+
+function deleteProject(projectId) {
+    if (!confirm('Delete this project?')) return;
+    const saved = JSON.parse(localStorage.getItem('disco_planner_projects') || '[]');
+    const updated = saved.filter(p => p.id !== projectId);
+    localStorage.setItem('disco_planner_projects', JSON.stringify(updated));
+    openLoadModal();
+}
+
+function importJSON(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const project = JSON.parse(event.target.result);
+            if (project.title && project.sections) {
+                document.getElementById('projectTitle').value = project.title;
+                sections = project.sections;
+                sectionIdCounter = Math.max(...sections.map(s => s.id), 0);
+                editingId = null;
+                renderSections();
+                closeModal('loadModal');
+            }
+        } catch (err) {
+            alert('Invalid project file');
+        }
+    };
+    reader.readAsText(file);
+}
+
+// Share
+function generateShareText() {
+    const title = document.getElementById('projectTitle').value;
+    let text = `# ${title}\n\n`;
+    text += `Total sections: ${sections.length}\n`;
+    text += `Estimated scroll: ${sections.reduce((acc, s) => acc + parseInt(s.duration), 0)}s\n\n`;
+    text += `---\n\n`;
+    sections.forEach((s, i) => {
+        const mod = getModuleInfo(s.moduleType);
+        text += `## ${i + 1}. ${s.title}\n`;
+        text += `**Module:** ${mod.name}\n`;
+        text += `**Duration:** ${s.duration}\n`;
+        text += `**Take:** ${s.take || 1}\n`;
+        if (s.notes) text += `**Notes:** ${s.notes}\n`;
+        text += `\n`;
+    });
+    return text;
+}
+
+function generateShareUrl() {
+    const data = {
+        title: document.getElementById('projectTitle').value,
+        sections: sections
+    };
+    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(data));
+    return window.location.origin + window.location.pathname + '#' + compressed;
+}
+
+function openSaveShareModal() {
+    const title = document.getElementById('projectTitle').value;
+    document.getElementById('saveProjectName').value = title;
+    const url = generateShareUrl();
+    document.getElementById('shareUrlBox').textContent = url;
+    document.getElementById('shareModal').classList.add('active');
+}
+
+function saveAndDownload() {
+    const newTitle = document.getElementById('saveProjectName').value.trim();
+    if (!newTitle) {
+        alert('Please enter a project name');
+        return;
+    }
+    
+    // Update the title input to match
+    document.getElementById('projectTitle').value = newTitle;
+    
+    const projectId = newTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const project = {
+        id: projectId,
+        title: newTitle,
+        sections: sections,
+        savedAt: new Date().toISOString()
+    };
+    
+    // Save to localStorage
+    const existing = JSON.parse(localStorage.getItem('disco_planner_projects') || '[]');
+    const index = existing.findIndex(p => p.id === projectId);
+    if (index >= 0) {
+        existing[index] = project;
+    } else {
+        existing.push(project);
+    }
+    localStorage.setItem('disco_planner_projects', JSON.stringify(existing));
+    savePlannerState();
+    
+    // Download JSON
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = projectId + '.json';
+    a.click();
+    
+    const btn = document.getElementById('saveBtn');
+    btn.textContent = '✓ Saved!';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-success');
+    setTimeout(() => {
+        btn.textContent = '💾 Save & Download';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-primary');
+    }, 2000);
+}
+
+function copyShareUrl() {
+    navigator.clipboard.writeText(generateShareUrl());
+    alert('Share URL copied! Send this link to collaborators.');
+}
+
+function copyShareText() {
+    navigator.clipboard.writeText(generateShareText());
+    alert('Text copied to clipboard!');
+}
+
+function exportJSON() {
+    const data = {
+        title: document.getElementById('projectTitle').value,
+        sections: sections
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.title.toLowerCase().replace(/[^a-z0-9]/g, '-') + '.json';
+    a.click();
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+// Persistence
+var PLANNER_KEY = 'disco_planner_current';
+
+function savePlannerState() {
+    try {
+        var state = {
+            title: document.getElementById('projectTitle').value,
+            sections: sections,
+            sectionIdCounter: sectionIdCounter,
+            currentTake: document.getElementById('currentTake').value
+        };
+        localStorage.setItem(PLANNER_KEY, JSON.stringify(state));
+    } catch(e) {}
+}
+
+function loadPlannerState() {
+    try {
+        var saved = localStorage.getItem(PLANNER_KEY);
+        if (!saved) return false;
+        var state = JSON.parse(saved);
+        if (state.title) document.getElementById('projectTitle').value = state.title;
+        if (state.sections) sections = state.sections;
+        if (state.sectionIdCounter) sectionIdCounter = state.sectionIdCounter;
+        if (state.currentTake) document.getElementById('currentTake').value = state.currentTake;
+        return true;
+    } catch(e) { return false; }
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal(modal.id);
+    });
+});
+
+// Close on escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+    }
+});
+
+// Auto-save on changes
+document.addEventListener('change', savePlannerState);
+document.addEventListener('input', savePlannerState);
+
+// Wrap functions that modify state to trigger save
+var _orig_addSection = addSection;
+addSection = function() { _orig_addSection(); savePlannerState(); };
+var _orig_removeSection = removeSection;
+removeSection = function(id, e) { _orig_removeSection(id, e); savePlannerState(); };
+var _orig_updateSection = updateSection;
+updateSection = function(id, field, value) { _orig_updateSection(id, field, value); savePlannerState(); };
+var _orig_updateContent = updateContent;
+updateContent = function(id, field, value) { _orig_updateContent(id, field, value); savePlannerState(); };
+var _orig_addContentItem = addContentItem;
+addContentItem = function(sectionId, field) { _orig_addContentItem(sectionId, field); savePlannerState(); };
+var _orig_addContentObject = addContentObject;
+addContentObject = function(sectionId, field, obj) { _orig_addContentObject(sectionId, field, obj); savePlannerState(); };
+var _orig_removeContentItem = removeContentItem;
+removeContentItem = function(sectionId, field, index) { _orig_removeContentItem(sectionId, field, index); savePlannerState(); };
+
+// Init
+if (!loadFromUrl()) {
+    loadPlannerState();
+}
+renderSections();
+</script>
+</body>
+</html>

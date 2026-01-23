@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pull Quote Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 380px; height: 260px; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #1a1a2a, #0a0a1a); box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; position: relative; }
+.quote-mark { font-size: 80px; color: #4a9eff; opacity: 0.2; position: absolute; top: 10px; left: 20px; font-family: Georgia, serif; line-height: 1; }
+.quote-text { font-size: 22px; color: #fff; font-style: italic; line-height: 1.5; text-align: center; position: relative; }
+.quote-word { display: inline-block; opacity: 0; transform: translateY(20px); transition: all 0.4s ease; }
+.quote-word.visible { opacity: 1; transform: translateY(0); }
+.attribution { margin-top: 20px; color: #4a9eff; font-size: 14px; opacity: 0; transform: translateY(10px); transition: all 0.4s ease 1.5s; }
+.attribution.visible { opacity: 1; transform: translateY(0); }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Pull Quote</div>
+    <div class="subtitle">Scroll-triggered text reveal animations</div>
+    <div class="demo">
+        <div class="quote-mark">"</div>
+        <div class="quote-text" id="quote"></div>
+        <div class="attribution" id="attribution">— Someone Important</div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll to reveal</div>
+</div>
+<script>
+const quoteText = "The truth will set you free, but first it will make you miserable.";
+const words = quoteText.split(' ');
+const quoteEl = document.getElementById('quote');
+const attribution = document.getElementById('attribution');
+
+// Create word spans
+words.forEach((word, i) => {
+    const span = document.createElement('span');
+    span.className = 'quote-word';
+    span.textContent = word + ' ';
+    span.style.transitionDelay = (i * 0.1) + 's';
+    quoteEl.appendChild(span);
+});
+
+const wordEls = document.querySelectorAll('.quote-word');
+let currentWord = 0;
+let revealing = true;
+
+function animate() {
+    if (revealing) {
+        if (currentWord < wordEls.length) {
+            wordEls[currentWord].classList.add('visible');
+            currentWord++;
+        } else {
+            attribution.classList.add('visible');
+            setTimeout(() => { revealing = false; }, 2000);
+        }
+    } else {
+        if (currentWord > 0) {
+            currentWord--;
+            wordEls[currentWord].classList.remove('visible');
+            attribution.classList.remove('visible');
+        } else {
+            setTimeout(() => { revealing = true; }, 500);
+        }
+    }
+}
+
+setInterval(animate, 150);
+</script>
+</body>
+</html>

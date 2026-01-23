@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chart Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 420px; height: 320px; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #1a1a2a, #0a0a1a); box-shadow: 0 20px 60px rgba(0,0,0,0.5); padding: 24px; display: flex; gap: 24px; }
+.chart-section { flex: 1; display: flex; flex-direction: column; }
+.chart-title { font-size: 11px; color: #4a9eff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; text-align: left; }
+/* Bar Chart */
+.bar-chart { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.bar-item { display: flex; align-items: center; gap: 8px; }
+.bar-label { font-size: 10px; color: #888; min-width: 45px; text-align: right; }
+.bar-track { flex: 1; height: 16px; background: #1a1a2a; border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.15s ease-out; }
+.bar-value { font-size: 10px; color: #fff; font-weight: 600; min-width: 28px; opacity: 0; transition: opacity 0.3s; }
+/* Pie Chart */
+.pie-section { display: flex; flex-direction: column; align-items: center; }
+.pie-container { position: relative; width: 140px; height: 140px; margin-bottom: 12px; }
+.pie-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.pie-segment { transition: stroke-dasharray 0.15s ease-out; }
+.pie-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+.pie-total { font-size: 20px; font-weight: 700; color: #fff; }
+.pie-label { font-size: 9px; color: #666; text-transform: uppercase; }
+.legend { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #888; }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Chart</div>
+    <div class="subtitle">Animated bar and pie charts with scroll-driven reveals</div>
+    <div class="demo">
+        <div class="chart-section">
+            <div class="bar-chart">
+                <div class="bar-item">
+                    <span class="bar-label">North</span>
+                    <div class="bar-track"><div class="bar-fill" id="b1" style="background:#4a9eff" data-target="92"></div></div>
+                    <span class="bar-value" id="v1">$92K</span>
+                </div>
+                <div class="bar-item">
+                    <span class="bar-label">South</span>
+                    <div class="bar-track"><div class="bar-fill" id="b2" style="background:#9b59b6" data-target="78"></div></div>
+                    <span class="bar-value" id="v2">$78K</span>
+                </div>
+                <div class="bar-item">
+                    <span class="bar-label">East</span>
+                    <div class="bar-track"><div class="bar-fill" id="b3" style="background:#2ecc71" data-target="65"></div></div>
+                    <span class="bar-value" id="v3">$65K</span>
+                </div>
+                <div class="bar-item">
+                    <span class="bar-label">West</span>
+                    <div class="bar-track"><div class="bar-fill" id="b4" style="background:#e74c3c" data-target="85"></div></div>
+                    <span class="bar-value" id="v4">$85K</span>
+                </div>
+                <div class="bar-item">
+                    <span class="bar-label">Central</span>
+                    <div class="bar-track"><div class="bar-fill" id="b5" style="background:#f39c12" data-target="71"></div></div>
+                    <span class="bar-value" id="v5">$71K</span>
+                </div>
+            </div>
+        </div>
+        <div class="chart-section pie-section">
+            <div class="pie-container">
+                <svg class="pie-svg" viewBox="0 0 100 100">
+                    <circle class="pie-segment" id="p1" cx="50" cy="50" r="40" fill="none" stroke="#4a9eff" stroke-width="20" stroke-dasharray="0 251.3"/>
+                    <circle class="pie-segment" id="p2" cx="50" cy="50" r="40" fill="none" stroke="#9b59b6" stroke-width="20" stroke-dasharray="0 251.3"/>
+                    <circle class="pie-segment" id="p3" cx="50" cy="50" r="40" fill="none" stroke="#2ecc71" stroke-width="20" stroke-dasharray="0 251.3"/>
+                    <circle class="pie-segment" id="p4" cx="50" cy="50" r="40" fill="none" stroke="#e74c3c" stroke-width="20" stroke-dasharray="0 251.3"/>
+                </svg>
+                <div class="pie-center">
+                    <div class="pie-total" id="pieTotal">0%</div>
+                    <div class="pie-label">Total</div>
+                </div>
+            </div>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#4a9eff"></div>Product A: 35%</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#9b59b6"></div>Product B: 28%</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>Product C: 22%</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div>Product D: 15%</div>
+            </div>
+        </div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll to animate charts</div>
+</div>
+<script>
+const bars = [
+    { fill: document.getElementById('b1'), val: document.getElementById('v1'), target: 92 },
+    { fill: document.getElementById('b2'), val: document.getElementById('v2'), target: 78 },
+    { fill: document.getElementById('b3'), val: document.getElementById('v3'), target: 65 },
+    { fill: document.getElementById('b4'), val: document.getElementById('v4'), target: 85 },
+    { fill: document.getElementById('b5'), val: document.getElementById('v5'), target: 71 }
+];
+
+const pieData = [35, 28, 22, 15];
+const pieSegments = [
+    document.getElementById('p1'),
+    document.getElementById('p2'),
+    document.getElementById('p3'),
+    document.getElementById('p4')
+];
+const pieTotal = document.getElementById('pieTotal');
+const circumference = 2 * Math.PI * 40;
+
+let progress = 0;
+let dir = 1;
+
+function easeOut(t) {
+    return 1 - Math.pow(1 - t, 3);
+}
+
+function animate() {
+    progress += dir * 0.006;
+    if (progress >= 1) { dir = -1; progress = 1; }
+    if (progress <= 0) { dir = 1; progress = 0; }
+    
+    // Animate bars with stagger
+    bars.forEach((bar, i) => {
+        const stagger = i * 0.12;
+        const barProgress = Math.max(0, Math.min(1, (progress - stagger) / (1 - stagger - 0.1)));
+        const eased = easeOut(barProgress);
+        bar.fill.style.width = (bar.target * eased) + '%';
+        bar.val.style.opacity = barProgress > 0.8 ? 1 : 0;
+    });
+    
+    // Animate pie with stagger
+    let offset = 0;
+    pieSegments.forEach((seg, i) => {
+        const stagger = i * 0.15;
+        const segProgress = Math.max(0, Math.min(1, (progress - stagger) / (1 - stagger - 0.1)));
+        const eased = easeOut(segProgress);
+        const segLength = (pieData[i] / 100) * circumference;
+        seg.style.strokeDasharray = (segLength * eased) + ' ' + (circumference - segLength * eased);
+        seg.style.strokeDashoffset = -offset;
+        offset += segLength * eased;
+    });
+    
+    // Update center text
+    pieTotal.textContent = Math.round(progress * 100) + '%';
+    
+    requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layers Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 340px; height: 240px; border-radius: 12px; overflow: hidden; background: linear-gradient(180deg, #1a1a2a 0%, #0a0a1a 100%); box-shadow: 0 20px 60px rgba(0,0,0,0.5); position: relative; }
+.layer { position: absolute; border-radius: 8px; }
+.layer-back { width: 100px; height: 70px; background: linear-gradient(135deg, #1a3a5a, #0a2a4a); bottom: 30px; left: 30px; opacity: 0.4; }
+.layer-mid { width: 120px; height: 85px; background: linear-gradient(135deg, #2a5a8a, #1a4a7a); bottom: 50px; left: 80px; opacity: 0.7; }
+.layer-front { width: 140px; height: 100px; background: linear-gradient(135deg, #4a9eff, #2a7acf); bottom: 70px; left: 140px; box-shadow: 0 10px 40px rgba(74,158,255,0.3); }
+.mountains { position: absolute; bottom: 0; left: 0; right: 0; }
+.mountain { position: absolute; bottom: 0; width: 0; height: 0; border-left: 60px solid transparent; border-right: 60px solid transparent; }
+.m1 { left: -20px; border-bottom: 80px solid #1a2a3a; }
+.m2 { left: 80px; border-bottom: 100px solid #2a3a4a; }
+.m3 { left: 200px; border-bottom: 70px solid #1a2a3a; }
+.sun { position: absolute; top: 30px; right: 40px; width: 40px; height: 40px; background: #f39c12; border-radius: 50%; box-shadow: 0 0 40px rgba(243,156,18,0.5); }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Layers</div>
+    <div class="subtitle">Multi-layer parallax compositions</div>
+    <div class="demo">
+        <div class="sun" id="sun"></div>
+        <div class="layer layer-back" id="back"></div>
+        <div class="layer layer-mid" id="mid"></div>
+        <div class="layer layer-front" id="front"></div>
+        <div class="mountains">
+            <div class="mountain m1" id="m1"></div>
+            <div class="mountain m2" id="m2"></div>
+            <div class="mountain m3" id="m3"></div>
+        </div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll for parallax</div>
+</div>
+<script>
+const back = document.getElementById('back');
+const mid = document.getElementById('mid');
+const front = document.getElementById('front');
+const sun = document.getElementById('sun');
+const m1 = document.getElementById('m1');
+const m2 = document.getElementById('m2');
+const m3 = document.getElementById('m3');
+
+let offset = 0;
+let dir = 1;
+
+function animate() {
+    offset += dir * 0.5;
+    if (offset >= 30) dir = -1;
+    if (offset <= -30) dir = 1;
+    
+    // Parallax - different speeds
+    back.style.transform = `translateX(${offset * 0.2}px)`;
+    mid.style.transform = `translateX(${offset * 0.5}px)`;
+    front.style.transform = `translateX(${offset * 1}px)`;
+    
+    // Mountains parallax
+    m1.style.transform = `translateX(${offset * 0.1}px)`;
+    m2.style.transform = `translateX(${offset * 0.3}px)`;
+    m3.style.transform = `translateX(${offset * 0.15}px)`;
+    
+    // Sun gentle float
+    sun.style.transform = `translateY(${Math.sin(offset * 0.1) * 5}px)`;
+    
+    requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

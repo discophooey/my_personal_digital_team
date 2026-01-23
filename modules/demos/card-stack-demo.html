@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Card Stack Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.container { text-align: center; }
+.title { color: #4a9eff; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+.demo { width: 340px; height: 260px; position: relative; border-radius: 12px; overflow: hidden; background: #1a1a1a; box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+.card { position: absolute; width: 180px; height: 120px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); transition: none; }
+.card-1 { background: linear-gradient(135deg, #e74c3c, #c0392b); z-index: 3; }
+.card-2 { background: linear-gradient(135deg, #3498db, #2980b9); z-index: 2; }
+.card-3 { background: linear-gradient(135deg, #2ecc71, #27ae60); z-index: 1; }
+.hint { margin-top: 20px; color: #666; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hint span { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="title">Card Stack</div>
+    <div class="subtitle">Stacked cards that fly away on scroll</div>
+    <div class="demo">
+        <div class="card card-3" id="card3">Card 3</div>
+        <div class="card card-2" id="card2">Card 2</div>
+        <div class="card card-1" id="card1">Card 1</div>
+    </div>
+    <div class="hint"><span>↕</span> Scroll to dismiss</div>
+</div>
+<script>
+const cards = [
+    { el: document.getElementById('card1'), baseY: 0 },
+    { el: document.getElementById('card2'), baseY: 8 },
+    { el: document.getElementById('card3'), baseY: 16 }
+];
+let offset = 0;
+
+function animate() {
+    offset = (offset + 1.5) % 300;
+    
+    cards.forEach((card, i) => {
+        const flyStart = i * 80;
+        const progress = Math.max(0, Math.min(1, (offset - flyStart) / 70));
+        const x = progress * 250;
+        const rotate = progress * 25;
+        const opacity = 1 - progress;
+        const scale = 1 - progress * 0.1;
+        
+        card.el.style.transform = `translateX(${x}px) translateY(${card.baseY}px) rotate(${rotate}deg) scale(${scale})`;
+        card.el.style.opacity = opacity;
+    });
+    
+    requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>
