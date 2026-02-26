@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrolltastic Doc Module</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); padding-top: 41px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+.app { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 41px); transition: grid-template-columns 0.3s; }
+.controls { background: var(--bg-primary); padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); transition: opacity 0.3s, padding 0.3s; }
+.module-title { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em; }
+.module-title span { color: var(--accent); }
+
+h2 { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; transition: all .15s; }
+h2:hover { border-color: var(--border-light); background: var(--bg-tertiary); }
+h2::after { content: '\25be'; font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+h2.collapsed::after { transform: rotate(-90deg); }
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0; }
+
+.control-group { margin-bottom: 10px; }
+label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+input[type="text"], input[type="url"], input[type="number"], select, textarea {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary);
+    border-radius: 6px; font-family: var(--mono); font-size: 11px; outline: none; transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent-dim); }
+input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="color"] { width: 36px; height: 24px; border: 1px solid var(--border); background: var(--bg-tertiary); cursor: pointer; border-radius: 4px; padding: 1px; }
+input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent); }
+
+button {
+    width: 100%; padding: 8px 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--accent); border: 1px solid var(--accent); color: #0a0a0a; font-weight: 600;
+    border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: all .15s;
+}
+button:hover { opacity: 0.85; }
+button.secondary { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.row { display: flex; gap: 8px; align-items: flex-start; }
+.row > * { flex: 1; }
+.hint { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+.range-val { font-family: var(--mono); font-size: 9px; color: var(--accent); float: right; text-transform: none; letter-spacing: 0; }
+
+
+.highlight-item { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+.highlight-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; cursor: pointer; }
+.highlight-header:hover { background: #222; }
+.highlight-header span { font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.highlight-body { padding: 12px; border-top: 1px solid #333; display: none; }
+.highlight-body.open { display: block; }
+
+.preview-area { background: var(--bg-deep); display: flex; flex-direction: column; overflow: hidden; }
+.preview-area.fit-frame { background: #1a1a1a; }
+.preview-area.fit-frame .preview-stage,
+.preview-area.fit-frame .sticky-stage { border: 3px solid #4a9eff; box-sizing: border-box; max-width: 700px; margin: 0 auto; }
+
+.preview-header {
+    padding: 0 16px; height: 34px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+}
+#progressDisplay { color: var(--accent); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+.preview-scroll { flex: 1; overflow-y: auto; }
+.preview-container { position: relative; }
+.preview-stage { position: sticky; top: 0; height: 100vh; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.preview-stage-in { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; justify-content: center; gap: 0; }
+.preview-matte { position: relative; overflow: hidden; background: #000; }
+.preview-matte img { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.preview-inner { position: relative; width: 100%; height: 100%; }
+.preview-inner img { display: block; cursor: crosshair; transform-origin: center center; }
+.preview-vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 150px 60px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.3s; z-index: 5; }
+.preview-vignette.on { opacity: 1; }
+.preview-paper { position: absolute; inset: 0; pointer-events: none; opacity: 0; z-index: 4; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); mix-blend-mode: multiply; }
+.preview-caption { flex-shrink: 0; width: 100%; max-width: 650px; background: rgba(0,0,0,0.85); padding: 6px 16px 8px; border-radius: 0 0 6px 6px; z-index: 11; box-sizing: border-box; }
+.cap-text { font-size: 13px; line-height: 1.5; color: #e0e0e0; }
+.cap-credit { font-size: 11px; color: #888; font-style: italic; margin-top: 6px; }
+
+.preview-blurb { position: absolute; z-index: 15; opacity: 0; transform: translateY(10px); transition: opacity 0.5s, transform 0.5s; pointer-events: none; }
+.preview-blurb.on { opacity: 1; transform: translateY(0); }
+.preview-blurb.top-left, .preview-blurb.bottom-left { text-align: left; }
+.preview-blurb.top-center, .preview-blurb.bottom-center { text-align: center; }
+.blurb-line { line-height: 1.4; white-space: nowrap; }
+
+.doc-highlight { position: absolute; pointer-events: none; overflow: hidden; }
+.doc-highlight .hl-bar { height: 100%; width: 0%; }
+.doc-highlight.placing { outline: 2px dashed #4a9eff; }
+
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+.modal.active { display: flex; }
+.modal-content { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; width: 90%; max-width: 800px; max-height: 85vh; overflow: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-close { background: none; border: none; color: #666; font-size: 28px; cursor: pointer; width: auto; padding: 0; }
+textarea.code { width: 100%; height: 300px; background: #0a0a0a; border: 1px solid #333; color: #4a9eff; font-family: monospace; font-size: 11px; padding: 12px; border-radius: 6px; }
+
+/* Disco Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--bg-primary);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;font-family:var(--mono);">
+<a href="index.html" style="padding:10px 16px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.5px;">← Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Zoom Detail</a>
+<a href="text-scroll.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Text Scroll</a>
+<a href="chapter-marker.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chapter Marker</a>
+<a href="key-facts.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Key Facts</a>
+<a href="body-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Body Module</a>
+<a href="epistemic-text.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Epistemic Text</a>
+<a href="adversarial-verification.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Adversarial</a>
+<a href="silence-mapping.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Silence Map</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:#fff!important;background:#1a1a1a;}</style>
+<div class="app" id="app">
+    <div class="controls">
+        <div class="module-title">Doc <span>Module</span></div>
+        
+        <h2 onclick="toggleSection(this)">Image Source</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Image URL</label>
+                <input type="text" id="imageUrl" placeholder="https://example.com/document.jpg">
+            </div>
+            <button onclick="loadImage()">Load Image</button>
+            <div class="hint">Upload document image via CDN, S3, or direct URL</div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Image Controls</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Output Scale <span class="range-val" id="outputScaleVal">100%</span></label>
+                <input type="range" id="outputScale" min="50" max="100" value="100" oninput="document.getElementById('outputScaleVal').textContent=this.value+'%'; rebuildPreview();">
+                <div class="hint">Scale down document within container</div>
+            </div>
+            <div class="control-group">
+                <label>Output Aspect Ratio</label>
+                <select id="outputAspect" onchange="rebuildPreview()">
+                    <option value="auto" selected>Auto (match image)</option>
+                    <option value="16:9">16:9 Widescreen</option>
+                    <option value="4:3">4:3 Standard</option>
+                    <option value="1:1">1:1 Square</option>
+                    <option value="21:9">21:9 Ultrawide</option>
+                    <option value="9:16">9:16 Vertical</option>
+                    <option value="3:2">3:2 Photo</option>
+                    <option value="full">Full Viewport</option>
+                </select>
+                <div class="hint">Widescreen crops the view - use Scale/Position to frame</div>
+            </div>
+            <div class="control-group">
+                <label>Scale <span class="range-val" id="scaleVal">1.0x</span></label>
+                <input type="range" id="imageScale" min="0.5" max="3" step="0.05" value="1" oninput="document.getElementById('scaleVal').textContent=parseFloat(this.value).toFixed(2)+'x'; rebuildPreview();">
+            </div>
+            <div class="control-group">
+                <label>X Position <span class="range-val" id="posXVal">50%</span></label>
+                <input type="range" id="imagePosX" min="0" max="100" value="50" oninput="document.getElementById('posXVal').textContent=this.value+'%'; rebuildPreview();">
+            </div>
+            <div class="control-group">
+                <label>Y Position <span class="range-val" id="posYVal">50%</span></label>
+                <input type="range" id="imagePosY" min="0" max="100" value="50" oninput="document.getElementById('posYVal').textContent=this.value+'%'; rebuildPreview();">
+            </div>
+            <div class="control-group">
+                <label>Background Color</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="color" id="bgColor" value="#000000" onchange="updateStageBg();">
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="bgTransparent" checked onchange="updateStageBg();"> Transparent</label>
+                </div>
+            </div>
+            <div class="control-group">
+                <label><input type="checkbox" id="vignetteEnabled" onchange="updateVignette()"> Enable Vignette</label>
+            </div>
+            <div class="control-group">
+                <label>Paper Texture <span class="range-val" id="paperAmountVal">0%</span></label>
+                <input type="range" id="paperAmount" min="0" max="30" step="1" value="0" oninput="document.getElementById('paperAmountVal').textContent=this.value+'%'; updatePaperOverlay();">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Keyframes (Zoom/Pan Animation)</h2>
+        <div class="section">
+            <div class="hint" style="margin-bottom:10px;">Add keyframes to animate scale/position as user scrolls. Uses current Scale/X/Y values above.</div>
+            <button onclick="addKeyframe()">+ Add Keyframe at Current Scroll</button>
+            <div id="keyframeList" style="margin-top:10px;"></div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Highlights</h2>
+        <div class="section">
+            <button onclick="addHighlight()">+ Add Highlight</button>
+            <div class="hint">Click on image to position highlight</div>
+            <div id="highlightList" style="margin-top:10px;"></div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Caption</h2>
+        <div class="section">
+            <div class="control-group">
+                <label><input type="checkbox" id="captionEnabled" checked onchange="updateCaption()"> Enable Caption</label>
+            </div>
+            <div class="control-group">
+                <label><input type="checkbox" id="captionBg" checked onchange="updateCaption()"> Caption Background</label>
+            </div>
+            <div class="control-group">
+                <label>Text Color</label>
+                <select id="captionColor" onchange="updateCaption()">
+                    <option value="white">White</option>
+                    <option value="black">Black</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Caption Y Offset: <span id="captionOffsetVal">0</span>px</label>
+                <input type="range" id="captionOffsetY" min="-50" max="100" value="0" oninput="document.getElementById('captionOffsetVal').textContent=this.value;updateCaption()">
+            </div>
+            <div class="control-group">
+                <label>Caption Text</label>
+                <textarea id="captionText" rows="2" oninput="updateCaption()">Document highlights animate as you scroll, drawing attention to key passages and evidence.</textarea>
+            </div>
+            <div class="control-group">
+                <label>Credit</label>
+                <input type="text" id="captionCredit" value="Marshall Ritzel" oninput="updateCaption()">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Text Blurb</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Blurb Text</label>
+                <textarea id="blurbText" rows="3" placeholder="Enter text (use Enter for line breaks)..." oninput="updateBlurb()"></textarea>
+            </div>
+            <div class="control-group">
+                <label>Position</label>
+                <select id="blurbPosition" onchange="updateBlurb()">
+                    <option value="top-left">Top Left</option>
+                    <option value="top-center">Top Center</option>
+                    <option value="bottom-left">Bottom Left</option>
+                    <option value="bottom-center">Bottom Center</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Font</label>
+                <select id="blurbFont" onchange="updateBlurb()">
+                    <option value="APRegular">AP Regular</option>
+                    <option value="APMedium">AP Medium</option>
+                    <option value="APBold">AP Bold</option>
+                    <option value="sans-serif">System Sans</option>
+                </select>
+            </div>
+            <div class="row">
+                <div class="control-group">
+                    <label>Scale <span class="range-val" id="blurbScaleVal">100%</span></label>
+                    <input type="range" id="blurbScale" min="50" max="200" value="100" oninput="document.getElementById('blurbScaleVal').textContent=this.value+'%'; updateBlurb();">
+                </div>
+                <div class="control-group">
+                    <label>Color</label>
+                    <input type="color" id="blurbColor" value="#ffffff" onchange="updateBlurb()">
+                </div>
+            </div>
+            <div class="control-group">
+                <label>X Offset <span class="range-val" id="blurbOffsetXVal">0px</span></label>
+                <input type="range" id="blurbOffsetX" min="-200" max="200" value="0" oninput="document.getElementById('blurbOffsetXVal').textContent=this.value+'px'; updateBlurb();">
+            </div>
+            <div class="control-group">
+                <label>Y Offset <span class="range-val" id="blurbOffsetYVal">0px</span></label>
+                <input type="range" id="blurbOffsetY" min="-200" max="200" value="0" oninput="document.getElementById('blurbOffsetYVal').textContent=this.value+'px'; updateBlurb();">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Export</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Scroll Duration (vh) <span class="range-val" id="scrollDurVal">300</span></label>
+                <input type="range" id="scrollDuration" min="150" max="500" value="300" oninput="document.getElementById('scrollDurVal').textContent=this.value;document.getElementById('scrollDurationNum').value=this.value;setPreviewHeight();">
+            </div>
+            <div class="control-group">
+                <label>Mobile Top Offset (px)</label>
+                <input type="number" id="stickyOffset" value="150" min="0" max="300">
+                <div class="hint">Default 150px for AP mobile nav</div>
+            </div>
+            <div class="control-group">
+                <label>Desktop Top Offset (px)</label>
+                <input type="number" id="desktopOffset" value="0" min="0" max="300">
+                <div class="hint">Push stage down from top on desktop (e.g. for fixed nav)</div>
+            </div>
+            <div class="control-group">
+                <label>Mobile Width Multiplier <span class="range-val" id="mobileWidthVal">1.0x</span></label>
+                <input type="range" id="mobileWidthMult" min="0.5" max="2" step="0.1" value="1" oninput="document.getElementById('mobileWidthVal').textContent=parseFloat(this.value).toFixed(1)+'x';">
+                <div class="hint">Scale highlight width on mobile (>1 = wider, <1 = narrower)</div>
+            </div>
+            <div class="control-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="fullBleed"> Full Bleed (break out of container)</label>
+                <div class="hint">Forces full viewport width even in narrow CMS containers</div>
+            </div>
+            <div class="control-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="optimizeMobileFraming" checked> Optimize mobile framing</label>
+                <div class="hint">Auto-fits stage height to content on mobile, reducing dead space</div>
+            </div>
+            <button onclick="generateExport()">Generate HTML</button>
+            <button class="secondary" onclick="resetModule()" style="margin-top:8px;">↺ Reset</button>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Project</h2>
+        <div class="section">
+            <div class="row">
+                <button class="secondary" onclick="saveProject()">💾 Save</button>
+                <button class="secondary" onclick="loadProject()">📂 Load</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="preview-area" id="previewArea">
+        <div class="preview-header">
+            <span>Preview (scroll to test)</span>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="fitFrameToggle" onchange="toggleFitFrame()">
+                Fit Frame
+            </label>
+            <span id="progressDisplay">0%</span></span>
+        </div>
+        <div class="preview-scroll" id="previewScroll">
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-stage" id="previewStage">
+                    <div class="preview-stage-in">
+                        <div class="preview-matte" id="previewMatte">
+                            <div style="color:#666;text-align:center;padding:40vh 20px;">Load a document image</div>
+                            <div class="preview-vignette" id="previewVignette"></div>
+                        </div>
+                        <div class="preview-caption" id="previewCaption">
+                            <div class="cap-text" id="capText"></div>
+                            <div class="cap-credit" id="capCredit"></div>
+                        </div>
+                    </div>
+                    <div class="preview-blurb" id="previewBlurb"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h1>Export Code</h1>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <textarea class="code" id="exportCode" readonly></textarea>
+        <div style="margin-top:12px; display:flex; gap:8px;">
+            <button onclick="copyCode()">📋 Copy</button>
+            <button class="secondary" onclick="downloadCode()">💾 Download</button><button onclick="downloadCodeTxt()" class="secondary">📄 .txt</button>
+            <button class="secondary" onclick="sendToStackBuilder()">📚 Stack</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var _fromPlanner=new URLSearchParams(location.search).get('planner')==='1';
+
+
+// Toggle Fit Frame preview mode
+function toggleFitFrame() {
+    const area = document.getElementById('previewArea');
+    const scroll = document.getElementById('previewScroll');
+    const stage = document.getElementById('previewStage') || document.querySelector('.sticky-stage');
+    const toggle = document.getElementById('fitFrameToggle');
+    
+    if (toggle.checked) {
+        area.classList.add('fit-frame');
+        if (stage) {
+            const scrollRect = scroll.getBoundingClientRect();
+            const scale = Math.min((scrollRect.width - 40) / stage.offsetWidth, 0.85);
+            stage.style.transform = 'scale(' + scale + ')';
+            stage.style.transformOrigin = 'top center';
+        }
+    } else {
+        area.classList.remove('fit-frame');
+        if (stage) {
+            stage.style.transform = '';
+            stage.style.transformOrigin = '';
+        }
+    }
+}
+
+// STATE
+let imageUrl = null;
+let imageNaturalWidth = 0;
+let imageNaturalHeight = 0;
+let highlights = [];
+let placingId = null;
+let keyframes = []; // {scrollPct, scale, posX, posY}
+let currentScrollPct = 0;
+
+
+function toggleSection(el) {
+    el.classList.toggle('collapsed');
+    el.nextElementSibling.classList.toggle('collapsed');
+}
+
+// IMAGE
+function loadImage() {
+    let url = document.getElementById('imageUrl').value.trim();
+    if (!url) return discoAlert('Enter image URL');
+    if (url.includes('github.com') && url.includes('/blob/')) {
+        url = url.replace('github.com','raw.githubusercontent.com').replace('/blob/','/').split('?')[0];
+    }
+    const img = new Image();
+    img.onload = () => { 
+        imageUrl = url; 
+        imageNaturalWidth = img.naturalWidth;
+        imageNaturalHeight = img.naturalHeight;
+        rebuildPreview(); 
+    };
+    img.onerror = () => discoAlert('Failed to load image');
+    img.src = url;
+}
+
+// KEYFRAMES
+function addKeyframe() {
+    const scrollPct = currentScrollPct;
+    const scale = parseFloat(document.getElementById('imageScale').value) || 1;
+    const posX = parseFloat(document.getElementById('imagePosX').value) || 50;
+    const posY = parseFloat(document.getElementById('imagePosY').value) || 50;
+    
+    // Check if keyframe exists at this scroll position (within 2%)
+    const existing = keyframes.findIndex(k => Math.abs(k.scrollPct - scrollPct) < 2);
+    if (existing >= 0) {
+        // Update existing
+        keyframes[existing] = { scrollPct, scale, posX, posY };
+    } else {
+        keyframes.push({ scrollPct, scale, posX, posY });
+    }
+    
+    // Sort by scroll position
+    keyframes.sort((a, b) => a.scrollPct - b.scrollPct);
+    renderKeyframeList();
+}
+
+function removeKeyframe(index) {
+    keyframes.splice(index, 1);
+    renderKeyframeList();
+    rebuildPreview();
+}
+
+function renderKeyframeList() {
+    const list = document.getElementById('keyframeList');
+    if (keyframes.length === 0) {
+        list.innerHTML = '<div style="color:#666;font-size:12px;">No keyframes. Scale/position will be static.</div>';
+        return;
+    }
+    list.innerHTML = keyframes.map((k, i) => `
+        <div class="highlight-item" style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#2a2a2a;border-radius:4px;margin-bottom:4px;">
+            <span style="font-size:12px;">
+                <strong>${k.scrollPct.toFixed(0)}%</strong> → 
+                Scale ${k.scale.toFixed(2)}x, X ${k.posX}%, Y ${k.posY}%
+            </span>
+            <button onclick="removeKeyframe(${i})" style="background:#c44;border:none;color:#fff;padding:2px 6px;border-radius:3px;cursor:pointer;">×</button>
+        </div>
+    `).join('');
+}
+
+function getInterpolatedTransform(scrollPct) {
+    // Returns {scale, posX, posY} interpolated between keyframes
+    if (keyframes.length === 0) {
+        return {
+            scale: parseFloat(document.getElementById('imageScale').value) || 1,
+            posX: parseFloat(document.getElementById('imagePosX').value) || 50,
+            posY: parseFloat(document.getElementById('imagePosY').value) || 50
+        };
+    }
+    
+    if (keyframes.length === 1) {
+        return { scale: keyframes[0].scale, posX: keyframes[0].posX, posY: keyframes[0].posY };
+    }
+    
+    // Find surrounding keyframes
+    let before = keyframes[0];
+    let after = keyframes[keyframes.length - 1];
+    
+    for (let i = 0; i < keyframes.length - 1; i++) {
+        if (scrollPct >= keyframes[i].scrollPct && scrollPct <= keyframes[i + 1].scrollPct) {
+            before = keyframes[i];
+            after = keyframes[i + 1];
+            break;
+        }
+    }
+    
+    // Before first keyframe
+    if (scrollPct <= keyframes[0].scrollPct) {
+        return { scale: keyframes[0].scale, posX: keyframes[0].posX, posY: keyframes[0].posY };
+    }
+    
+    // After last keyframe
+    if (scrollPct >= keyframes[keyframes.length - 1].scrollPct) {
+        const last = keyframes[keyframes.length - 1];
+        return { scale: last.scale, posX: last.posX, posY: last.posY };
+    }
+    
+    // Interpolate
+    const range = after.scrollPct - before.scrollPct;
+    const progress = range > 0 ? (scrollPct - before.scrollPct) / range : 0;
+    
+    return {
+        scale: before.scale + (after.scale - before.scale) * progress,
+        posX: before.posX + (after.posX - before.posX) * progress,
+        posY: before.posY + (after.posY - before.posY) * progress
+    };
+}
+
+// HIGHLIGHT CRUD
+function addHighlight() {
+    if (!imageUrl) return discoAlert('Load image first');
+    const index = highlights.length;
+    const appearAt = Math.min(10 + index * 15, 85);
+    
+    // Inherit from previous highlight if exists, else use defaults
+    const prev = highlights[highlights.length - 1];
+    const newHighlight = prev ? {
+        id: Date.now(),
+        x: 10,
+        y: 20 + (index * 8) % 60,
+        width: prev.width,
+        height: prev.height,
+        color: prev.color,
+        opacity: prev.opacity,
+        blendMode: prev.blendMode,
+        appearAt: appearAt
+    } : {
+        id: Date.now(),
+        x: 10,
+        y: 20,
+        width: 30,
+        height: 20,
+        color: '#ffff00',
+        opacity: 0.4,
+        blendMode: 'multiply',
+        appearAt: appearAt
+    };
+    
+    highlights.push(newHighlight);
+    placingId = newHighlight.id;
+    renderList();
+    rebuildPreview();
+}
+
+function removeHighlight(id) {
+    highlights = highlights.filter(h => h.id !== id);
+    renderList();
+    rebuildPreview();
+}
+
+function updateHighlight(id, prop, val) {
+    const h = highlights.find(h => h.id === id);
+    if (!h) return;
+    if (['x', 'y', 'width', 'height', 'opacity', 'appearAt'].includes(prop)) {
+        h[prop] = parseFloat(val) || 0;
+    } else {
+        h[prop] = val;
+    }
+    rebuildPreview();
+}
+
+// LIST UI
+function toggleBody(id) {
+    document.querySelectorAll('.highlight-body').forEach(el => {
+        el.classList.toggle('open', el.id === 'body-' + id && !el.classList.contains('open'));
+    });
+}
+
+function renderList() {
+    const list = document.getElementById('highlightList');
+    if (!highlights.length) { 
+        list.innerHTML = '<div class="hint">No highlights added</div>'; 
+        return; 
+    }
+    const blendOpts = ['multiply','screen','overlay','darken','lighten','color-dodge','color-burn','hard-light','soft-light','difference','exclusion','hue','saturation','color','luminosity','normal'];
+    list.innerHTML = highlights.map((h, i) => `
+        <div class="highlight-item">
+            <div class="highlight-header" onclick="toggleBody(${h.id})">
+                <span><span style="background:${h.color};opacity:${h.opacity};width:20px;height:10px;display:inline-block;border-radius:2px;"></span> Highlight ${i+1}</span>
+                <button class="small" style="background:#c0392b;color:#fff;" onclick="event.stopPropagation();removeHighlight(${h.id})">×</button>
+            </div>
+            <div class="highlight-body" id="body-${h.id}">
+                <div class="row">
+                    <div class="control-group">
+                        <label>Color</label>
+                        <input type="color" value="${h.color}" oninput="updateHighlight(${h.id},'color',this.value)">
+                    </div>
+                    <div class="control-group">
+                        <label>Opacity: ${h.opacity.toFixed(2)}</label>
+                        <input type="range" min="0.1" max="1" step="0.05" value="${h.opacity}" oninput="this.previousElementSibling.textContent='Opacity: '+parseFloat(this.value).toFixed(2);updateHighlight(${h.id},'opacity',this.value)">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Blend Mode</label>
+                    <select onchange="updateHighlight(${h.id},'blendMode',this.value)">
+                        ${blendOpts.map(b => `<option value="${b}"${(h.blendMode||'multiply')===b?' selected':''}>${b}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>X Position</label>
+                    <div class="row" style="align-items:center;">
+                        <input type="range" min="0" max="100" step="0.5" value="${h.x}" oninput="document.getElementById('xnum-${h.id}').value=parseFloat(this.value).toFixed(1);updateHighlight(${h.id},'x',this.value)">
+                        <input type="number" id="xnum-${h.id}" min="0" max="100" step="0.5" value="${h.x.toFixed(1)}" style="width:60px;" oninput="document.querySelector('#body-${h.id} input[type=range]').value=this.value;updateHighlight(${h.id},'x',this.value)">
+                        <span style="font-size:10px;color:#666;">%</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Y Position</label>
+                    <div class="row" style="align-items:center;">
+                        <input type="range" min="0" max="100" step="0.5" value="${h.y}" class="y-slider" oninput="document.getElementById('ynum-${h.id}').value=parseFloat(this.value).toFixed(1);updateHighlight(${h.id},'y',this.value)">
+                        <input type="number" id="ynum-${h.id}" min="0" max="100" step="0.5" value="${h.y.toFixed(1)}" style="width:60px;" oninput="document.querySelector('#body-${h.id} .y-slider').value=this.value;updateHighlight(${h.id},'y',this.value)">
+                        <span style="font-size:10px;color:#666;">%</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Width: ${h.width.toFixed(0)}%</label>
+                    <input type="range" min="5" max="80" step="1" value="${h.width}" oninput="this.previousElementSibling.textContent='Width: '+this.value+'%';updateHighlight(${h.id},'width',this.value)">
+                </div>
+                <div class="control-group">
+                    <label>Height: ${h.height}px <span style="color:#666;font-weight:normal;">(scales on mobile)</span></label>
+                    <input type="range" min="8" max="60" step="1" value="${h.height}" oninput="this.previousElementSibling.innerHTML='Height: '+this.value+'px <span style=\\'color:#666;font-weight:normal;\\'>(scales on mobile)</span>';updateHighlight(${h.id},'height',this.value)">
+                </div>
+                <div class="control-group">
+                    <label>Appear At: ${h.appearAt}%</label>
+                    <input type="range" min="0" max="95" step="1" value="${h.appearAt}" oninput="this.previousElementSibling.textContent='Appear At: '+this.value+'%';updateHighlight(${h.id},'appearAt',this.value)">
+                </div>
+                <div class="hint"><a href="#" onclick="event.preventDefault();placingId=${h.id};rebuildPreview();" style="color:#4a9eff;">Click image to reposition</a></div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// PREVIEW
+function setPreviewHeight() {
+    const vh = parseInt(document.getElementById('scrollDuration').value) || 300;
+    document.getElementById('previewContainer').style.height = vh + 'vh';
+}
+
+function rebuildPreview() {
+    const matte = document.getElementById('previewMatte');
+    if (!imageUrl) {
+        matte.innerHTML = '<div style="color:#666;text-align:center;padding:40vh 20px;">Load a document image</div><div class="preview-vignette" id="previewVignette"></div>';
+        matte.style.cssText = '';
+        return;
+    }
+    
+    const scale = parseFloat(document.getElementById('imageScale').value) || 1;
+    const posX = parseFloat(document.getElementById('imagePosX').value);
+    const posY = parseFloat(document.getElementById('imagePosY').value);
+    const outputAspect = document.getElementById('outputAspect').value;
+    const outputScale = parseInt(document.getElementById('outputScale').value) || 100;
+    
+    // Calculate pan offset from center (50% = no pan)
+    const panX = (posX - 50) * (scale - 1) / scale;
+    const panY = (posY - 50) * (scale - 1) / scale;
+    
+    // Content wrapper gets image aspect ratio and transform
+    const contentTransform = `transform:scale(${scale}) translate(${-panX}%, ${-panY}%);transform-origin:${posX}% ${posY}%;`;
+    const imgAspect = imageNaturalWidth && imageNaturalHeight ? `${imageNaturalWidth}/${imageNaturalHeight}` : '4/3';
+    
+    // Content maintains image proportions, centered in matte
+    let html = `<div class="preview-content" style="aspect-ratio:${imgAspect};max-width:100%;max-height:100%;position:relative;${contentTransform}">`;
+    html += `<img src="${imageUrl}" style="width:100%;height:100%;display:block;" onclick="handleClick(event)">`;
+    
+    // Highlights inside content wrapper
+    highlights.forEach(h => {
+        const blend = h.blendMode || 'multiply';
+        const heightPct = imageNaturalHeight > 0 ? (h.height / imageNaturalHeight) * 100 : 2;
+        html += `<div class="doc-highlight${placingId===h.id?' placing':''}" data-appear="${h.appearAt}" 
+            style="left:${h.x}%;top:${h.y}%;width:${h.width}%;height:${heightPct.toFixed(2)}%;mix-blend-mode:${blend};">
+            <div class="hl-bar" style="background:${h.color};opacity:${h.opacity};"></div>
+        </div>`;
+    });
+    html += '</div>';
+    
+    // Vignette and paper overlay outside content
+    html += '<div class="preview-vignette" id="previewVignette"></div>';
+    html += '<div class="preview-paper" id="previewPaper"></div>';
+    
+    matte.innerHTML = html;
+    
+    // Matte clips to output aspect ratio, flexbox centers content
+    let matteStyle = 'position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;';
+    if (outputAspect === 'auto' || outputAspect === 'full') {
+        matteStyle += `width:${outputScale}%;height:${outputScale}%;`;
+    } else {
+        // Fixed aspect ratio - width-based with max-height constraint
+        matteStyle += `width:${outputScale}%;max-height:${outputScale}%;aspect-ratio:${outputAspect.replace(':', '/')};`;
+    }
+    matte.style.cssText = matteStyle;
+    
+    updateCaption();
+    updateVignette();
+    updatePaperOverlay();
+    handleScroll();
+}
+
+function handleClick(e) {
+    if (!placingId) return;
+    const rect = e.target.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const h = highlights.find(h => h.id === placingId);
+    if (h) { h.x = x; h.y = y; }
+    placingId = null;
+    renderList();
+    rebuildPreview();
+}
+
+function updateCaption() {
+    const enabled = document.getElementById('captionEnabled').checked;
+    const caption = document.getElementById('previewCaption');
+    const hasBg = document.getElementById('captionBg').checked;
+    const color = document.getElementById('captionColor').value;
+    const offsetY = parseInt(document.getElementById('captionOffsetY').value) || 0;
+    caption.style.display = enabled ? 'block' : 'none';
+    caption.style.background = hasBg ? 'rgba(0,0,0,0.85)' : 'transparent';
+    caption.style.marginTop = offsetY + 'px';
+    const textColor = color === 'black' ? '#111' : '#e0e0e0';
+    const creditColor = color === 'black' ? '#333' : '#aaa';
+    document.getElementById('capText').style.color = textColor;
+    document.getElementById('capCredit').style.color = creditColor;
+    document.getElementById('capText').textContent = document.getElementById('captionText').value;
+    document.getElementById('capCredit').textContent = document.getElementById('captionCredit').value;
+}
+
+function updateStageBg() {
+    const transparent = document.getElementById('bgTransparent').checked;
+    const color = document.getElementById('bgColor').value;
+    document.getElementById('previewStage').style.background = transparent ? 'transparent' : color;
+}
+
+function updateVignette() {
+    const enabled = document.getElementById('vignetteEnabled').checked;
+    const el = document.getElementById('previewVignette');
+    if (el) el.classList.toggle('on', enabled);
+}
+
+function updateBlurb() {
+    const blurb = document.getElementById('previewBlurb');
+    const text = document.getElementById('blurbText').value;
+    const position = document.getElementById('blurbPosition').value;
+    const font = document.getElementById('blurbFont').value;
+    const scale = parseInt(document.getElementById('blurbScale').value) || 100;
+    const color = document.getElementById('blurbColor').value;
+    const offsetX = parseInt(document.getElementById('blurbOffsetX').value) || 0;
+    const offsetY = parseInt(document.getElementById('blurbOffsetY').value) || 0;
+    
+    const hasContent = text.trim();
+    blurb.style.display = hasContent ? 'block' : 'none';
+    
+    if (!hasContent) return;
+    
+    const fontSize = Math.round(16 * scale / 100);
+    
+    // Set content - split by newlines into separate divs
+    const lines = text.split('\n').map(line => '<div class="blurb-line">' + line + '</div>').join('');
+    blurb.innerHTML = lines;
+    
+    // Set styles
+    blurb.style.fontFamily = font + ', sans-serif';
+    blurb.style.fontSize = fontSize + 'px';
+    blurb.style.color = color;
+    
+    // Position
+    blurb.className = 'preview-blurb ' + position;
+    
+    const isTop = position.startsWith('top');
+    const isLeft = position.includes('left');
+    
+    // Base positioning
+    if (isTop) {
+        blurb.style.top = (20 + offsetY) + 'px';
+        blurb.style.bottom = 'auto';
+    } else {
+        blurb.style.bottom = (80 + -offsetY) + 'px'; // above caption
+        blurb.style.top = 'auto';
+    }
+    
+    if (isLeft) {
+        blurb.style.left = (20 + offsetX) + 'px';
+        blurb.style.right = 'auto';
+        blurb.style.transform = 'none';
+    } else {
+        blurb.style.left = '50%';
+        blurb.style.right = 'auto';
+        blurb.style.transform = 'translateX(calc(-50% + ' + offsetX + 'px))';
+    }
+}
+
+function updatePaperOverlay() {
+    const amount = parseFloat(document.getElementById('paperAmount').value) / 100;
+    const el = document.getElementById('previewPaper');
+    if (el) {
+        el.style.opacity = amount;
+    }
+}
+
+// SCROLL - Animate highlights
+function handleScroll() {
+    const scroller = document.getElementById('previewScroll');
+    const container = document.getElementById('previewContainer');
+    const scrollTop = scroller.scrollTop;
+    const scrollMax = container.offsetHeight - scroller.clientHeight;
+    const pct = scrollMax > 0 ? (scrollTop / scrollMax) * 100 : 0;
+    
+    currentScrollPct = pct;
+    document.getElementById('progressDisplay').textContent = Math.round(pct) + '%';
+    if (pct > 5) document.getElementById('previewCaption').classList.add('on');
+    if (pct > 5) document.getElementById('previewBlurb').classList.add('on');
+    
+    // Apply keyframe transform if keyframes exist
+    if (keyframes.length > 0) {
+        const t = getInterpolatedTransform(pct);
+        const panX = (t.posX - 50) * (t.scale - 1) / t.scale;
+        const panY = (t.posY - 50) * (t.scale - 1) / t.scale;
+        const content = document.querySelector('#previewMatte .preview-content');
+        if (content) {
+            content.style.transform = `scale(${t.scale}) translate(${-panX}%, ${-panY}%)`;
+            content.style.transformOrigin = `${t.posX}% ${t.posY}%`;
+        }
+    }
+    
+    document.querySelectorAll('#previewMatte .doc-highlight').forEach(el => {
+        const appear = parseFloat(el.dataset.appear) || 0;
+        const placing = el.classList.contains('placing');
+        const bar = el.querySelector('.hl-bar');
+        
+        if (placing) {
+            bar.style.width = '100%';
+            return;
+        }
+        
+        const animProgress = Math.max(0, Math.min(1, (pct - appear) / 15));
+        const eased = 1 - Math.pow(1 - animProgress, 3);
+        bar.style.width = (eased * 100) + '%';
+    });
+}
+
+document.getElementById('previewScroll').addEventListener('scroll', handleScroll, { passive: true });
+
+// EXPORT
+function generateExport() {
+    if (!imageUrl) return discoAlert('Load image first');
+    const dur = document.getElementById('scrollDuration').value;
+    const offset = parseInt(document.getElementById('stickyOffset').value) || 150;
+    const desktopOffset = parseInt(document.getElementById('desktopOffset').value) || 0;
+    const capEnabled = document.getElementById('captionEnabled').checked;
+    const capText = document.getElementById('captionText').value;
+    const capCredit = document.getElementById('captionCredit').value;
+    const capBg = document.getElementById('captionBg').checked;
+    const capColor = document.getElementById('captionColor').value;
+    const capOffsetY = parseInt(document.getElementById('captionOffsetY').value) || 0;
+    const bgColorValue = document.getElementById('bgColor').value;
+    const bgTransparent = document.getElementById('bgTransparent').checked;
+    const bgColor = bgTransparent ? 'transparent' : bgColorValue;
+    const scale = parseFloat(document.getElementById('imageScale').value) || 1;
+    const posX = parseFloat(document.getElementById('imagePosX').value);
+    const posY = parseFloat(document.getElementById('imagePosY').value);
+    const vignetteOn = document.getElementById('vignetteEnabled').checked;
+    const paperAmount = parseFloat(document.getElementById('paperAmount').value) / 100;
+    const outputAspect = document.getElementById('outputAspect').value;
+    const outputScale = parseInt(document.getElementById('outputScale').value) || 100;
+    const mobileWidthMult = parseFloat(document.getElementById('mobileWidthMult').value) || 1;
+    const fullBleed = document.getElementById('fullBleed').checked;
+    const optimizeMobileFraming = document.getElementById('optimizeMobileFraming').checked;
+    const fullBleedCss = fullBleed ? 'width:100vw;margin-left:calc(-50vw + 50%);' : '';
+    const sm = parseInt(dur) / 100;
+    const uid = 'doc' + Math.random().toString(36).substr(2, 9);
+    
+    // Calculate pan offset from center (50% = no pan)
+    const panX = (posX - 50) * (scale - 1) / scale;
+    const panY = (posY - 50) * (scale - 1) / scale;
+    
+    // Highlights inside content wrapper - no individual transform needed
+    const hlHtml = highlights.map((h, i) => {
+        const blend = h.blendMode || 'multiply';
+        const heightPct = imageNaturalHeight > 0 ? (h.height / imageNaturalHeight) * 100 : 2;
+        return `<div class="hl hl-${i}" data-a="${h.appearAt}" style="left:${h.x.toFixed(1)}%;top:${h.y.toFixed(1)}%;width:${h.width}%;height:${heightPct.toFixed(2)}%;mix-blend-mode:${blend};">` +
+        `<div class="hl-bar" style="background:${h.color};opacity:${h.opacity};"></div></div>`;
+    }).join('\n');
+    
+    // Generate mobile width overrides
+    let mobileHlCss = '';
+    if (mobileWidthMult !== 1) {
+        mobileHlCss = highlights.map((h, i) => {
+            const mobileWidth = Math.min(100, h.width * mobileWidthMult);
+            return `#${uid} .hl-${i}{width:${mobileWidth.toFixed(1)}%}`;
+        }).join('');
+    }
+    
+    // Mobile content offset compensation - skip when optimizeMobileFraming is on
+    const mobileContentOffset = optimizeMobileFraming ? 0 : parseFloat(offset) / 2;
+    const mobileContentCss = mobileContentOffset > 0 ? `#${uid} .content{transform:scale(${scale}) translate(${(-panX).toFixed(2)}%, ${(-panY).toFixed(2)}%) translateY(-${mobileContentOffset}px);transform-origin:${posX}% ${posY}%}` : '';
+    
+    const capHtml = capEnabled ? 
+        `<div class="cap"><div class="cap-t">${capText}</div>${capCredit?`<div class="cap-c">${capCredit}</div>`:''}</div>` : '';
+    
+    // Blurb settings
+    const blurbText = document.getElementById('blurbText').value;
+    const blurbPosition = document.getElementById('blurbPosition').value;
+    const blurbFont = document.getElementById('blurbFont').value;
+    const blurbScale = parseInt(document.getElementById('blurbScale').value) || 100;
+    const blurbColor = document.getElementById('blurbColor').value;
+    const blurbOffsetX = parseInt(document.getElementById('blurbOffsetX').value) || 0;
+    const blurbOffsetY = parseInt(document.getElementById('blurbOffsetY').value) || 0;
+    const hasBlurb = blurbText.trim();
+    const blurbFontSize = Math.round(16 * blurbScale / 100);
+    const blurbIsTop = blurbPosition.startsWith('top');
+    const blurbIsLeft = blurbPosition.includes('left');
+    
+    let blurbHtml = '';
+    let blurbCss = '';
+    if (hasBlurb) {
+        const lines = blurbText.split('\n').map(l => `<div class="blurb-line">${l}</div>`).join('');
+        blurbHtml = `<div class="blurb">${lines}</div>`;
+        
+        let blurbPos = '';
+        if (blurbIsTop) {
+            blurbPos += `top:${20 + blurbOffsetY}px;`;
+        } else {
+            blurbPos += `bottom:${80 - blurbOffsetY}px;`;
+        }
+        if (blurbIsLeft) {
+            blurbPos += `left:${20 + blurbOffsetX}px;text-align:left;`;
+        } else {
+            blurbPos += `left:50%;transform:translateX(calc(-50% + ${blurbOffsetX}px));text-align:center;`;
+        }
+        
+        blurbCss = `#${uid} .blurb{position:absolute;${blurbPos}font-family:${blurbFont},sans-serif;font-size:${blurbFontSize}px;color:${blurbColor};z-index:15;opacity:0;transition:opacity 0.5s,transform 0.5s;pointer-events:none}
+#${uid} .blurb.on{opacity:1}
+#${uid} .blurb-line{line-height:1.4;white-space:nowrap}\n`;
+    }
+    
+    const vigHtml = vignetteOn ? `<div class="vig"></div>` : '';
+    const vigCss = vignetteOn ? `#${uid} .vig{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 150px 60px rgba(0,0,0,0.5);z-index:5}\n` : '';
+    
+    const paperHtml = paperAmount > 0 ? `<div class="paper"></div>` : '';
+    const paperCss = paperAmount > 0 ? `#${uid} .paper{position:absolute;inset:0;pointer-events:none;opacity:${paperAmount};z-index:4;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");mix-blend-mode:multiply}\n` : '';
+    
+    // Image aspect ratio for content
+    const imgAspect = imageNaturalWidth && imageNaturalHeight ? `${imageNaturalWidth}/${imageNaturalHeight}` : '4/3';
+    
+    // Matte CSS - clips to output aspect ratio
+    let matteCss = '';
+    if (outputAspect === 'auto' || outputAspect === 'full') {
+        matteCss = `#${uid} .matte{position:relative;width:${outputScale}%;height:${outputScale}%;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:50%;flex-shrink:1}`;
+    } else {
+        // Fixed aspect ratio - width-based with max-height constraint
+        matteCss = `#${uid} .matte{position:relative;width:${outputScale}%;max-height:${outputScale}%;aspect-ratio:${outputAspect.replace(':', '/')};display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:50%;flex-shrink:1}`;
+    }
+    
+    // Content transform for scale and pan (only used if no keyframes)
+    const contentTransform = keyframes.length === 0 ? `transform:scale(${scale}) translate(${(-panX).toFixed(2)}%, ${(-panY).toFixed(2)}%);transform-origin:${posX}% ${posY}%` : '';
+    
+    // Generate keyframe JS if needed
+    let keyframeJs = '';
+    if (keyframes.length > 0) {
+        const kfData = JSON.stringify(keyframes);
+        keyframeJs = `
+var kf=${kfData};
+function lerp(a,b,t){return a+(b-a)*t;}
+function getT(p){
+if(kf.length===0)return{s:${scale},x:${posX},y:${posY}};
+if(kf.length===1)return{s:kf[0].scale,x:kf[0].posX,y:kf[0].posY};
+if(p<=kf[0].scrollPct)return{s:kf[0].scale,x:kf[0].posX,y:kf[0].posY};
+if(p>=kf[kf.length-1].scrollPct){var l=kf[kf.length-1];return{s:l.scale,x:l.posX,y:l.posY};}
+for(var i=0;i<kf.length-1;i++){
+if(p>=kf[i].scrollPct&&p<=kf[i+1].scrollPct){
+var rng=kf[i+1].scrollPct-kf[i].scrollPct;
+var pr=rng>0?(p-kf[i].scrollPct)/rng:0;
+return{s:lerp(kf[i].scale,kf[i+1].scale,pr),x:lerp(kf[i].posX,kf[i+1].posX,pr),y:lerp(kf[i].posY,kf[i+1].posY,pr)};
+}}
+return{s:${scale},x:${posX},y:${posY}};
+}`;
+    }
+    
+    // Mobile stage height - compute based on what's actually rendered
+    const capBuffer = capEnabled ? 120 : 0;
+    let mobileStageHeight = `calc(100vh - ${offset}px)`;
+    if (optimizeMobileFraming && imageNaturalWidth && imageNaturalHeight) {
+        let preferredCalc;
+        if (outputAspect !== 'auto' && outputAspect !== 'full' && outputAspect.includes(':')) {
+            const [aw, ah] = outputAspect.split(':').map(Number);
+            preferredCalc = `calc(100vw * ${outputScale / 100} * ${ah} / ${aw} + ${40 + capBuffer}px)`;
+        } else {
+            preferredCalc = `calc(100vw * ${outputScale / 100} * ${imageNaturalHeight} / ${imageNaturalWidth} + ${40 + capBuffer}px)`;
+        }
+        mobileStageHeight = `clamp(${capEnabled ? '35vh' : '25vh'}, ${preferredCalc}, calc(100vh - ${offset}px))`;
+    }
+
+    const code = `<style>
+#${uid}{position:relative}
+#${uid} .stage{position:-webkit-sticky;position:sticky;top:${desktopOffset}px;height:${desktopOffset ? `calc(100vh - ${desktopOffset}px)` : '100vh'};background:${bgColor};display:flex;align-items:center;justify-content:center;overflow:hidden;${fullBleedCss}}
+#${uid} .stage-in{display:flex;flex-direction:column;align-items:center;width:100%;height:100%;justify-content:center;gap:0}
+${matteCss}
+#${uid} .content{aspect-ratio:${imgAspect};max-width:100%;max-height:100%;position:relative;${contentTransform}}
+#${uid} .content img{width:100%;height:100%;display:block}
+#${uid} .hl{position:absolute;pointer-events:none;overflow:hidden}
+#${uid} .hl-bar{height:100%;width:0%}
+${vigCss}${paperCss}${blurbCss}#${uid} .cap{flex-shrink:0;width:${outputScale}%;max-width:${outputScale}%;margin-top:${capOffsetY}px;${capBg ? 'background:rgba(0,0,0,.85);' : ''}padding:6px 16px 8px;border-radius:0 0 6px 6px;z-index:10;box-sizing:border-box}
+#${uid} .cap-t{font:13px/1.5 system-ui,sans-serif;color:${capColor === 'black' ? '#111' : '#e0e0e0'}}
+#${uid} .cap-c{font:11px system-ui,sans-serif;color:${capColor === 'black' ? '#333' : '#aaa'};font-style:italic;margin-top:6px}
+@media(max-width:768px){#${uid} .stage{top:${offset}px;height:${mobileStageHeight}}#${uid} .stage-in{height:100%;justify-content:flex-start;padding-top:10px}#${uid} .matte{min-height:40%}${mobileContentCss}${mobileHlCss}#${uid} .cap{width:calc(100% - 24px);padding:10px 14px;margin-top:6px}#${uid} .cap-t{font-size:12px}#${uid} .cap-c{font-size:10px}}
+</style>
+<div id="${uid}">
+<div class="stage">
+<div class="stage-in">
+<div class="matte">
+<div class="content">
+<img src="${imageUrl}" alt="">
+${hlHtml}
+</div>
+${vigHtml}
+${paperHtml}
+</div>
+${capHtml}
+</div>
+${blurbHtml}
+</div>
+</div>
+`;
+    
+    // Build JS separately for Base64 encoding (CMS-safe)
+    const js = `(function(){
+var w=document.getElementById('${uid}'),st=w.querySelector('.stage'),ct=w.querySelector('.content');
+var sb=window.innerWidth<=768&&${optimizeMobileFraming}?window.innerHeight:st.offsetHeight;
+w.style.height=(sb*${sm})+'px';
+window.addEventListener('resize',function(){var sb=window.innerWidth<=768&&${optimizeMobileFraming}?window.innerHeight:st.offsetHeight;w.style.height=(sb*${sm})+'px';});
+function ease(t){return 1-Math.pow(1-t,3);}${keyframeJs}
+function upd(){
+var extP=window.SCROLLTASTIC_PROGRESS&&window.SCROLLTASTIC_PROGRESS['${uid}'];
+var p;
+if(extP!==undefined){p=extP*100;}else{
+var r=w.getBoundingClientRect();
+var scrolled=Math.max(0,-r.top);
+var range=w.offsetHeight-window.innerHeight;
+p=range>0?(scrolled/range)*100:0;
+}${keyframes.length > 0 ? `
+var t=getT(p);
+var panX=(t.x-50)*(t.s-1)/t.s;
+var panY=(t.y-50)*(t.s-1)/t.s;
+ct.style.transform='scale('+t.s+') translate('+(-panX)+'%, '+(-panY)+'%)';
+ct.style.transformOrigin=t.x+'% '+t.y+'%';` : ''}
+w.querySelectorAll('.hl').forEach(function(el){
+var a=parseFloat(el.dataset.a)||0;
+var prog=Math.max(0,Math.min(1,(p-a)/15));
+el.querySelector('.hl-bar').style.width=(ease(prog)*100)+'%';
+});
+
+var b=w.querySelector('.blurb');if(b&&p>5)b.classList.add('on');
+var c=w.querySelector('.cap');
+}
+window.addEventListener('scroll',upd,{passive:true});
+upd();
+})();`;
+    
+    const b64 = btoa(js);
+    const finalCode = code + `<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="eval(atob('${b64}'))">`;
+
+    document.getElementById('exportCode').value = finalCode;localStorage.setItem('disco_doc-module_export',finalCode);
+    if(!_fromPlanner){document.getElementById('exportModal').classList.add('active')};
+}
+
+// MODAL
+function closeModal() { document.getElementById('exportModal').classList.remove('active'); }
+function copyCode() { 
+    const code = document.getElementById('exportCode');
+    if (!code.value) { generateExport(); return; }
+    code.select(); 
+    document.execCommand('copy'); 
+    discoAlert('Copied!'); 
+}
+function downloadCode() {
+    const code = document.getElementById('exportCode').value;
+    if (!code) { generateExport(); return; }
+    const filename = prompt('Save export as:', 'doc-module');
+    if (!filename) return;
+    const blob = new Blob([code], {type:'text/html'});
+    const safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = safeName + '.html'; a.click();
+}
+function sendToStackBuilder() {var _em=document.getElementById('exportModal');if(_em){_em.classList.remove('active');_em.classList.remove('open');}
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate HTML first'); return; }
+    var queue = JSON.parse(localStorage.getItem('disco_stack_queue') || '[]');
+    queue.push({ name: 'Doc Module', html: code, timestamp: Date.now() });
+    localStorage.setItem('disco_stack_queue', JSON.stringify(queue));
+    discoStackSend()
+}
+
+// SAVE/LOAD PROJECT
+function saveProject() {
+    const defaultName = 'doc-module-project';
+    const filename = prompt('Save project as:', defaultName);
+    if (!filename) return; // User cancelled
+    
+    const project = { 
+        imageUrl,
+        imageNaturalWidth,
+        imageNaturalHeight,
+        highlights,
+        keyframes,
+        settings: {
+            outputAspect: document.getElementById('outputAspect').value,
+            outputScale: document.getElementById('outputScale').value,
+            imageScale: document.getElementById('imageScale').value,
+            imagePosX: document.getElementById('imagePosX').value,
+            imagePosY: document.getElementById('imagePosY').value,
+            bgColor: document.getElementById('bgColor').value,
+            bgTransparent: document.getElementById('bgTransparent').checked,
+            vignetteEnabled: document.getElementById('vignetteEnabled').checked,
+            paperAmount: document.getElementById('paperAmount').value,
+            captionEnabled: document.getElementById('captionEnabled').checked,
+            captionBg: document.getElementById('captionBg').checked,
+            captionColor: document.getElementById('captionColor').value,
+            captionOffsetY: document.getElementById('captionOffsetY').value,
+            captionText: document.getElementById('captionText').value,
+            captionCredit: document.getElementById('captionCredit').value,
+            blurbText: document.getElementById('blurbText').value,
+            blurbPosition: document.getElementById('blurbPosition').value,
+            blurbFont: document.getElementById('blurbFont').value,
+            blurbScale: document.getElementById('blurbScale').value,
+            blurbColor: document.getElementById('blurbColor').value,
+            blurbOffsetX: document.getElementById('blurbOffsetX').value,
+            blurbOffsetY: document.getElementById('blurbOffsetY').value,
+            scrollDuration: document.getElementById('scrollDuration').value,
+            stickyOffset: document.getElementById('stickyOffset').value,
+            desktopOffset: document.getElementById('desktopOffset').value,
+            mobileWidthMult: document.getElementById('mobileWidthMult').value,
+            fullBleed: document.getElementById('fullBleed').checked,
+            optimizeMobileFraming: document.getElementById('optimizeMobileFraming').checked
+        }
+    };
+    const blob = new Blob([JSON.stringify(project,null,2)], {type:'application/json'});
+    const safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = safeName + '.json'; a.click();
+}
+
+function loadProject() {
+    const input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+    input.onchange = e => {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try {
+                const proj = JSON.parse(ev.target.result);
+                imageUrl = proj.imageUrl;
+                imageNaturalWidth = proj.imageNaturalWidth || 0;
+                imageNaturalHeight = proj.imageNaturalHeight || 0;
+                highlights = proj.highlights || [];
+                keyframes = proj.keyframes || [];
+                if (proj.settings) {
+                    document.getElementById('outputAspect').value = proj.settings.outputAspect || proj.settings.aspectRatio || 'auto';
+                    document.getElementById('outputScale').value = proj.settings.outputScale || 100;
+                    document.getElementById('outputScaleVal').textContent = (proj.settings.outputScale || 100) + '%';
+                    document.getElementById('imageScale').value = proj.settings.imageScale || 1;
+                    document.getElementById('scaleVal').textContent = parseFloat(proj.settings.imageScale || 1).toFixed(2) + 'x';
+                    document.getElementById('imagePosX').value = proj.settings.imagePosX || 50;
+                    document.getElementById('posXVal').textContent = (proj.settings.imagePosX || 50) + '%';
+                    document.getElementById('imagePosY').value = proj.settings.imagePosY || 50;
+                    document.getElementById('posYVal').textContent = (proj.settings.imagePosY || 50) + '%';
+                    document.getElementById('bgColor').value = proj.settings.bgColor || '#000000';
+                    document.getElementById('bgTransparent').checked = proj.settings.bgTransparent !== false;
+                    document.getElementById('vignetteEnabled').checked = proj.settings.vignetteEnabled || false;
+                    document.getElementById('paperAmount').value = proj.settings.paperAmount || 0;
+                    document.getElementById('paperAmountVal').textContent = (proj.settings.paperAmount || 0) + '%';
+                    document.getElementById('captionEnabled').checked = proj.settings.captionEnabled !== false;
+                    document.getElementById('captionBg').checked = proj.settings.captionBg !== false;
+                    document.getElementById('captionColor').value = proj.settings.captionColor || 'white';
+                    document.getElementById('captionOffsetY').value = proj.settings.captionOffsetY || 0;
+                    document.getElementById('captionOffsetVal').textContent = proj.settings.captionOffsetY || 0;
+                    document.getElementById('captionText').value = proj.settings.captionText || '';
+                    document.getElementById('captionCredit').value = proj.settings.captionCredit || '';
+                    // Backward compat: merge old blurbLine1/2/3 into blurbText if needed
+                    let blurbText = proj.settings.blurbText || '';
+                    if (!blurbText && (proj.settings.blurbLine1 || proj.settings.blurbLine2 || proj.settings.blurbLine3)) {
+                        blurbText = [proj.settings.blurbLine1, proj.settings.blurbLine2, proj.settings.blurbLine3].filter(l => l).join('\n');
+                    }
+                    document.getElementById('blurbText').value = blurbText;
+                    document.getElementById('blurbPosition').value = proj.settings.blurbPosition || 'top-left';
+                    document.getElementById('blurbFont').value = proj.settings.blurbFont || 'APRegular';
+                    document.getElementById('blurbScale').value = proj.settings.blurbScale || 100;
+                    document.getElementById('blurbScaleVal').textContent = (proj.settings.blurbScale || 100) + '%';
+                    document.getElementById('blurbColor').value = proj.settings.blurbColor || '#ffffff';
+                    document.getElementById('blurbOffsetX').value = proj.settings.blurbOffsetX || 0;
+                    document.getElementById('blurbOffsetXVal').textContent = (proj.settings.blurbOffsetX || 0) + 'px';
+                    document.getElementById('blurbOffsetY').value = proj.settings.blurbOffsetY || 0;
+                    document.getElementById('blurbOffsetYVal').textContent = (proj.settings.blurbOffsetY || 0) + 'px';
+                    document.getElementById('scrollDuration').value = proj.settings.scrollDuration || 300;
+                    document.getElementById('scrollDurVal').textContent = proj.settings.scrollDuration || 300;
+                    document.getElementById('stickyOffset').value = proj.settings.stickyOffset || 150;
+                    document.getElementById('desktopOffset').value = proj.settings.desktopOffset || 0;
+                    document.getElementById('mobileWidthMult').value = proj.settings.mobileWidthMult || 1;
+                    document.getElementById('mobileWidthVal').textContent = parseFloat(proj.settings.mobileWidthMult || 1).toFixed(1) + 'x';
+                    document.getElementById('fullBleed').checked = proj.settings.fullBleed || false;
+                    document.getElementById('optimizeMobileFraming').checked = proj.settings.optimizeMobileFraming !== false;
+                }
+                document.getElementById('imageUrl').value = imageUrl || '';
+                renderList();
+                renderKeyframeList();
+                rebuildPreview();
+                updateBlurb();
+                setPreviewHeight();
+            } catch(err) { discoAlert('Invalid project file'); }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+// PERSISTENCE
+(function() {
+    var KEY = 'disco_doc-module';
+    
+    function saveState() {
+        var state = { inputs: {} };
+        state.imageUrl = imageUrl;
+        state.imageNaturalWidth = imageNaturalWidth;
+        state.imageNaturalHeight = imageNaturalHeight;
+        state.highlights = highlights;
+        state.keyframes = keyframes;
+        document.querySelectorAll('input[id], select[id], textarea[id]').forEach(function(el) {
+            if (el.type === 'checkbox') state.inputs[el.id] = el.checked;
+            else if (el.type === 'file') return;
+            else state.inputs[el.id] = el.value;
+        });
+        try { localStorage.setItem(KEY, JSON.stringify(state)); localStorage.removeItem(KEY + '_from_planner'); } catch(e) {}
+    }
+    
+    function loadState() {
+        try {
+            var saved = localStorage.getItem(KEY);
+            if (!saved) return;
+            var state = JSON.parse(saved);
+            
+            if (state.imageUrl !== undefined) imageUrl = state.imageUrl;
+            if (state.imageNaturalWidth !== undefined) imageNaturalWidth = state.imageNaturalWidth;
+            if (state.imageNaturalHeight !== undefined) imageNaturalHeight = state.imageNaturalHeight;
+            if (state.highlights) highlights = state.highlights;
+            if (state.keyframes) keyframes = state.keyframes;
+            
+            Object.keys(state.inputs || {}).forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    if (el.type === 'checkbox') el.checked = state.inputs[id];
+                    else if (el.type === 'file') return;
+                    else el.value = state.inputs[id];
+                }
+            });
+            
+            if (state.imageUrl) { document.getElementById('imageUrl').value = state.imageUrl; loadImage(); }
+            
+            // Update display values
+            document.getElementById('scaleVal').textContent = parseFloat(document.getElementById('imageScale').value).toFixed(2) + 'x';
+            document.getElementById('posXVal').textContent = document.getElementById('imagePosX').value + '%';
+            document.getElementById('posYVal').textContent = document.getElementById('imagePosY').value + '%';
+            document.getElementById('scrollDurVal').textContent = document.getElementById('scrollDuration').value;
+            document.getElementById('mobileWidthVal').textContent = parseFloat(document.getElementById('mobileWidthMult').value).toFixed(1) + 'x';
+            document.getElementById('outputScaleVal').textContent = document.getElementById('outputScale').value + '%';
+            document.getElementById('blurbScaleVal').textContent = document.getElementById('blurbScale').value + '%';
+            document.getElementById('blurbOffsetXVal').textContent = document.getElementById('blurbOffsetX').value + 'px';
+            document.getElementById('blurbOffsetYVal').textContent = document.getElementById('blurbOffsetY').value + 'px';
+            
+            renderList();
+            renderKeyframeList();
+            rebuildPreview();
+            setPreviewHeight();
+            updateVignette();
+            updateBlurb();
+            updateCaption();
+            updateStageBg();
+        } catch(e) { console.warn('Load state error:', e); }
+    }
+    
+    window.resetModule = function() {
+        discoConfirm('Reset all settings to defaults?', function(){localStorage.removeItem(KEY);
+            location.reload();});
+    };
+    
+    var _orig_addHighlight = window.addHighlight;
+    window.addHighlight = function() { var r = _orig_addHighlight.apply(this, arguments); saveState(); return r; };
+    var _orig_removeHighlight = window.removeHighlight;
+    window.removeHighlight = function() { var r = _orig_removeHighlight.apply(this, arguments); saveState(); return r; };
+    var _orig_addKeyframe = window.addKeyframe;
+    window.addKeyframe = function() { var r = _orig_addKeyframe.apply(this, arguments); saveState(); return r; };
+    var _orig_removeKeyframe = window.removeKeyframe;
+    window.removeKeyframe = function() { var r = _orig_removeKeyframe.apply(this, arguments); saveState(); return r; };
+    
+    document.addEventListener('change', saveState);
+    document.addEventListener('input', saveState);
+    
+    setTimeout(loadState, 150);
+})();
+
+// INIT
+setPreviewHeight();
+renderList();
+renderKeyframeList();
+updateCaption();
+
+function downloadCodeTxt() {
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate code first'); return; }
+    var filename = prompt('Save as:', 'doc-module');
+    if (!filename) return;
+    var safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    var blob = new Blob([code], {type:'text/plain'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = safeName + '.txt';
+    a.click();
+}
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

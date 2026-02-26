@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrolltastic Text Scroll</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); padding-top: 41px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+.app { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 41px); }
+.controls { background: var(--bg-primary); padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); }
+.preview-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.preview-header {
+    padding: 0 16px; height: 34px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+}
+.preview-header label { font-size: 9px; display: flex; align-items: center; gap: 5px; cursor: pointer; margin: 0; }
+#progressDisplay { color: var(--accent); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+.preview-scroll { flex: 1; overflow-y: auto; background: var(--bg-deep); }
+.preview-container { min-height: 300vh; position: relative; }
+.preview-stage { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.preview-bg { position: absolute; inset: 0; background-size: cover; background-position: center; transition: opacity 0.6s; }
+.preview-text { position: absolute; z-index: 10; padding: 40px; max-width: 900px; opacity: 0; transition: opacity 0.4s; }
+.preview-text.active { opacity: 1; }
+.preview-text p { font-weight: 600; line-height: 1.3; text-shadow: 2px 2px 8px rgba(0,0,0,0.8); }
+.preview-backdrop { position: absolute; inset: 0; pointer-events: none; }
+.preview-caption { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 700px; padding: 12px 16px; background: rgba(0,0,0,0.8); border-radius: 8px; font-size: 13px; line-height: 1.5; color: #e0e0e0; opacity: 0; transition: opacity 0.6s; z-index: 100; }
+.preview-caption.on { opacity: 1; }
+.preview-cred { color: #999; font-size: 11px; font-style: italic; margin-top: 4px; }
+
+.module-title { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em; }
+.module-title span { color: var(--accent); }
+
+h2 { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; transition: all .15s; }
+h2:hover { border-color: var(--border-light); background: var(--bg-tertiary); }
+h2::after { content: '\25be'; font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+h2.collapsed::after { transform: rotate(-90deg); }
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0; }
+
+.control-group { margin-bottom: 10px; }
+label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+input[type="text"], input[type="url"], input[type="number"], select, textarea {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary);
+    border-radius: 6px; font-family: var(--mono); font-size: 11px; outline: none; transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent-dim); }
+input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="color"] { width: 36px; height: 24px; border: 1px solid var(--border); background: var(--bg-tertiary); cursor: pointer; border-radius: 4px; padding: 1px; }
+input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent); }
+
+button {
+    width: 100%; padding: 8px 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--accent); border: 1px solid var(--accent); color: #0a0a0a; font-weight: 600;
+    border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: all .15s;
+}
+button:hover { opacity: 0.85; }
+button.secondary { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.row { display: flex; gap: 8px; align-items: flex-start; }
+.row > * { flex: 1; }
+.hint { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+.range-val { font-family: var(--mono); font-size: 9px; color: var(--accent); float: right; text-transform: none; letter-spacing: 0; }
+
+
+.inline-group { display: flex; gap: 10px; align-items: center; }
+.inline-group > * { flex: 1; }
+
+.blocks-list { background: #0a0a0a; border-radius: 6px; padding: 10px; margin: 10px 0; max-height: 300px; overflow-y: auto; }
+.block-item { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px; padding: 10px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.2s; }
+.block-item:hover { border-color: #4a9eff; }
+.block-item.selected { border-color: #4a9eff; background: #1a2a3a; }
+.block-item .block-text { font-size: 12px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.block-item .block-bg { font-size: 10px; color: #666; }
+
+.save-load-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.save-load-bar button { flex: 1; margin: 0; }
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+.modal.active { display: flex; }
+.modal-content { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
+.modal-content h3 { color: #4a9eff; margin-bottom: 16px; }
+.modal-content textarea { height: 200px; font-family: monospace; font-size: 11px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-actions button { flex: 1; }
+.saved-list { max-height: 200px; overflow-y: auto; margin: 10px 0; }
+.saved-item { background: #2a2a2a; padding: 10px 12px; border-radius: 6px; margin-bottom: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.saved-item:hover { background: #3a3a3a; }
+.saved-item .name { color: #fff; }
+.saved-item .date { color: #666; font-size: 11px; }
+.saved-item .delete { background: none; border: none; color: #888; cursor: pointer; padding: 4px 8px; margin: 0; width: auto; }
+.saved-item .delete:hover { color: #e74c3c; }
+
+/* Disco Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--bg-primary);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;font-family:var(--mono);">
+<a href="index.html" style="padding:10px 16px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.5px;">← Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Zoom Detail</a>
+<a href="text-scroll.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Text Scroll</a>
+<a href="chapter-marker.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chapter Marker</a>
+<a href="key-facts.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Key Facts</a>
+<a href="body-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Body Module</a>
+<a href="epistemic-text.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Epistemic Text</a>
+<a href="adversarial-verification.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Adversarial</a>
+<a href="silence-mapping.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Silence Map</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:var(--accent)!important;background:var(--bg-secondary);}</style>
+<div class="app" style="margin-top:41px;height:calc(100vh - 41px);">
+    <div class="controls">
+        <div class="module-title">Text <span>Scroll</span></div>
+        
+        <div class="save-load-bar">
+            <button class="secondary" onclick="openSaveModal()">💾 Save</button>
+            <button class="secondary" onclick="openLoadModal()">📂 Load</button>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Text Blocks</h2>
+        <div class="section">
+            <div class="blocks-list" id="blocksList"></div>
+            <button onclick="addBlock()">+ Add Text Block</button>
+        </div>
+        
+        <div id="blockEditor" style="display:none;">
+            <h2 onclick="toggleSection(this)">Edit Block</h2>
+            <div class="section">
+                <div class="control-group">
+                    <label>Text</label>
+                    <textarea id="blockText" rows="3" oninput="updateBlock()"></textarea>
+                </div>
+                
+                <div class="control-group">
+                    <label>Background Type</label>
+                    <select id="bgType" onchange="updateBgInputs(); updateBlock();">
+                        <option value="transparent" selected>Transparent</option>
+                        <option value="inherit">Inherit Previous</option>
+                        <option value="color">Solid Color</option>
+                        <option value="image">Image URL</option>
+                    </select>
+                </div>
+                <div class="control-group" id="bgColorGroup" style="display:none;">
+                    <label>Background Color</label>
+                    <input type="color" id="bgColor" value="#1a1a1a" onchange="updateBlock()">
+                </div>
+                <div id="bgImageGroup" style="display:none;">
+                    <div class="control-group">
+                        <label>Image URL</label>
+                        <input type="url" id="bgImage" placeholder="https://...">
+                        <button class="secondary" onclick="loadBgImage()" style="margin-top:8px;">Load Image</button>
+                    </div>
+                    <div class="control-group">
+                        <label>Image Fit</label>
+                        <select id="bgFit" onchange="updateBlock()">
+                            <option value="cover" selected>Cover (fill, crop)</option>
+                            <option value="contain">Contain (fit inside)</option>
+                            <option value="fill">Fill (stretch)</option>
+                        </select>
+                    </div>
+                    <div class="inline-group">
+                        <div class="control-group">
+                            <label>Image X (%)</label>
+                            <input type="range" id="bgPosX" min="0" max="100" value="50" oninput="updateBlock()">
+                        </div>
+                        <div class="control-group">
+                            <label>Image Y (%)</label>
+                            <input type="range" id="bgPosY" min="0" max="100" value="50" oninput="updateBlock()">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Text Position X (%)<span class="range-val" id="textOffsetXVal">50%</span></label>
+                    <input type="range" id="textOffsetX" min="0" max="100" value="50" oninput="updateBlock(); document.getElementById('textOffsetXVal').textContent=this.value+'%';">
+                </div>
+                <div class="control-group">
+                    <label>Text Position Y (%)<span class="range-val" id="textOffsetYVal">50%</span></label>
+                    <input type="range" id="textOffsetY" min="0" max="100" value="50" oninput="updateBlock(); document.getElementById('textOffsetYVal').textContent=this.value+'%';">
+                </div>
+                
+                <div class="control-group">
+                    <label>Scroll Timing<span class="range-val" id="blockTimingVal">1x</span></label>
+                    <input type="range" id="blockTiming" min="0.5" max="2" step="0.1" value="1" oninput="updateBlock(); document.getElementById('blockTimingVal').textContent=this.value+'x';">
+                </div>
+                
+                <button class="danger" onclick="deleteBlock()">Delete Block</button>
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Text Style (Global)</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Base Text Position</label>
+                <select id="textPosition" onchange="updatePreview()">
+                    <option value="center">Center</option>
+                    <option value="bottom-left">Bottom Left</option>
+                    <option value="bottom-right">Bottom Right</option>
+                    <option value="bottom-center">Bottom Center</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Font Size (px)</label>
+                <input type="range" id="fontSize" min="24" max="80" value="48" oninput="updatePreview(); document.getElementById('fontSizeNum').value=this.value;">
+                <input type="number" id="fontSizeNum" value="48" style="width:60px;margin-top:4px;" oninput="document.getElementById('fontSize').value=this.value; updatePreview();">
+            </div>
+            <div class="control-group">
+                <label>Text Color</label>
+                <input type="color" id="textColor" value="#ffffff" onchange="updatePreview()">
+            </div>
+            <div class="inline-group">
+                <div class="control-group">
+                    <label>Fade In (%)</label>
+                    <input type="range" id="fadeIn" min="0" max="30" value="10" oninput="updatePreview()">
+                </div>
+                <div class="control-group">
+                    <label>Fade Out (%)</label>
+                    <input type="range" id="fadeOut" min="0" max="30" value="10" oninput="updatePreview()">
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Backdrop Blur</label>
+                <input type="range" id="backdropBlur" min="0" max="20" value="0" oninput="updatePreview();">
+            </div>
+            <div class="control-group">
+                <label>Backdrop Darken (%)</label>
+                <input type="range" id="backdropDarken" min="0" max="80" value="30" oninput="updatePreview();">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Background Effects</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Effect While Active</label>
+                <select id="bgEffect" onchange="updatePreview()">
+                    <option value="static" selected>Static</option>
+                    <option value="zoomAlt">Subtle Zoom L/R</option>
+                    <option value="kenburns">Ken Burns</option>
+                    <option value="drift">Drift</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Transition Speed (ms)</label>
+                <input type="range" id="transitionSpeed" min="300" max="1500" value="600" oninput="updatePreview();">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Layout</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Output Aspect Ratio</label>
+                <select id="aspectRatio" onchange="updatePreview()">
+                    <option value="full" selected>Full Viewport (no edges)</option>
+                    <option value="16:9">16:9 Widescreen</option>
+                    <option value="4:3">4:3 Standard</option>
+                    <option value="1:1">1:1 Square</option>
+                    <option value="21:9">21:9 Ultrawide</option>
+                    <option value="9:16">9:16 Vertical</option>
+                    <option value="3:2">3:2 Photo</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Base Scroll Duration (%)</label>
+                <input type="range" id="scrollDuration" min="100" max="400" value="200" oninput="updatePreviewHeight();">
+            </div>
+            <div class="inline-group">
+                <div class="control-group">
+                    <label>Desktop Offset (px)</label>
+                    <input type="number" id="desktopOffset" value="50" min="0" max="200">
+                </div>
+                <div class="control-group">
+                    <label>Mobile Offset (px)</label>
+                    <input type="number" id="mobileOffset" value="200" min="0" max="300">
+                </div>
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Caption</h2>
+        <div class="section">
+            <div class="control-group"><label><input type="checkbox" id="captionEnabled" onchange="updatePreview();">Enable Caption</label></div>
+            <div class="control-group">
+                <label>Caption Text</label>
+                <textarea id="captionText" oninput="updatePreview();"></textarea>
+            </div>
+            <div class="control-group">
+                <label>Credit / Source</label>
+                <input type="text" id="captionCredit" oninput="updatePreview();">
+            </div>
+        </div>
+        
+        <button onclick="generateExport()">Generate HTML</button>
+        <button class="secondary" onclick="resetModule()" style="margin-top:8px;">🔄 Reset Module</button>
+    </div>
+    
+    <div class="preview-wrap">
+        <div class="preview-header">
+            <span>Preview (scroll to animate)</span>
+            <span id="progressDisplay">0%</span>
+        </div>
+        <div class="preview-scroll" id="previewScroll">
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-stage" id="previewStage">
+                    <div class="preview-bg" id="previewBg1"></div>
+                    <div class="preview-bg" id="previewBg2" style="opacity:0;"></div>
+                    <div class="preview-backdrop" id="previewBackdrop"></div>
+                    <div class="preview-text" id="previewText"><p></p></div>
+                    <div class="preview-caption" id="previewCaption"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <h3>Export HTML</h3>
+        <div class="control-group">
+            <label>Generated Code</label>
+            <textarea id="exportCode" readonly></textarea>
+        </div>
+        <div class="modal-actions">
+            <button onclick="copyCode()">📋 Copy</button>
+            <button onclick="downloadCode()">⬇️ Download</button><button onclick="downloadCodeTxt()" class="secondary">📄 .txt</button>
+            <button onclick="sendToStackBuilder()">📚 Stack</button>
+            <button class="secondary" onclick="closeModal('exportModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Save Modal -->
+<div class="modal" id="saveModal">
+    <div class="modal-content">
+        <h3>Save Project</h3>
+        <div class="control-group">
+            <label>Project Name</label>
+            <input type="text" id="saveName" placeholder="My Text Scroll">
+        </div>
+        <div class="modal-actions">
+            <button onclick="saveProject()">💾 Save</button>
+            <button class="secondary" onclick="closeModal('saveModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Load Modal -->
+<div class="modal" id="loadModal">
+    <div class="modal-content">
+        <h3>Load Project</h3>
+        <div class="saved-list" id="savedList"></div>
+        <div class="modal-actions">
+            <button onclick="loadFromJSON()">📄 Load JSON</button>
+            <button class="secondary" onclick="closeModal('loadModal')">Cancel</button>
+        </div>
+        <input type="file" id="jsonFileInput" accept=".json" style="display:none;" onchange="handleJSONFile(event)">
+    </div>
+</div>
+
+<script>
+var _fromPlanner=new URLSearchParams(location.search).get('planner')==='1';
+
+var blocks = [];
+var selectedBlockIndex = -1;
+var STORAGE_KEY = 'disco_text-scroll';
+var PROJECTS_KEY = 'disco_text-scroll_projects';
+
+function toggleSection(el) {
+    el.classList.toggle('collapsed');
+    el.nextElementSibling.classList.toggle('collapsed');
+}
+
+function loadBgImage() {
+    var url = document.getElementById('bgImage').value.trim();
+    if (!url) { discoAlert('Enter an image URL first'); return; }
+    
+    // Convert GitHub blob URLs to raw
+    if (url.includes('github.com') && url.includes('/blob/')) {
+        url = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/').split('?')[0];
+    }
+    
+    // Test load the image
+    var img = new Image();
+    img.onload = function() {
+        // Image loaded successfully - update the block
+        if (selectedBlockIndex >= 0 && selectedBlockIndex < blocks.length) {
+            // Update input field with converted URL
+            document.getElementById('bgImage').value = url;
+            // Set block type to image
+            document.getElementById('bgType').value = 'image';
+            // Store directly in block
+            blocks[selectedBlockIndex].bgType = 'image';
+            blocks[selectedBlockIndex].bgImage = url;
+            // Show image controls
+            updateBgInputs();
+            // Refresh everything
+            renderBlocksList();
+            updatePreview();
+            saveState();
+        }
+    };
+    img.onerror = function() { 
+        discoAlert('Could not load image. Check the URL.'); 
+    };
+    img.src = url;
+}
+
+function renderBlocksList() {
+    var html = '';
+    blocks.forEach(function(b, i) {
+        var bgText = b.bgType === 'inherit' ? '(inherits)' : b.bgType === 'transparent' ? '(transparent)' : b.bgType === 'color' ? b.bgColor : 'image';
+        html += '<div class="block-item ' + (i === selectedBlockIndex ? 'selected' : '') + '" onclick="selectBlock(' + i + ')">';
+        html += '<div class="block-text">' + (b.text || '(empty)') + '</div>';
+        html += '<div class="block-bg">BG: ' + bgText + ' | Pos: ' + (b.textOffsetX !== undefined ? b.textOffsetX : 50) + '%, ' + (b.textOffsetY !== undefined ? b.textOffsetY : 50) + '%</div>';
+        html += '</div>';
+    });
+    document.getElementById('blocksList').innerHTML = html || '<div style="color:#666;font-size:12px;text-align:center;padding:20px;">No blocks yet. Add one!</div>';
+}
+
+function addBlock() {
+    blocks.push({
+        text: 'Your statement here',
+        bgType: blocks.length === 0 ? 'transparent' : 'inherit',
+        bgColor: '#1a1a1a',
+        bgImage: '',
+        bgFit: 'cover',
+        bgPosX: 50,
+        bgPosY: 50,
+        textOffsetX: 50,
+        textOffsetY: 50,
+        timing: 1
+    });
+    selectedBlockIndex = blocks.length - 1;
+    renderBlocksList();
+    loadBlockEditor();
+    updatePreview();
+    saveState();
+}
+
+function selectBlock(i) {
+    selectedBlockIndex = i;
+    renderBlocksList();
+    loadBlockEditor();
+}
+
+function loadBlockEditor() {
+    if (selectedBlockIndex < 0 || selectedBlockIndex >= blocks.length) {
+        document.getElementById('blockEditor').style.display = 'none';
+        return;
+    }
+    document.getElementById('blockEditor').style.display = 'block';
+    var b = blocks[selectedBlockIndex];
+    document.getElementById('blockText').value = b.text;
+    document.getElementById('bgType').value = b.bgType;
+    document.getElementById('bgColor').value = b.bgColor || '#1a1a1a';
+    document.getElementById('bgImage').value = b.bgImage || '';
+    document.getElementById('bgFit').value = b.bgFit || 'cover';
+    document.getElementById('bgPosX').value = b.bgPosX || 50;
+    document.getElementById('bgPosY').value = b.bgPosY || 50;
+    document.getElementById('textOffsetX').value = b.textOffsetX !== undefined ? b.textOffsetX : 50;
+    document.getElementById('textOffsetY').value = b.textOffsetY !== undefined ? b.textOffsetY : 50;
+    document.getElementById('textOffsetXVal').textContent = (b.textOffsetX !== undefined ? b.textOffsetX : 50) + '%';
+    document.getElementById('textOffsetYVal').textContent = (b.textOffsetY !== undefined ? b.textOffsetY : 50) + '%';
+    document.getElementById('blockTiming').value = b.timing || 1;
+    document.getElementById('blockTimingVal').textContent = (b.timing || 1) + 'x';
+    updateBgInputs();
+}
+
+function updateBgInputs() {
+    var type = document.getElementById('bgType').value;
+    document.getElementById('bgColorGroup').style.display = type === 'color' ? 'block' : 'none';
+    document.getElementById('bgImageGroup').style.display = type === 'image' ? 'block' : 'none';
+}
+
+function updateBlock() {
+    if (selectedBlockIndex < 0) return;
+    var b = blocks[selectedBlockIndex];
+    b.text = document.getElementById('blockText').value;
+    b.bgType = document.getElementById('bgType').value;
+    b.bgColor = document.getElementById('bgColor').value;
+    // Don't overwrite bgImage from input - only loadBgImage should set this
+    // b.bgImage is set by loadBgImage() after validation
+    b.bgFit = document.getElementById('bgFit').value;
+    b.bgPosX = parseInt(document.getElementById('bgPosX').value) || 50;
+    b.bgPosY = parseInt(document.getElementById('bgPosY').value) || 50;
+    b.textOffsetX = parseInt(document.getElementById('textOffsetX').value);
+    b.textOffsetY = parseInt(document.getElementById('textOffsetY').value);
+    if (isNaN(b.textOffsetX)) b.textOffsetX = 50;
+    if (isNaN(b.textOffsetY)) b.textOffsetY = 50;
+    b.timing = parseFloat(document.getElementById('blockTiming').value) || 1;
+    renderBlocksList();
+    updatePreview();
+    saveState();
+}
+
+function deleteBlock() {
+    if (selectedBlockIndex < 0) return;
+    discoConfirm('Delete this block?', function(){
+blocks.splice(selectedBlockIndex, 1);
+    selectedBlockIndex = Math.min(selectedBlockIndex, blocks.length - 1);
+    renderBlocksList();
+    loadBlockEditor();
+    updatePreview();
+    saveState();
+});
+}
+
+function getResolvedBg(index) {
+    for (var i = index; i >= 0; i--) {
+        if (blocks[i].bgType !== 'inherit') {
+            return blocks[i];
+        }
+    }
+    return { bgType: 'transparent', bgColor: '#1a1a1a', bgImage: '', bgFit: 'cover', bgPosX: 50, bgPosY: 50 };
+}
+
+function updatePreviewHeight() {
+    var dur = parseInt(document.getElementById('scrollDuration').value) || 200;
+    var totalTiming = blocks.reduce(function(sum, b) { return sum + (b.timing || 1); }, 0) || 1;
+    var avgTiming = totalTiming / (blocks.length || 1);
+    document.getElementById('previewContainer').style.height = (dur * avgTiming) + 'vh';
+}
+
+var currentBgIndex = -1;
+var lastBgImage = '';
+
+function updatePreview() {
+    var scroll = document.getElementById('previewScroll');
+    var container = document.getElementById('previewContainer');
+    var stage = document.getElementById('previewStage');
+    var text = document.getElementById('previewText');
+    var bg1 = document.getElementById('previewBg1');
+    var bg2 = document.getElementById('previewBg2');
+    var backdrop = document.getElementById('previewBackdrop');
+    var captionEl = document.getElementById('previewCaption');
+    
+    var scrollTop = scroll.scrollTop;
+    var maxScroll = container.offsetHeight - scroll.clientHeight;
+    var progress = maxScroll > 0 ? scrollTop / maxScroll : 0;
+    
+    document.getElementById('progressDisplay').textContent = Math.round(progress * 100) + '%';
+    
+    var fontSize = document.getElementById('fontSize').value;
+    var textColor = document.getElementById('textColor').value;
+    var blur = document.getElementById('backdropBlur').value;
+    var darken = document.getElementById('backdropDarken').value;
+    var effect = document.getElementById('bgEffect').value;
+    var speed = document.getElementById('transitionSpeed').value;
+    var fadeIn = parseInt(document.getElementById('fadeIn').value) / 100;
+    var fadeOut = parseInt(document.getElementById('fadeOut').value) / 100;
+    var aspectRatio = document.getElementById('aspectRatio').value;
+    
+    // Apply aspect ratio to stage
+    if (aspectRatio === 'full') {
+        stage.style.aspectRatio = '';
+        stage.style.height = '100vh';
+        stage.style.maxHeight = '';
+        stage.style.width = '100%';
+    } else {
+        var ratioMap = {'16:9': '16/9', '4:3': '4/3', '1:1': '1/1', '21:9': '21/9', '9:16': '9/16', '3:2': '3/2'};
+        stage.style.aspectRatio = ratioMap[aspectRatio] || '';
+        stage.style.height = 'auto';
+        stage.style.maxHeight = '100vh';
+        stage.style.width = '100%';
+    }
+    
+    text.querySelector('p').style.fontSize = fontSize + 'px';
+    text.querySelector('p').style.color = textColor;
+    
+    backdrop.style.background = 'rgba(0,0,0,' + (darken / 100) + ')';
+    backdrop.style.backdropFilter = blur > 0 ? 'blur(' + blur + 'px)' : 'none';
+    
+    bg1.style.transition = 'opacity ' + speed + 'ms, transform 3s';
+    bg2.style.transition = 'opacity ' + speed + 'ms, transform 3s';
+    
+    if (blocks.length === 0) {
+        text.classList.remove('active');
+        bg1.style.backgroundImage = '';
+        bg1.style.backgroundColor = '#1a1a1a';
+        return;
+    }
+    
+    // Calculate which block we're on
+    var totalTiming = blocks.reduce(function(sum, b) { return sum + (b.timing || 1); }, 0);
+    var progressPoint = progress * totalTiming;
+    var accum = 0;
+    var blockIndex = 0;
+    var blockProgress = 0;
+    for (var i = 0; i < blocks.length; i++) {
+        var t = blocks[i].timing || 1;
+        if (accum + t > progressPoint) {
+            blockIndex = i;
+            blockProgress = (progressPoint - accum) / t;
+            break;
+        }
+        accum += t;
+        blockIndex = i;
+        blockProgress = 1;
+    }
+    
+    var currentBlock = blocks[blockIndex];
+    var resolved = getResolvedBg(blockIndex);
+    
+    // Determine background content
+    var hasImage = resolved.bgType === 'image' && resolved.bgImage;
+    var isTransparent = resolved.bgType === 'transparent';
+    var bgImageUrl = hasImage ? resolved.bgImage : '';
+    var bgColor = isTransparent ? 'transparent' : (resolved.bgColor || '#1a1a1a');
+    var bgPosX = resolved.bgPosX || 50;
+    var bgPosY = resolved.bgPosY || 50;
+    var bgFit = resolved.bgFit || 'cover';
+    
+    // Determine which bg element is active
+    var activeBg = (blockIndex % 2 === 0) ? bg1 : bg2;
+    var inactiveBg = (blockIndex % 2 === 0) ? bg2 : bg1;
+    
+    // For first block, ALWAYS apply background to bg1 to ensure it displays
+    if (blockIndex === 0) {
+        activeBg = bg1;
+        inactiveBg = bg2;
+        if (hasImage) {
+            bg1.style.backgroundImage = 'url("' + bgImageUrl + '")';
+            bg1.style.backgroundPosition = bgPosX + '% ' + bgPosY + '%';
+            bg1.style.backgroundSize = bgFit === 'fill' ? '100% 100%' : bgFit;
+            bg1.style.backgroundRepeat = 'no-repeat';
+            bg1.style.backgroundColor = '#000';
+        } else {
+            bg1.style.backgroundImage = 'none';
+            bg1.style.backgroundColor = bgColor;
+        }
+        bg1.style.opacity = '1';
+        bg2.style.opacity = '0';
+        currentBgIndex = 0;
+    } else {
+        // Apply background to active element
+        if (hasImage) {
+            activeBg.style.backgroundImage = 'url("' + bgImageUrl + '")';
+            activeBg.style.backgroundPosition = bgPosX + '% ' + bgPosY + '%';
+            activeBg.style.backgroundSize = bgFit === 'fill' ? '100% 100%' : bgFit;
+            activeBg.style.backgroundRepeat = 'no-repeat';
+            activeBg.style.backgroundColor = '#000';
+        } else {
+            activeBg.style.backgroundImage = 'none';
+            activeBg.style.backgroundColor = bgColor;
+        }
+        
+        // Handle crossfade on block change
+        if (blockIndex !== currentBgIndex) {
+            activeBg.style.opacity = '1';
+            inactiveBg.style.opacity = '0';
+            currentBgIndex = blockIndex;
+        }
+    }
+    
+    // Apply background effect
+    if (effect === 'zoomAlt') {
+        // Alternating zoom left/right per block
+        var dir = (blockIndex % 2 === 0) ? -1 : 1;
+        activeBg.style.transform = 'scale(1.1) translateX(' + (dir * blockProgress * 3) + '%)';
+    } else if (effect === 'kenburns') {
+        // Slow zoom in
+        var scale = 1 + (blockProgress * 0.15);
+        activeBg.style.transform = 'scale(' + scale + ')';
+    } else if (effect === 'drift') {
+        // Slow horizontal pan
+        activeBg.style.transform = 'scale(1.05) translateX(' + ((blockProgress - 0.5) * 6) + '%)';
+    } else {
+        activeBg.style.transform = 'scale(1)';
+    }
+    
+    // Global caption (single caption for whole module) - shows at 90% scroll
+    var captionEnabled = document.getElementById('captionEnabled').checked;
+    var captionText = document.getElementById('captionText').value;
+    var captionCredit = document.getElementById('captionCredit').value;
+    
+    if (captionEnabled && captionText) {
+        captionEl.innerHTML = captionText + (captionCredit ? '<div class="preview-cred">' + captionCredit + '</div>' : '');
+        if (progress > 0.9) {
+            captionEl.classList.add('on');
+        } else {
+            captionEl.classList.remove('on');
+        }
+    } else {
+        captionEl.classList.remove('on');
+    }
+    
+    // Text position
+    var posX = currentBlock.textOffsetX !== undefined ? currentBlock.textOffsetX : 50;
+    var posY = currentBlock.textOffsetY !== undefined ? currentBlock.textOffsetY : 50;
+    
+    text.style.left = posX + '%';
+    text.style.top = posY + '%';
+    text.style.right = 'auto';
+    text.style.bottom = 'auto';
+    text.style.transform = 'translate(-50%, -50%)';
+    text.style.textAlign = 'center';
+    
+    // Text fade
+    var textOpacity = 1;
+    if (fadeIn > 0 && blockProgress < fadeIn) {
+        textOpacity = blockProgress / fadeIn;
+    } else if (fadeOut > 0 && blockProgress > (1 - fadeOut)) {
+        textOpacity = (1 - blockProgress) / fadeOut;
+    }
+    
+    text.querySelector('p').textContent = currentBlock.text;
+    text.style.opacity = textOpacity;
+    text.classList.add('active');
+}
+
+document.getElementById('previewScroll').addEventListener('scroll', updatePreview);
+
+function generateExport() {
+    if (blocks.length === 0) { discoAlert('Add at least one text block'); return; }
+    
+    var uid = 'ts' + Math.random().toString(36).substr(2, 9);
+    var fontSize = document.getElementById('fontSize').value;
+    var textColor = document.getElementById('textColor').value;
+    var position = document.getElementById('textPosition').value;
+    var blur = document.getElementById('backdropBlur').value;
+    var darken = document.getElementById('backdropDarken').value;
+    var effect = document.getElementById('bgEffect').value;
+    var speed = document.getElementById('transitionSpeed').value;
+    var fadeIn = parseInt(document.getElementById('fadeIn').value) / 100;
+    var fadeOut = parseInt(document.getElementById('fadeOut').value) / 100;
+    var baseDur = parseInt(document.getElementById('scrollDuration').value) / 100;
+    var desktopOffset = document.getElementById('desktopOffset').value;
+    var mobileOffset = document.getElementById('mobileOffset').value;
+    var captionEnabled = document.getElementById('captionEnabled').checked;
+    var captionText = document.getElementById('captionText').value;
+    var captionCredit = document.getElementById('captionCredit').value;
+    var aspectRatio = document.getElementById('aspectRatio').value;
+    
+    var blocksData = blocks.map(function(b, i) {
+        var resolved = getResolvedBg(i);
+        return {
+            text: b.text,
+            bg: resolved.bgType === 'image' && resolved.bgImage ? resolved.bgImage : null,
+            color: resolved.bgType === 'transparent' ? 'transparent' : (resolved.bgType === 'color' ? resolved.bgColor : null),
+            fit: resolved.bgFit || 'cover',
+            posX: resolved.bgPosX || 50,
+            posY: resolved.bgPosY || 50,
+            textOffsetX: b.textOffsetX !== undefined ? b.textOffsetX : 50,
+            textOffsetY: b.textOffsetY !== undefined ? b.textOffsetY : 50,
+            timing: b.timing || 1
+        };
+    });
+    
+    var captionHTML = captionEnabled && captionText ? '<div class="ts-caption">' + captionText + (captionCredit ? '<div class="ts-cred">' + captionCredit + '</div>' : '') + '</div>' : '';
+    var captionCSS = '#' + uid + ' .ts-caption{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);width:85%;max-width:700px;padding:12px 16px;background:rgba(0,0,0,0.8);border-radius:8px;font-size:13px;line-height:1.5;color:#e0e0e0;opacity:0;transition:opacity 0.6s;z-index:100}\n#' + uid + ' .ts-caption.on{opacity:1}\n#' + uid + ' .ts-cred{color:#999;font-size:11px;font-style:italic;margin-top:4px}\n';
+    
+    // Build aspect ratio CSS
+    var ratioMap = {'16:9': '16/9', '4:3': '4/3', '1:1': '1/1', '21:9': '21/9', '9:16': '9/16', '3:2': '3/2'};
+    var stageCSS;
+    if (aspectRatio === 'full') {
+        stageCSS = '#' + uid + ' .ts-stage{position:-webkit-sticky;position:sticky;top:' + desktopOffset + 'px;height:calc(100vh - ' + desktopOffset + 'px);overflow:hidden}\n';
+    } else {
+        stageCSS = '#' + uid + ' .ts-stage{position:-webkit-sticky;position:sticky;top:' + desktopOffset + 'px;width:100%;max-height:calc(100vh - ' + desktopOffset + 'px);aspect-ratio:' + ratioMap[aspectRatio] + ';overflow:hidden;margin:0 auto}\n';
+    }
+    
+    var code = '<style>\n' +
+'#' + uid + '{position:relative}\n' +
+stageCSS +
+'#' + uid + ' .ts-bg{position:absolute;inset:0;background-color:#000;transition:opacity ' + speed + 'ms,transform 3s}\n' +
+'#' + uid + ' .ts-backdrop{position:absolute;inset:0;background:rgba(0,0,0,' + (darken/100) + ');' + (blur > 0 ? 'backdrop-filter:blur(' + blur + 'px);-webkit-backdrop-filter:blur(' + blur + 'px);' : '') + '}\n' +
+'#' + uid + ' .ts-text{position:absolute;padding:40px;max-width:900px;transition:opacity 0.3s;z-index:10}\n' +
+'#' + uid + ' .ts-text p{font-size:' + fontSize + 'px;font-weight:600;color:' + textColor + ';line-height:1.3;text-shadow:2px 2px 8px rgba(0,0,0,0.8);margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}\n' +
+captionCSS +
+'@media(max-width:768px){#' + uid + ' .ts-stage{top:' + mobileOffset + 'px;' + (aspectRatio === 'full' ? 'height:calc(100vh - ' + mobileOffset + 'px)' : 'max-height:calc(100vh - ' + mobileOffset + 'px)') + '}#' + uid + ' .ts-text{padding:20px}#' + uid + ' .ts-text p{font-size:' + Math.round(fontSize * 0.6) + 'px}#' + uid + ' .ts-caption{width:92%;bottom:20px}}\n' +
+'</style>\n' +
+'<div id="' + uid + '">\n' +
+'<div class="ts-stage">\n' +
+'<div class="ts-bg" id="' + uid + 'bg1"></div>\n' +
+'<div class="ts-bg" id="' + uid + 'bg2" style="opacity:0"></div>\n' +
+'<div class="ts-backdrop"></div>\n' +
+'<div class="ts-text"><p></p></div>\n' +
+captionHTML + '\n' +
+'</div>\n' +
+'</div>\n' +
+'<scr' + 'ipt>\n' +
+'(function(){\n' +
+'var w=document.getElementById("' + uid + '");\n' +
+'var stage=w.querySelector(".ts-stage");\n' +
+'var bg1=document.getElementById("' + uid + 'bg1");\n' +
+'var bg2=document.getElementById("' + uid + 'bg2");\n' +
+'var text=w.querySelector(".ts-text");\n' +
+'var p=text.querySelector("p");\n' +
+'var cap=w.querySelector(".ts-caption");\n' +
+'var data=' + JSON.stringify(blocksData) + ';\n' +
+'var n=data.length;\n' +
+'var baseDur=' + baseDur + ';\n' +
+'var basePos="' + position + '";\n' +
+'var effect="' + effect + '";\n' +
+'var fadeIn=' + fadeIn + ',fadeOut=' + fadeOut + ';\n' +
+'var curIdx=-1;\n' +
+'var totalTiming=data.reduce(function(s,b){return s+(b.timing||1);},0);\n' +
+'function setH(){w.style.height=(stage.offsetHeight*baseDur*(totalTiming/n))+"px";}\n' +
+'setH();window.addEventListener("resize",setH);\n' +
+'function setTextPos(px,py){\n' +
+'text.style.left=px+"%";text.style.top=py+"%";text.style.right="auto";text.style.bottom="auto";text.style.transform="translate(-50%,-50%)";text.style.textAlign="center";\n' +
+'}\n' +
+'function getBgStyle(d){\n' +
+'if(!d.bg)return d.color||"#1a1a1a";\n' +
+'var fit=d.fit||"cover";\n' +
+'var size=fit==="fill"?"100% 100%":fit;\n' +
+'return "url("+d.bg+") "+d.posX+"% "+d.posY+"%/"+size+" no-repeat";\n' +
+'}\n' +
+'function upd(){\n' +
+'var extP=window.SCROLLTASTIC_PROGRESS&&window.SCROLLTASTIC_PROGRESS["' + uid + '"];\n' +
+'var progress;\n' +
+'if(extP!==undefined){progress=extP;}else{\n' +
+'var r=w.getBoundingClientRect();\n' +
+'var scrolled=Math.max(0,-r.top);\n' +
+'var range=w.offsetHeight-window.innerHeight;\n' +
+'progress=range>0?scrolled/range:0;\n' +
+'}\n' +
+'var pt=progress*totalTiming,accum=0,idx=0,blockP=0;\n' +
+'for(var i=0;i<n;i++){var t=data[i].timing||1;if(accum+t>pt){idx=i;blockP=(pt-accum)/t;break;}accum+=t;idx=i;blockP=1;}\n' +
+'var d=data[idx];\n' +
+'if(idx!==curIdx){\n' +
+'var bgStyle=getBgStyle(d);\n' +
+'if(curIdx%2===0){bg2.style.background=bgStyle;bg2.style.opacity=1;bg1.style.opacity=0;}\n' +
+'else{bg1.style.background=bgStyle;bg1.style.opacity=1;bg2.style.opacity=0;}\n' +
+'p.textContent=d.text;\n' +
+'setTextPos(d.textOffsetX!==undefined?d.textOffsetX:50,d.textOffsetY!==undefined?d.textOffsetY:50);\n' +
+'curIdx=idx;\n' +
+'}\n' +
+'var activeBg=curIdx%2===0?bg2:bg1;if(curIdx===0)activeBg=bg1;\n' +
+'if(effect==="zoomAlt"){var dir=(idx%2===0)?-1:1;activeBg.style.transform="scale(1.1) translateX("+(dir*blockP*3)+")%";}\n' +
+'else if(effect==="kenburns"){var sc=1+(blockP*0.15);activeBg.style.transform="scale("+sc+")";}\n' +
+'else if(effect==="drift"){activeBg.style.transform="scale(1.05) translateX("+((blockP-0.5)*6)+"%)";}\n' +
+'else{activeBg.style.transform="scale(1)";}\n' +
+'var op=1;if(fadeIn>0&&blockP<fadeIn)op=blockP/fadeIn;else if(fadeOut>0&&blockP>(1-fadeOut))op=(1-blockP)/fadeOut;\n' +
+'text.style.opacity=op;\n' +
+'if(cap&&progress>0.9)cap.classList.add("on");else if(cap)cap.classList.remove("on");\n' +
+'requestAnimationFrame(upd);\n' +
+'}\n' +
+'if(n>0){var d=data[0];bg1.style.background=getBgStyle(d);bg1.style.opacity=1;p.textContent=d.text;setTextPos(d.textOffsetX!==undefined?d.textOffsetX:50,d.textOffsetY!==undefined?d.textOffsetY:50);curIdx=0;}\n' +
+'upd();\n' +
+'})();\n' +
+'<\/scr' + 'ipt>';
+    
+    document.getElementById('exportCode').value = code;localStorage.setItem('disco_text-scroll_export',code);
+    if(!_fromPlanner){document.getElementById('exportModal').classList.add('active')};
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function copyCode() {
+    var code = document.getElementById('exportCode');
+    code.select();
+    document.execCommand('copy');
+    discoAlert('Copied!');
+}
+
+function downloadCode() {
+    var code = document.getElementById('exportCode').value;
+    var filename = prompt('Save as:', 'text-scroll');
+    if (!filename) return;
+    var blob = new Blob([code], { type: 'text/html' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename.replace(/[^a-z0-9_-]/gi, '_') + '.html';
+    a.click();
+}
+
+function sendToStackBuilder() {var _em=document.getElementById('exportModal');if(_em){_em.classList.remove('active');_em.classList.remove('open');}
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate HTML first'); return; }
+    var queue = JSON.parse(localStorage.getItem('disco_stack_queue') || '[]');
+    queue.push({ name: 'Text Scroll', html: code, timestamp: Date.now() });
+    localStorage.setItem('disco_stack_queue', JSON.stringify(queue));
+    discoStackSend()
+}
+
+function resetModule() {
+    discoConfirm('Reset all settings to defaults? This will clear your current work.', function(){
+localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+});
+}
+
+function loadFromJSON() {
+    document.getElementById('jsonFileInput').click();
+}
+
+function handleJSONFile(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var proj = JSON.parse(e.target.result);
+            applyProjectData(proj);
+            closeModal('loadModal');
+            discoAlert('Loaded: ' + (proj.name || 'Project'));
+        } catch (err) {
+            discoAlert('Invalid JSON file');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function applyProjectData(proj) {
+    blocks = proj.blocks || [];
+    document.getElementById('fontSize').value = proj.fontSize || 48;
+    document.getElementById('fontSizeNum').value = proj.fontSize || 48;
+    document.getElementById('textColor').value = proj.textColor || '#ffffff';
+    document.getElementById('textPosition').value = proj.textPosition || 'center';
+    document.getElementById('fadeIn').value = proj.fadeIn || 10;
+    document.getElementById('fadeOut').value = proj.fadeOut || 10;
+    document.getElementById('backdropBlur').value = proj.backdropBlur || 0;
+    document.getElementById('backdropDarken').value = proj.backdropDarken || 30;
+    document.getElementById('bgEffect').value = proj.bgEffect || 'static';
+    document.getElementById('transitionSpeed').value = proj.transitionSpeed || 600;
+    document.getElementById('scrollDuration').value = proj.scrollDuration || 200;
+    document.getElementById('aspectRatio').value = proj.aspectRatio || 'full';
+    document.getElementById('desktopOffset').value = proj.desktopOffset || 50;
+    document.getElementById('mobileOffset').value = proj.mobileOffset || 200;
+    document.getElementById('captionEnabled').checked = proj.captionEnabled || false;
+    document.getElementById('captionText').value = proj.captionText || '';
+    document.getElementById('captionCredit').value = proj.captionCredit || '';
+    currentBgIndex = -1;
+    renderBlocksList();
+    if (blocks.length > 0) {
+        selectedBlockIndex = 0;
+        loadBlockEditor();
+    }
+    updatePreviewHeight();
+    updatePreview();
+    saveState();
+}
+
+function openSaveModal() {
+    document.getElementById('saveName').value = '';
+    document.getElementById('saveModal').classList.add('active');
+}
+
+function openLoadModal() {
+    renderSavedList();
+    document.getElementById('loadModal').classList.add('active');
+}
+
+function saveProject() {
+    var name = document.getElementById('saveName').value.trim();
+    if (!name) { discoAlert('Enter a project name'); return; }
+    
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var data = getCurrentState();
+    data.name = name;
+    data.savedAt = Date.now();
+    data.id = 'proj_' + Date.now();
+    
+    projects.unshift(data);
+    if (projects.length > 20) projects = projects.slice(0, 20);
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    
+    closeModal('saveModal');
+    discoAlert('Saved!');
+}
+
+function renderSavedList() {
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var html = '';
+    if (projects.length === 0) {
+        html = '<div style="color:#666;text-align:center;padding:20px;">No saved projects</div>';
+    } else {
+        projects.forEach(function(p) {
+            var date = new Date(p.savedAt).toLocaleDateString();
+            html += '<div class="saved-item">';
+            html += '<div onclick="loadProject(\'' + p.id + '\')"><span class="name">' + p.name + '</span><br><span class="date">' + date + '</span></div>';
+            html += '<button class="delete" onclick="event.stopPropagation();deleteProject(\'' + p.id + '\')">×</button>';
+            html += '</div>';
+        });
+    }
+    document.getElementById('savedList').innerHTML = html;
+}
+
+function loadProject(id) {
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var proj = projects.find(function(p) { return p.id === id; });
+    if (!proj) return;
+    
+    blocks = proj.blocks || [];
+    selectedBlockIndex = blocks.length > 0 ? 0 : -1;
+    
+    document.getElementById('fontSize').value = proj.fontSize || 48;
+    document.getElementById('fontSizeNum').value = proj.fontSize || 48;
+    document.getElementById('textColor').value = proj.textColor || '#ffffff';
+    document.getElementById('textPosition').value = proj.textPosition || 'center';
+    document.getElementById('fadeIn').value = proj.fadeIn || 10;
+    document.getElementById('fadeOut').value = proj.fadeOut || 10;
+    document.getElementById('backdropBlur').value = proj.backdropBlur || 0;
+    document.getElementById('backdropDarken').value = proj.backdropDarken || 30;
+    document.getElementById('bgEffect').value = proj.bgEffect || 'static';
+    document.getElementById('transitionSpeed').value = proj.transitionSpeed || 600;
+    document.getElementById('scrollDuration').value = proj.scrollDuration || 200;
+    document.getElementById('aspectRatio').value = proj.aspectRatio || 'full';
+    document.getElementById('desktopOffset').value = proj.desktopOffset || 50;
+    document.getElementById('mobileOffset').value = proj.mobileOffset || 200;
+    
+    renderBlocksList();
+    loadBlockEditor();
+    updatePreviewHeight();
+    updatePreview();
+    closeModal('loadModal');
+}
+
+function deleteProject(id) {
+    discoConfirm('Delete this project?', function(){
+var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    projects = projects.filter(function(p) { return p.id !== id; });
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    renderSavedList();
+});
+}
+
+function getCurrentState() {
+    return {
+        blocks: blocks,
+        fontSize: document.getElementById('fontSize').value,
+        textColor: document.getElementById('textColor').value,
+        textPosition: document.getElementById('textPosition').value,
+        fadeIn: document.getElementById('fadeIn').value,
+        fadeOut: document.getElementById('fadeOut').value,
+        backdropBlur: document.getElementById('backdropBlur').value,
+        backdropDarken: document.getElementById('backdropDarken').value,
+        bgEffect: document.getElementById('bgEffect').value,
+        transitionSpeed: document.getElementById('transitionSpeed').value,
+        scrollDuration: document.getElementById('scrollDuration').value,
+        aspectRatio: document.getElementById('aspectRatio').value,
+        desktopOffset: document.getElementById('desktopOffset').value,
+        mobileOffset: document.getElementById('mobileOffset').value,
+        captionEnabled: document.getElementById('captionEnabled').checked,
+        captionText: document.getElementById('captionText').value,
+        captionCredit: document.getElementById('captionCredit').value
+    };
+}
+
+function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getCurrentState()));
+}
+
+function loadState() {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        var s = JSON.parse(saved);
+        blocks = s.blocks || [];
+        // Ensure all blocks have required properties
+        blocks.forEach(function(b) {
+            if (b.bgFit === undefined) b.bgFit = 'cover';
+        });
+        document.getElementById('fontSize').value = s.fontSize || 48;
+        document.getElementById('fontSizeNum').value = s.fontSize || 48;
+        document.getElementById('textColor').value = s.textColor || '#ffffff';
+        document.getElementById('textPosition').value = s.textPosition || 'center';
+        document.getElementById('fadeIn').value = s.fadeIn || 10;
+        document.getElementById('fadeOut').value = s.fadeOut || 10;
+        document.getElementById('backdropBlur').value = s.backdropBlur || 0;
+        document.getElementById('backdropDarken').value = s.backdropDarken || 30;
+        document.getElementById('bgEffect').value = s.bgEffect || 'static';
+        document.getElementById('transitionSpeed').value = s.transitionSpeed || 600;
+        document.getElementById('scrollDuration').value = s.scrollDuration || 200;
+        document.getElementById('aspectRatio').value = s.aspectRatio || 'full';
+        document.getElementById('desktopOffset').value = s.desktopOffset || 50;
+        document.getElementById('mobileOffset').value = s.mobileOffset || 200;
+        document.getElementById('captionEnabled').checked = s.captionEnabled || false;
+        document.getElementById('captionText').value = s.captionText || '';
+        document.getElementById('captionCredit').value = s.captionCredit || '';
+    }
+    currentBgIndex = -1; // Reset to ensure first block displays
+    renderBlocksList();
+    if (blocks.length > 0) {
+        selectedBlockIndex = 0;
+        loadBlockEditor();
+    }
+    updatePreviewHeight();
+    updatePreview();
+}
+
+loadState();
+
+function downloadCodeTxt() {
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate code first'); return; }
+    var filename = prompt('Save as:', 'text-scroll');
+    if (!filename) return;
+    var safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    var blob = new Blob([code], {type:'text/plain'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = safeName + '.txt';
+    a.click();
+}
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

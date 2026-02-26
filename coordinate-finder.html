@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coordinate Finder - Presentation Disco</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); min-height: 100vh; padding: 24px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+.header { max-width: 1000px; margin: 0 auto 24px; display: flex; align-items: center; gap: 16px; }
+.back-btn { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; }
+.back-btn:hover { background: #3a3a3a; color: #fff; }
+.module-title { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em; }
+.module-title span { color: var(--accent); }
+
+h2 { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; transition: all .15s; }
+h2:hover { border-color: var(--border-light); background: var(--bg-tertiary); }
+h2::after { content: '\25be'; font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+h2.collapsed::after { transform: rotate(-90deg); }
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0; }
+
+.control-group { margin-bottom: 10px; }
+label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+input[type="text"], input[type="url"], input[type="number"], select, textarea {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary);
+    border-radius: 6px; font-family: var(--mono); font-size: 11px; outline: none; transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent-dim); }
+input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="color"] { width: 36px; height: 24px; border: 1px solid var(--border); background: var(--bg-tertiary); cursor: pointer; border-radius: 4px; padding: 1px; }
+input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent); }
+
+button {
+    width: 100%; padding: 8px 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--accent); border: 1px solid var(--accent); color: #0a0a0a; font-weight: 600;
+    border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: all .15s;
+}
+button:hover { opacity: 0.85; }
+button.secondary { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.row { display: flex; gap: 8px; align-items: flex-start; }
+.row > * { flex: 1; }
+.hint { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+.range-val { font-family: var(--mono); font-size: 9px; color: var(--accent); float: right; text-transform: none; letter-spacing: 0; }
+
+
+.subtitle { color: #666; font-size: 13px; margin-left: auto; }
+
+.container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 280px; gap: 20px; }
+
+#map { width: 100%; height: 450px; border-radius: 12px; border: 1px solid #2a2a2a; }
+
+.input-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; margin-top: 16px; }
+.input-field label { color: var(--text-dim); font-family: var(--mono); font-size: 10px; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.input-field input { width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 12px; border-radius: 6px; font-family: var(--mono); font-size: 11px; }
+.input-field input:focus { outline: none; border-color: #4a9eff; }
+.go-btn { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 22px; }
+.go-btn:hover { background: #3a3a3a; color: #fff; }
+
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+.panel { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 16px; }
+.panel h3 { color: #fff; font-size: 14px; margin-bottom: 12px; }
+
+.copy-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 8px; font-weight: 600; transition: all 0.2s; }
+.copy-btn.primary { background: var(--accent); color: #0a0a0a; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.copy-btn.primary:hover { background: #357abd; }
+.copy-btn.primary.copied { background: #2ecc71; }
+.copy-btn.secondary { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; text-align: left; font-family: monospace; font-weight: normal; }
+.copy-btn.secondary:hover { background: #3a3a3a; color: #fff; }
+.copy-btn.secondary.copied { background: #2ecc71; color: #000; }
+
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.panel-header h3 { margin: 0; }
+.save-btn { background: transparent; border: 1px solid #3a3a3a; color: #888; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+.save-btn:hover { background: #2a2a2a; color: #fff; }
+
+.locations-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+.location-item { background: #2a2a2a; padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.location-item:hover { background: #3a3a3a; }
+.location-name { color: #fff; font-size: 13px; }
+.location-coords { color: #666; font-size: 11px; }
+.location-delete { background: transparent; border: none; color: #555; cursor: pointer; font-size: 14px; padding: 0 4px; }
+.location-delete:hover { color: #e74c3c; }
+
+.globe-preview { text-align: center; }
+.globe-label { color: #666; font-size: 11px; margin-bottom: 8px; text-transform: uppercase; }
+.globe { width: 80px; height: 80px; margin: 0 auto; background: linear-gradient(135deg, #1e90ff, #0a4a7a); border-radius: 50%; position: relative; box-shadow: 0 0 30px rgba(30,144,255,0.3); }
+.globe-marker { position: absolute; width: 8px; height: 8px; background: #e74c3c; border-radius: 50%; box-shadow: 0 0 10px #e74c3c; transform: translate(-50%, -50%); }
+
+.empty-locations { color: #555; font-size: 13px; text-align: center; padding: 20px; }
+
+/* Leaflet overrides for dark theme */
+.leaflet-container { background: #1a1a1a; }
+.leaflet-control-zoom a { background: #2a2a2a !important; color: #888 !important; border-color: #3a3a3a !important; }
+.leaflet-control-zoom a:hover { background: #3a3a3a !important; color: #fff !important; }
+.leaflet-control-attribution { background: rgba(26,26,26,0.8) !important; color: #666 !important; }
+.leaflet-control-attribution a { color: #4a9eff !important; }
+
+/* Disco Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <a href="index.html" class="back-btn">← Hub</a>
+    <div class="module-title">Coordinate <span>Finder</span></div>
+    <span class="subtitle">Click map or drag marker to get coordinates</span>
+</div>
+
+<div class="container">
+    <div>
+        <div id="map"></div>
+        <div class="input-row">
+            <div class="input-field">
+                <label>Latitude</label>
+                <input type="number" id="latInput" value="40.7128" step="0.0001" onchange="updateFromInput()" />
+            </div>
+            <div class="input-field">
+                <label>Longitude</label>
+                <input type="number" id="lngInput" value="-74.0060" step="0.0001" onchange="updateFromInput()" />
+            </div>
+            <button class="go-btn" onclick="goToCoords()">Go →</button>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="panel">
+            <h3>Copy Coordinates</h3>
+            <button class="copy-btn primary" id="copyBothBtn" onclick="copyBoth()">
+                📋 <span id="coordsDisplay">40.7128, -74.0060</span>
+            </button>
+            <button class="copy-btn secondary" id="copyGlobeBtn" onclick="copyForGlobe()">
+                { lat, lng, label }
+            </button>
+        </div>
+
+        <div class="panel" style="flex: 1;">
+            <div class="panel-header">
+                <h3>Saved Locations</h3>
+                <button class="save-btn" onclick="saveLocation()">+ Save</button>
+            </div>
+            <div class="locations-list" id="locationsList"></div>
+        </div>
+
+        <div class="panel globe-preview">
+            <div class="globe-label">Globe Preview</div>
+            <div class="globe">
+                <div class="globe-marker" id="globeMarker"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let lat = 40.7128;
+let lng = -74.0060;
+let map, marker;
+let savedLocations = JSON.parse(localStorage.getItem('disco_coords_saved') || '[]');
+
+// Initialize map
+function initMap() {
+    map = L.map('map').setView([lat, lng], 4);
+    
+    // Dark tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '©OpenStreetMap, ©CartoDB',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Custom marker icon
+    const markerIcon = L.divIcon({
+        className: 'custom-marker',
+        html: '<div style="width:20px;height:20px;background:#e74c3c;border:3px solid #fff;border-radius:50%;box-shadow:0 0 20px rgba(231,76,60,0.8);"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+    });
+
+    // Draggable marker
+    marker = L.marker([lat, lng], { icon: markerIcon, draggable: true }).addTo(map);
+    
+    marker.on('dragend', function(e) {
+        const pos = e.target.getLatLng();
+        updateCoords(pos.lat, pos.lng);
+    });
+
+    // Click to place
+    map.on('click', function(e) {
+        marker.setLatLng(e.latlng);
+        updateCoords(e.latlng.lat, e.latlng.lng);
+    });
+}
+
+function updateCoords(newLat, newLng) {
+    lat = parseFloat(newLat.toFixed(4));
+    lng = parseFloat(newLng.toFixed(4));
+    
+    document.getElementById('latInput').value = lat;
+    document.getElementById('lngInput').value = lng;
+    document.getElementById('coordsDisplay').textContent = `${lat}, ${lng}`;
+    
+    // Update globe preview
+    const markerEl = document.getElementById('globeMarker');
+    markerEl.style.left = `${50 + (lng / 180) * 30}%`;
+    markerEl.style.top = `${50 - (lat / 90) * 30}%`;
+}
+
+function updateFromInput() {
+    lat = parseFloat(document.getElementById('latInput').value) || 0;
+    lng = parseFloat(document.getElementById('lngInput').value) || 0;
+    marker.setLatLng([lat, lng]);
+    updateCoords(lat, lng);
+}
+
+function goToCoords() {
+    map.setView([lat, lng], 8);
+}
+
+function copyBoth() {
+    navigator.clipboard.writeText(`${lat}, ${lng}`);
+    const btn = document.getElementById('copyBothBtn');
+    btn.classList.add('copied');
+    btn.innerHTML = '✓ Copied!';
+    setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = `📋 <span id="coordsDisplay">${lat}, ${lng}</span>`;
+    }, 1500);
+}
+
+function copyForGlobe() {
+    const code = `{ lat: ${lat}, lng: ${lng}, label: "Location" }`;
+    navigator.clipboard.writeText(code);
+    const btn = document.getElementById('copyGlobeBtn');
+    btn.classList.add('copied');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.textContent = '{ lat, lng, label }';
+    }, 1500);
+}
+
+function saveLocation() {
+    const name = prompt('Name this location:', 'New Location');
+    if (name) {
+        savedLocations.push({ name, lat, lng });
+        localStorage.setItem('disco_coords_saved', JSON.stringify(savedLocations));
+        renderLocations();
+    }
+}
+
+function loadLocation(index) {
+    const loc = savedLocations[index];
+    lat = loc.lat;
+    lng = loc.lng;
+    marker.setLatLng([lat, lng]);
+    map.setView([lat, lng], 6);
+    updateCoords(lat, lng);
+}
+
+function deleteLocation(index, e) {
+    e.stopPropagation();
+    savedLocations.splice(index, 1);
+    localStorage.setItem('disco_coords_saved', JSON.stringify(savedLocations));
+    renderLocations();
+}
+
+function renderLocations() {
+    const container = document.getElementById('locationsList');
+    if (savedLocations.length === 0) {
+        container.innerHTML = '<div class="empty-locations">No saved locations</div>';
+        return;
+    }
+    container.innerHTML = savedLocations.map((loc, i) => `
+        <div class="location-item" onclick="loadLocation(${i})">
+            <div>
+                <div class="location-name">${loc.name}</div>
+                <div class="location-coords">${loc.lat.toFixed(2)}, ${loc.lng.toFixed(2)}</div>
+            </div>
+            <button class="location-delete" onclick="deleteLocation(${i}, event)">×</button>
+        </div>
+    `).join('');
+}
+
+// Init
+initMap();
+renderLocations();
+updateCoords(lat, lng);
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

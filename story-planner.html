@@ -1,0 +1,1915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presentation Planner - Presentation Disco</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); padding-top: 41px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+.header { max-width: 900px; margin: 0 auto 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.header-left { display: flex; align-items: center; gap: 12px; }
+.back-btn { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; }
+.back-btn:hover { background: #3a3a3a; color: #fff; }
+.title-input { background: transparent; border: none; color: #4a9eff; font-size: 24px; font-weight: 600; outline: none; width: 300px; }
+.subtitle { color: #666; font-size: 13px; margin-top: 4px; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; border: none; }
+.btn-ghost { background: transparent; border: 1px solid #3a3a3a; color: #888; }
+.btn-ghost:hover { background: #2a2a2a; color: #fff; }
+.btn-secondary { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; }
+.btn-secondary:hover { background: #3a3a3a; color: #fff; }
+.btn-primary { background: #4a9eff; color: #000; font-weight: 600; }
+.btn-primary:hover { background: #357abd; }
+.btn-success { background: #2ecc71; color: #000; }
+.btn-export { background: #9b59b6; color: #fff; font-weight: 600; }
+.btn-export:hover { background: #8e44ad; }
+
+.take-bar { max-width: 900px; margin: 0 auto 16px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; }
+.take-bar label { color: #888; font-size: 13px; }
+.take-select { background: #2a2a2a; border: 1px solid #3a3a3a; color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 13px; }
+.take-info { color: #666; font-size: 12px; margin-left: auto; }
+
+.container { max-width: 900px; margin: 0 auto; }
+
+.section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; margin-bottom: 12px; overflow: hidden; cursor: grab; }
+.section.dragging { opacity: 0.5; }
+.section.dimmed { opacity: 0.4; }
+.section-header { padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.section-header:hover { background: #1f1f1f; }
+.drag-handle { color: #555; cursor: grab; }
+.module-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; min-width: 100px; text-align: center; }
+.take-badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; background: #333; color: #888; margin-left: -4px; }
+.take-badge.active { background: #9b59b6; color: #fff; }
+.section-title-input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; font-weight: 500; outline: none; }
+.section-duration { color: #666; font-size: 12px; }
+.section-actions { display: flex; gap: 4px; }
+.section-btn { background: transparent; border: none; color: #555; cursor: pointer; padding: 4px 8px; font-size: 14px; }
+.section-btn:hover { color: #fff; }
+.section-btn.edit-active { background: #4a9eff; color: #000; border-radius: 4px; }
+
+.section-edit { padding: 16px; background: #151515; border-top: 1px solid #2a2a2a; display: none; }
+.section-edit.active { display: block; }
+.edit-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.edit-field { }
+.edit-field label { color: #666; font-size: 11px; display: block; margin-bottom: 6px; text-transform: uppercase; }
+.edit-field input, .edit-field select, .edit-field textarea { width: 100%; background: #2a2a2a; border: 1px solid #3a3a3a; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-family: inherit; }
+.edit-field textarea { min-height: 60px; resize: vertical; }
+.edit-field input:focus, .edit-field textarea:focus { border-color: #4a9eff; outline: none; }
+.color-options { display: flex; gap: 6px; }
+.color-btn { width: 24px; height: 24px; border: 2px solid transparent; border-radius: 4px; cursor: pointer; }
+.color-btn.active { border-color: #fff; }
+
+.module-inputs { margin-top: 16px; padding-top: 16px; border-top: 1px solid #2a2a2a; }
+.module-inputs-title { color: #4a9eff; font-size: 12px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.input-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
+.input-row .edit-field { flex: 1; }
+.input-row .btn { padding: 8px 12px; height: 38px; }
+.items-list { margin-top: 12px; }
+.item-row { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: #1a1a1a; border-radius: 4px; margin-bottom: 6px; font-size: 13px; }
+.item-row .item-text { flex: 1; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-row .item-sub { color: #666; font-size: 11px; margin-left: 8px; }
+.item-row button { background: #333; border: none; color: #888; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.item-row button:hover { background: #444; color: #fff; }
+
+.notes-preview { padding: 0 16px 12px 48px; color: #666; font-size: 13px; }
+.content-preview { padding: 0 16px 12px 48px; color: #4a9eff; font-size: 12px; }
+
+.add-section-btn { width: 100%; padding: 16px; background: transparent; border: 2px dashed #2a2a2a; border-radius: 8px; color: #555; cursor: pointer; font-size: 14px; margin-top: 8px; }
+.add-section-btn:hover { border-color: #4a9eff; color: #4a9eff; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: #666; }
+.empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+
+/* Modal */
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000; }
+.modal.active { display: flex; }
+.modal-content { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 80vh; overflow: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h3 { color: #4a9eff; margin: 0; }
+.modal-close { background: transparent; border: none; color: #888; font-size: 20px; cursor: pointer; }
+.modal-textarea { width: 100%; height: 200px; background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px; color: #ccc; padding: 16px; font-size: 13px; font-family: monospace; resize: none; margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 8px; }
+.modal-actions .btn { flex: 1; padding: 12px; }
+
+.share-url-box { background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; margin-bottom: 16px; word-break: break-all; font-family: monospace; font-size: 12px; color: #888; max-height: 100px; overflow: auto; }
+
+.load-item { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 8px; padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.load-item:hover { border-color: #4a9eff; }
+.load-item-title { color: #fff; font-weight: 500; }
+.load-item-meta { color: #666; font-size: 12px; }
+
+.import-label { display: block; padding: 12px; background: #2a2a2a; border: 1px dashed #3a3a3a; border-radius: 8px; text-align: center; color: #888; cursor: pointer; margin-top: 16px; }
+.import-label:hover { border-color: #4a9eff; color: #4a9eff; }
+.import-label input { display: none; }
+
+.export-result { margin-top: 16px; padding: 12px; background: #1a2a1a; border: 1px solid #2a3a2a; border-radius: 8px; }
+.export-result-title { color: #2ecc71; font-size: 13px; margin-bottom: 8px; }
+.export-result-item { color: #888; font-size: 12px; padding: 4px 0; }
+
+/* Disco Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <div class="header-left">
+            <a href="index.html" class="back-btn">← Hub</a>
+            <input type="text" class="title-input" id="projectTitle" value="Untitled Presentation" />
+        </div>
+        <div class="subtitle"><span id="sectionCount">0</span> sections · ~<span id="totalDuration">0</span>s scroll</div>
+    </div>
+    <div class="header-actions">
+        <button class="btn btn-ghost" onclick="newProject()">New</button>
+        <button class="btn btn-secondary" onclick="openLoadModal()">Load</button>
+        <button class="btn btn-secondary" onclick="openSaveShareModal()">Save / Share</button>
+        <button class="btn btn-export" onclick="exportToModules()">⬆ Export to Modules</button>
+        <button class="btn btn-primary" onclick="addSection()">+ Add</button>
+    </div>
+</div>
+
+<div class="take-bar">
+    <label>Active Take:</label>
+    <select class="take-select" id="currentTake" onchange="renderSections()">
+        <option value="1">Take 1</option>
+        <option value="2">Take 2</option>
+        <option value="3">Take 3</option>
+        <option value="4">Take 4</option>
+        <option value="5">Take 5</option>
+    </select>
+    <span class="take-info" id="takeInfo">All sections shown</span>
+</div>
+
+<div class="container">
+    <div id="sectionsContainer">
+        <div class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <p>Start planning your scroll presentation.<br>Click "+ Add" to create your first section.</p>
+        </div>
+    </div>
+    <button class="add-section-btn" onclick="addSection()">+ Add Section</button>
+</div>
+
+<!-- Share Modal -->
+<div class="modal" id="shareModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Save / Share</h3>
+            <button class="modal-close" onclick="closeModal('shareModal')">×</button>
+        </div>
+        <div class="edit-field" style="margin-bottom:16px;">
+            <label>Project Name</label>
+            <input type="text" id="saveProjectName" style="margin-bottom:0;">
+        </div>
+        <div class="modal-actions" style="margin-bottom:16px;">
+            <button class="btn btn-primary" id="saveBtn" onclick="saveAndDownload()">💾 Save & Download</button>
+        </div>
+        <div style="border-top:1px solid #2a2a2a;padding-top:16px;margin-top:8px;">
+            <label style="color:#666;font-size:11px;display:block;margin-bottom:8px;text-transform:uppercase;">Share Options</label>
+            <div id="shareUrlBox" class="share-url-box"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="copyShareUrl()">📋 Copy Share URL</button>
+                <button class="btn btn-secondary" onclick="copyShareText()">📄 Copy as Text</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Load Modal -->
+<div class="modal" id="loadModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Load Project</h3>
+            <button class="modal-close" onclick="closeModal('loadModal')">×</button>
+        </div>
+        <div id="savedProjectsList"></div>
+        <label class="import-label">
+            Import from JSON file
+            <input type="file" accept=".json" onchange="importJSON(event)" />
+        </label>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Export to Modules</h3>
+            <button class="modal-close" onclick="closeModal('exportModal')">×</button>
+        </div>
+        <div id="exportResult"></div>
+        <div class="modal-actions" style="margin-top:16px;">
+            <button class="btn btn-primary" onclick="closeModal('exportModal')">Done</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const moduleTypes = [
+    { id: 'single-image', name: 'Single Image', color: '#e74c3c' },
+    { id: 'layers', name: 'Layers', color: '#3498db' },
+    { id: 'before-after', name: 'Before/After', color: '#e74c3c' },
+    { id: 'video', name: 'Video', color: '#e74c3c' },
+    { id: 'pull-quote', name: 'Pull Quote', color: '#9b59b6' },
+    { id: 'gallery', name: 'Gallery', color: '#2ecc71' },
+    { id: 'hotspots', name: 'Hotspots', color: '#e67e22' },
+    { id: 'stat-counter', name: 'Stat Counter', color: '#f39c12' },
+    { id: 'timeline', name: 'Timeline', color: '#1abc9c' },
+    { id: 'chart', name: 'Chart', color: '#f39c12' },
+    { id: 'card-stack', name: 'Card Stack', color: '#9b59b6' },
+    { id: 'globe', name: 'Globe', color: '#1abc9c' },
+    { id: 'collage', name: 'Collage', color: '#3498db' },
+    { id: 'zoom-detail', name: 'Zoom Detail', color: '#2ecc71' },
+    { id: 'matte', name: 'Matte', color: '#9b59b6' },
+    { id: 'text-scroll', name: 'Text Scroll', color: '#16a085' },
+    { id: 'chapter-marker', name: 'Chapter Marker', color: '#8e44ad' },
+    { id: 'key-facts', name: 'Key Facts', color: '#27ae60' },
+    { id: 'body-module', name: 'Body Module', color: '#7f8c8d' },
+    { id: 'silence-mapping', name: 'Silence Mapping', color: '#e74c3c' },
+    { id: 'epistemic-text', name: 'Epistemic Text', color: '#2ecc71' },
+    { id: 'adversarial-verification', name: 'Adversarial Verification', color: '#e67e22' },
+    { id: 'text', name: 'Text Block', color: '#95a5a6' },
+];
+
+const colors = ['#e74c3c', '#e67e22', '#f39c12', '#2ecc71', '#1abc9c', '#3498db', '#9b59b6', '#95a5a6'];
+
+let sections = [];
+let sectionIdCounter = 0;
+let draggedId = null;
+let editingId = null;
+
+// Check for shared project in URL
+function loadFromUrl() {
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+        try {
+            const json = LZString.decompressFromEncodedURIComponent(hash);
+            const data = JSON.parse(json);
+            if (data.title && data.sections) {
+                document.getElementById('projectTitle').value = data.title;
+                sections = data.sections;
+                sectionIdCounter = Math.max(...sections.map(s => s.id), 0);
+                history.replaceState(null, '', window.location.pathname);
+                return true;
+            }
+        } catch (e) {
+            console.warn('Could not load from URL:', e);
+        }
+    }
+    return false;
+}
+
+function getModuleInfo(typeId) {
+    return moduleTypes.find(m => m.id === typeId) || moduleTypes[0];
+}
+
+function getTakeCount(moduleType) {
+    return sections.filter(s => s.moduleType === moduleType).length;
+}
+
+function getNextTake(moduleType) {
+    const existing = sections.filter(s => s.moduleType === moduleType);
+    if (existing.length === 0) return 1;
+    const takes = existing.map(s => s.take || 1);
+    return Math.max(...takes) + 1;
+}
+
+function addSection() {
+    const section = {
+        id: ++sectionIdCounter,
+        moduleType: 'single-image',
+        title: 'New Section',
+        notes: '',
+        color: '#e74c3c',
+        duration: '2s',
+        take: 1,
+        content: {}
+    };
+    sections.push(section);
+    editingId = section.id;
+    renderSections();
+}
+
+function removeSection(id, e) {
+    e.stopPropagation();
+    discoConfirm('Remove this section?', function(){sections = sections.filter(s => s.id !== id);
+        renderSections();});
+}
+
+function toggleEdit(id) {
+    editingId = editingId === id ? null : id;
+    renderSections();
+}
+
+function updateSection(id, field, value) {
+    const section = sections.find(s => s.id === id);
+    if (section) {
+        if (field === 'moduleType') {
+            section.moduleType = value;
+            section.color = getModuleInfo(value).color;
+            section.content = {};
+            // Check if this creates a duplicate, assign next take
+            const sameType = sections.filter(s => s.id !== id && s.moduleType === value);
+            if (sameType.length > 0) {
+                const existingTakes = sameType.map(s => s.take || 1);
+                section.take = Math.max(...existingTakes) + 1;
+            } else {
+                section.take = 1;
+            }
+        } else {
+            section[field] = value;
+        }
+        renderSections();
+    }
+}
+
+function updateContent(id, field, value) {
+    const section = sections.find(s => s.id === id);
+    if (section) {
+        if (!section.content) section.content = {};
+        section.content[field] = value;
+    }
+}
+
+function addContentItem(sectionId, field) {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+    if (!section.content) section.content = {};
+    if (!section.content[field]) section.content[field] = [];
+    
+    const inputId = `input_${sectionId}_${field}`;
+    const input = document.getElementById(inputId);
+    if (!input || !input.value.trim()) return;
+    
+    section.content[field].push(input.value.trim());
+    input.value = '';
+    renderSections();
+}
+
+function addContentObject(sectionId, field, obj) {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+    if (!section.content) section.content = {};
+    if (!section.content[field]) section.content[field] = [];
+    section.content[field].push(obj);
+    renderSections();
+}
+
+function removeContentItem(sectionId, field, index) {
+    const section = sections.find(s => s.id === sectionId);
+    if (section && section.content && section.content[field]) {
+        section.content[field].splice(index, 1);
+        renderSections();
+    }
+}
+
+function getModuleInputsHtml(section) {
+    const c = section.content || {};
+    const id = section.id;
+    
+    switch(section.moduleType) {
+        case 'single-image':
+            return `
+                <div class="edit-field">
+                    <label>Image URL</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Image caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'layers':
+            return `
+                <div class="input-row">
+                    <div class="edit-field">
+                        <label>Add Layer Image URL</label>
+                        <input type="text" id="input_${id}_images" placeholder="https://...">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addContentItem(${id}, 'images')">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.images || []).map((url, i) => `
+                        <div class="item-row">
+                            <span class="item-text">Layer ${i+1}: ${url}</span>
+                            <button onclick="removeContentItem(${id}, 'images', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="edit-field" style="margin-top:12px;">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'before-after':
+            return `
+                <div class="edit-field">
+                    <label>Before Image URL</label>
+                    <input type="text" value="${c.beforeUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'beforeUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>After Image URL</label>
+                    <input type="text" value="${c.afterUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'afterUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Image caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'video':
+            return `
+                <div class="edit-field">
+                    <label>Video URL</label>
+                    <input type="text" value="${c.videoUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'videoUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Video caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Video: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'pull-quote':
+            return `
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Quote Text</label>
+                    <textarea onchange="updateContent(${id}, 'quote', this.value)" placeholder="Enter the quote...">${c.quote || ''}</textarea>
+                </div>
+                <div class="edit-field">
+                    <label>Attribution</label>
+                    <input type="text" value="${c.attribution || ''}" placeholder="— Speaker Name" onchange="updateContent(${id}, 'attribution', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Background Image URL</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>`;
+        
+        case 'gallery':
+            return `
+                <div class="input-row">
+                    <div class="edit-field">
+                        <label>Add Gallery Image URL</label>
+                        <input type="text" id="input_${id}_images" placeholder="https://...">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addContentItem(${id}, 'images')">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.images || []).map((url, i) => `
+                        <div class="item-row">
+                            <span class="item-text">Image ${i+1}: ${url}</span>
+                            <button onclick="removeContentItem(${id}, 'images', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="edit-field" style="margin-top:12px;">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Gallery caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'hotspots':
+            return `
+                <div class="edit-field">
+                    <label>Background Image URL</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'stat-counter':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:0.5;">
+                        <label>Value</label>
+                        <input type="number" id="input_${id}_value" placeholder="100">
+                    </div>
+                    <div class="edit-field" style="flex:0.3;">
+                        <label>Prefix</label>
+                        <input type="text" id="input_${id}_prefix" placeholder="$">
+                    </div>
+                    <div class="edit-field" style="flex:0.3;">
+                        <label>Suffix</label>
+                        <input type="text" id="input_${id}_suffix" placeholder="%">
+                    </div>
+                    <div class="edit-field" style="flex:1;">
+                        <label>Label</label>
+                        <input type="text" id="input_${id}_label" placeholder="Revenue">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addStatItem(${id})">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.stats || []).map((s, i) => `
+                        <div class="item-row">
+                            <span class="item-text">${s.prefix}${s.value}${s.suffix}</span>
+                            <span class="item-sub">${s.label}</span>
+                            <button onclick="removeContentItem(${id}, 'stats', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'timeline':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:0.4;">
+                        <label>Date</label>
+                        <input type="text" id="input_${id}_date" placeholder="2024">
+                    </div>
+                    <div class="edit-field" style="flex:1;">
+                        <label>Title</label>
+                        <input type="text" id="input_${id}_title" placeholder="Event title">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addTimelineItem(${id})">Add</button>
+                </div>
+                <div class="input-row">
+                    <div class="edit-field" style="flex:1;">
+                        <label>Description</label>
+                        <input type="text" id="input_${id}_desc" placeholder="Event description">
+                    </div>
+                    <div class="edit-field" style="flex:1;">
+                        <label>Image URL (optional)</label>
+                        <input type="text" id="input_${id}_image" placeholder="https://...">
+                    </div>
+                </div>
+                <div class="items-list">
+                    ${(c.events || []).map((e, i) => `
+                        <div class="item-row">
+                            <span class="item-text">${e.date}: ${e.title}</span>
+                            <span class="item-sub">${e.text || ''}</span>
+                            <button onclick="removeContentItem(${id}, 'events', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'chart':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:0.5;">
+                        <label>Chart Type</label>
+                        <select id="input_${id}_chartType" onchange="updateContent(${id}, 'chartType', this.value)">
+                            <option value="bar" ${c.chartType === 'bar' ? 'selected' : ''}>Bar</option>
+                            <option value="pie" ${c.chartType === 'pie' ? 'selected' : ''}>Pie</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-row">
+                    <div class="edit-field" style="flex:1;">
+                        <label>Label</label>
+                        <input type="text" id="input_${id}_label" placeholder="Category">
+                    </div>
+                    <div class="edit-field" style="flex:0.5;">
+                        <label>Value</label>
+                        <input type="number" id="input_${id}_value" placeholder="50">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addChartItem(${id})">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.data || []).map((d, i) => `
+                        <div class="item-row">
+                            <span class="item-text">${d.label}: ${d.value}</span>
+                            <button onclick="removeContentItem(${id}, 'data', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'card-stack':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:1;">
+                        <label>Card Text</label>
+                        <input type="text" id="input_${id}_text" placeholder="Card content">
+                    </div>
+                    <div class="edit-field" style="flex:1;">
+                        <label>Image URL (optional)</label>
+                        <input type="text" id="input_${id}_image" placeholder="https://...">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addCardItem(${id})">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.cards || []).map((card, i) => `
+                        <div class="item-row">
+                            <span class="item-text">Card ${i+1}: ${card.text || card.image || '(empty)'}</span>
+                            <button onclick="removeContentItem(${id}, 'cards', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'globe':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:1;">
+                        <label>Coordinates</label>
+                        <input type="text" id="input_${id}_coords" placeholder="40.71, -74.00 | 40°42'N 74°0'W | Google Maps paste">
+                    </div>
+                    <div class="edit-field" style="flex:0.8;">
+                        <label>Label</label>
+                        <input type="text" id="input_${id}_label" placeholder="New York">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addGlobeItem(${id})">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.points || []).map((p, i) => `
+                        <div class="item-row">
+                            <span class="item-text">${p.label || 'Point ' + (i+1)}</span>
+                            <span class="item-sub">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
+                            <button onclick="removeContentItem(${id}, 'points', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'collage':
+            return `
+                <div class="input-row">
+                    <div class="edit-field">
+                        <label>Add Collage Image URL</label>
+                        <input type="text" id="input_${id}_images" placeholder="https://...">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addContentItem(${id}, 'images')">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.images || []).map((url, i) => `
+                        <div class="item-row">
+                            <span class="item-text">Image ${i+1}: ${url}</span>
+                            <button onclick="removeContentItem(${id}, 'images', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="edit-field" style="margin-top:12px;">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Collage caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'zoom-detail':
+            return `
+                <div class="edit-field">
+                    <label>Image URL</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption</label>
+                    <input type="text" value="${c.caption || ''}" placeholder="Caption..." onchange="updateContent(${id}, 'caption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Caption Credit</label>
+                    <input type="text" value="${c.captionCredit || ''}" placeholder="Photo: Name / Agency" onchange="updateContent(${id}, 'captionCredit', this.value)">
+                </div>`;
+        
+        case 'matte':
+            return `
+                <div class="edit-field">
+                    <label>Background Image URL</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Matte Text</label>
+                    <input type="text" value="${c.matteText || ''}" placeholder="REVEAL" onchange="updateContent(${id}, 'matteText', this.value)">
+                </div>`;
+        
+        case 'text-scroll':
+            return `
+                <div class="input-row">
+                    <div class="edit-field" style="flex:2;">
+                        <label>Statement Text</label>
+                        <input type="text" id="input_${id}_text" placeholder="One punchy statement...">
+                    </div>
+                    <div class="edit-field" style="flex:1;">
+                        <label>BG Type</label>
+                        <select id="input_${id}_bgType">
+                            <option value="inherit">Inherit</option>
+                            <option value="color">Color</option>
+                            <option value="image">Image</option>
+                        </select>
+                    </div>
+                    <div class="edit-field" style="flex:1;">
+                        <label>BG Value</label>
+                        <input type="text" id="input_${id}_bgValue" placeholder="#1a1a1a or URL">
+                    </div>
+                    <button class="btn btn-secondary" onclick="addTextScrollItem(${id})">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.blocks || []).map((b, i) => `
+                        <div class="item-row">
+                            <span class="item-text">${b.text}</span>
+                            <span class="item-sub">${b.bgType === 'inherit' ? '(inherits)' : b.bgValue.substring(0,20)}</span>
+                            <button onclick="removeContentItem(${id}, 'blocks', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+        
+        case 'chapter-marker':
+            return `
+                <div class="edit-field">
+                    <label>Chapter Number/Label</label>
+                    <input type="text" value="${c.chapterNum || ''}" placeholder="Chapter One" onchange="updateContent(${id}, 'chapterNum', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Title</label>
+                    <input type="text" value="${c.titleText || ''}" placeholder="The Beginning" onchange="updateContent(${id}, 'titleText', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Subtitle</label>
+                    <input type="text" value="${c.subtitleText || ''}" placeholder="Optional subtitle" onchange="updateContent(${id}, 'subtitleText', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Entry Effect</label>
+                    <select onchange="updateContent(${id}, 'entryEffect', this.value)">
+                        <option value="fadeUp" ${c.entryEffect === 'fadeUp' ? 'selected' : ''}>Fade Up</option>
+                        <option value="scaleIn" ${c.entryEffect === 'scaleIn' ? 'selected' : ''}>Scale In</option>
+                        <option value="blurReveal" ${c.entryEffect === 'blurReveal' ? 'selected' : ''}>Blur Reveal</option>
+                        <option value="randomLetters" ${c.entryEffect === 'randomLetters' ? 'selected' : ''}>Random Letters</option>
+                    </select>
+                </div>`;
+        
+        case 'key-facts':
+            return `
+                <div class="edit-field">
+                    <label>Panel Title</label>
+                    <input type="text" value="${c.panelTitle || ''}" placeholder="What You Need to Know" onchange="updateContent(${id}, 'panelTitle', this.value)">
+                </div>
+                <div class="input-row">
+                    <div class="edit-field" style="flex:2;">
+                        <label>Fact Text</label>
+                        <input type="text" id="input_${id}_factText" placeholder="Key fact goes here...">
+                    </div>
+                    <div class="edit-field" style="flex:0.5;">
+                        <label>Icon</label>
+                        <select id="input_${id}_factIcon">
+                            <option value="•">• Bullet</option>
+                            <option value="→">→ Arrow</option>
+                            <option value="✓">✓ Check</option>
+                            <option value="!">! Alert</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary" onclick="addKeyFactItem(${id})">Add</button>
+                </div>
+                <div class="items-list">
+                    ${(c.facts || []).map((f, i) => `
+                        <div class="item-row">
+                            <span class="item-text">${f.icon} ${f.text}</span>
+                            <button onclick="removeContentItem(${id}, 'facts', ${i})">×</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="edit-field" style="margin-top:12px;">
+                    <label>Source Attribution</label>
+                    <input type="text" value="${c.sourceText || ''}" placeholder="Source: Reuters, 2024" onchange="updateContent(${id}, 'sourceText', this.value)">
+                </div>`;
+        
+        case 'body-module':
+            return `
+                <div class="edit-field">
+                    <label>Body Text (use **bold** and *italic*, ## for H2, ### for H3)</label>
+                    <textarea style="min-height:120px;" onchange="updateContent(${id}, 'bodyText', this.value)" placeholder="Write your body text here...">${c.bodyText || ''}</textarea>
+                </div>
+                <div class="edit-field">
+                    <label>Image URL (optional, floats beside text)</label>
+                    <input type="text" value="${c.imageUrl || ''}" placeholder="https://..." onchange="updateContent(${id}, 'imageUrl', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Image Caption</label>
+                    <input type="text" value="${c.imageCaption || ''}" placeholder="Photo credit / description" onchange="updateContent(${id}, 'imageCaption', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Image Position</label>
+                    <select onchange="updateContent(${id}, 'imagePosition', this.value)">
+                        <option value="right" ${c.imagePosition === 'right' ? 'selected' : ''}>Right of text</option>
+                        <option value="left" ${c.imagePosition === 'left' ? 'selected' : ''}>Left of text</option>
+                    </select>
+                </div>`;
+        
+        case 'silence-mapping':
+            var gapsList = (c.gaps || []).map((g, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;"><span style="color:#e74c3c;font-size:12px;flex:1;">● ${g.label || 'Gap ' + (i+1)}${g.description ? ' — ' + g.description.substring(0,40) : ''}</span><button class="btn" style="padding:2px 6px;font-size:11px;" onclick="removeContentItem(${id}, 'gaps', ${i})">✕</button></div>`).join('');
+            return `
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Section Title</label>
+                    <input type="text" value="${c.title || ''}" placeholder="What's Missing From This Story" onchange="updateContent(${id}, 'title', this.value)">
+                </div>
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Intro Text</label>
+                    <textarea onchange="updateContent(${id}, 'intro', this.value)" placeholder="Introductory context about the silence gaps...">${c.intro || ''}</textarea>
+                </div>
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Footer Text</label>
+                    <textarea onchange="updateContent(${id}, 'footer', this.value)" placeholder="Closing context or methodology note...">${c.footer || ''}</textarea>
+                </div>
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Silence Gaps</label>
+                    ${gapsList || '<p style="color:#666;font-size:11px;">No gaps added yet</p>'}
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
+                        <input type="text" id="input_${id}_gapLabel" placeholder="Gap label (e.g. Missing Voices)">
+                        <input type="text" id="input_${id}_gapDesc" placeholder="Description">
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:4px;">
+                        <select id="input_${id}_gapType"><option value="omission">Omission</option><option value="framing">Framing</option><option value="sourcing">Sourcing</option><option value="temporal">Temporal</option></select>
+                        <input type="number" id="input_${id}_gapSeverity" placeholder="Severity 1-10" min="1" max="10" value="5">
+                        <button class="btn" onclick="addSilenceGap(${id})">+ Add Gap</button>
+                    </div>
+                </div>`;
+
+        case 'epistemic-text':
+            var claimsList = (c.claims || []).map((cl, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;"><span style="color:${cl.level === 'high' ? '#2ecc71' : cl.level === 'contested' ? '#e74c3c' : '#f39c12'};font-size:12px;flex:1;">● [${cl.level || 'high'}] ${(cl.text || '').substring(0,50)}${(cl.text || '').length > 50 ? '...' : ''}</span><button class="btn" style="padding:2px 6px;font-size:11px;" onclick="removeContentItem(${id}, 'claims', ${i})">✕</button></div>`).join('');
+            return `
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Headline</label>
+                    <input type="text" value="${c.headline || ''}" placeholder="Story headline" onchange="updateContent(${id}, 'headline', this.value)">
+                </div>
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Body Text (Annotate with [H], [M], [C] for confidence levels)</label>
+                    <textarea style="min-height:100px;" onchange="updateContent(${id}, 'bodyText', this.value)" placeholder="Body text with epistemic annotations...">${c.bodyText || ''}</textarea>
+                </div>
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Claims / Sources</label>
+                    ${claimsList || '<p style="color:#666;font-size:11px;">No claims added yet</p>'}
+                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:6px;margin-top:8px;">
+                        <input type="text" id="input_${id}_claimText" placeholder="Claim text">
+                        <select id="input_${id}_claimLevel"><option value="high">High confidence</option><option value="medium">Medium confidence</option><option value="contested">Contested</option></select>
+                    </div>
+                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:6px;margin-top:4px;">
+                        <input type="text" id="input_${id}_claimSource" placeholder="Source (optional)">
+                        <button class="btn" onclick="addEpistemicClaim(${id})">+ Add Claim</button>
+                    </div>
+                </div>`;
+
+        case 'adversarial-verification':
+            var challengesList = (c.challenges || []).map((ch, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;"><span style="color:#e67e22;font-size:12px;flex:1;">● ${(ch.text || '').substring(0,50)}${(ch.text || '').length > 50 ? '...' : ''}</span><button class="btn" style="padding:2px 6px;font-size:11px;" onclick="removeContentItem(${id}, 'challenges', ${i})">✕</button></div>`).join('');
+            return `
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Central Claim</label>
+                    <textarea onchange="updateContent(${id}, 'claim', this.value)" placeholder="The claim to be verified...">${c.claim || ''}</textarea>
+                </div>
+                <div class="edit-field">
+                    <label>Source</label>
+                    <input type="text" value="${c.source || ''}" placeholder="Source attribution" onchange="updateContent(${id}, 'source', this.value)">
+                </div>
+                <div class="edit-field">
+                    <label>Kicker</label>
+                    <input type="text" value="${c.kicker || ''}" placeholder="Section kicker" onchange="updateContent(${id}, 'kicker', this.value)">
+                </div>
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Context</label>
+                    <textarea onchange="updateContent(${id}, 'context', this.value)" placeholder="Background context for the claim...">${c.context || ''}</textarea>
+                </div>
+                <div class="edit-field" style="grid-column: span 2;">
+                    <label>Challenges</label>
+                    ${challengesList || '<p style="color:#666;font-size:11px;">No challenges added yet</p>'}
+                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:6px;margin-top:8px;">
+                        <input type="text" id="input_${id}_challengeText" placeholder="Challenge / counter-argument">
+                        <input type="text" id="input_${id}_challengeVerdict" placeholder="Verdict (e.g. Upheld)">
+                    </div>
+                    <button class="btn" style="margin-top:4px;" onclick="addVerificationChallenge(${id})">+ Add Challenge</button>
+                </div>`;
+
+        case 'text':
+        default:
+            return `<p style="color:#666;font-size:12px;">Text blocks don't export to modules — use the notes field for planning.</p>`;
+    }
+}
+
+// Helper functions for complex items
+function addStatItem(sectionId) {
+    const value = document.getElementById(`input_${sectionId}_value`).value;
+    const prefix = document.getElementById(`input_${sectionId}_prefix`).value;
+    const suffix = document.getElementById(`input_${sectionId}_suffix`).value;
+    const label = document.getElementById(`input_${sectionId}_label`).value;
+    if (!value) return;
+    addContentObject(sectionId, 'stats', { value: parseFloat(value), prefix, suffix, label, decimals: 0 });
+    document.getElementById(`input_${sectionId}_value`).value = '';
+    document.getElementById(`input_${sectionId}_prefix`).value = '';
+    document.getElementById(`input_${sectionId}_suffix`).value = '';
+    document.getElementById(`input_${sectionId}_label`).value = '';
+}
+
+function addTimelineItem(sectionId) {
+    const date = document.getElementById(`input_${sectionId}_date`).value;
+    const title = document.getElementById(`input_${sectionId}_title`).value;
+    const desc = document.getElementById(`input_${sectionId}_desc`).value;
+    const image = document.getElementById(`input_${sectionId}_image`).value;
+    if (!date || !title) return;
+    addContentObject(sectionId, 'events', { date, title, text: desc, image });
+    document.getElementById(`input_${sectionId}_date`).value = '';
+    document.getElementById(`input_${sectionId}_title`).value = '';
+    document.getElementById(`input_${sectionId}_desc`).value = '';
+    document.getElementById(`input_${sectionId}_image`).value = '';
+}
+
+function addChartItem(sectionId) {
+    const label = document.getElementById(`input_${sectionId}_label`).value;
+    const value = document.getElementById(`input_${sectionId}_value`).value;
+    if (!label || !value) return;
+    addContentObject(sectionId, 'data', { label, value: parseFloat(value), color: colors[Math.floor(Math.random() * colors.length)] });
+    document.getElementById(`input_${sectionId}_label`).value = '';
+    document.getElementById(`input_${sectionId}_value`).value = '';
+}
+
+function addCardItem(sectionId) {
+    const text = document.getElementById(`input_${sectionId}_text`).value;
+    const image = document.getElementById(`input_${sectionId}_image`).value;
+    if (!text && !image) return;
+    addContentObject(sectionId, 'cards', { text, image });
+    document.getElementById(`input_${sectionId}_text`).value = '';
+    document.getElementById(`input_${sectionId}_image`).value = '';
+}
+
+function addTextScrollItem(sectionId) {
+    const text = document.getElementById(`input_${sectionId}_text`).value;
+    const bgType = document.getElementById(`input_${sectionId}_bgType`).value;
+    const bgValue = document.getElementById(`input_${sectionId}_bgValue`).value;
+    if (!text) return;
+    addContentObject(sectionId, 'blocks', { text, bgType, bgValue: bgValue || '#1a1a1a' });
+    document.getElementById(`input_${sectionId}_text`).value = '';
+    document.getElementById(`input_${sectionId}_bgValue`).value = '';
+}
+
+function addKeyFactItem(sectionId) {
+    const text = document.getElementById(`input_${sectionId}_factText`).value;
+    const icon = document.getElementById(`input_${sectionId}_factIcon`).value;
+    if (!text) return;
+    addContentObject(sectionId, 'facts', { text, icon });
+    document.getElementById(`input_${sectionId}_factText`).value = '';
+}
+
+function addSilenceGap(sectionId) {
+    const label = document.getElementById(`input_${sectionId}_gapLabel`).value;
+    const desc = document.getElementById(`input_${sectionId}_gapDesc`).value;
+    const type = document.getElementById(`input_${sectionId}_gapType`).value;
+    const severity = parseInt(document.getElementById(`input_${sectionId}_gapSeverity`).value) || 5;
+    if (!label) return;
+    addContentObject(sectionId, 'gaps', { label, description: desc, type, severity, id: Date.now() });
+    document.getElementById(`input_${sectionId}_gapLabel`).value = '';
+    document.getElementById(`input_${sectionId}_gapDesc`).value = '';
+}
+
+function addEpistemicClaim(sectionId) {
+    const text = document.getElementById(`input_${sectionId}_claimText`).value;
+    const level = document.getElementById(`input_${sectionId}_claimLevel`).value;
+    const source = document.getElementById(`input_${sectionId}_claimSource`).value;
+    if (!text) return;
+    addContentObject(sectionId, 'claims', { text, level, source, id: Date.now() });
+    document.getElementById(`input_${sectionId}_claimText`).value = '';
+    document.getElementById(`input_${sectionId}_claimSource`).value = '';
+}
+
+function addVerificationChallenge(sectionId) {
+    const text = document.getElementById(`input_${sectionId}_challengeText`).value;
+    const verdict = document.getElementById(`input_${sectionId}_challengeVerdict`).value;
+    if (!text) return;
+    addContentObject(sectionId, 'challenges', { text, verdict, evidence: [], id: Date.now() });
+    document.getElementById(`input_${sectionId}_challengeText`).value = '';
+    document.getElementById(`input_${sectionId}_challengeVerdict`).value = '';
+}
+
+function parseCoordinates(str) {
+    if (!str) return null;
+    str = str.trim();
+    
+    // Try decimal format: "40.71, -74.00" or "40.71 -74.00"
+    let match = str.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+    if (match) {
+        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    }
+    
+    // Try DMS format: 40°42'N 74°0'W or 40°42'46"N 74°0'22"W
+    match = str.match(/(\d+)[°](\d+)?['′]?(\d+\.?\d*)?["″]?\s*([NSns])[,\s]+(\d+)[°](\d+)?['′]?(\d+\.?\d*)?["″]?\s*([EWew])/);
+    if (match) {
+        let lat = parseFloat(match[1]) + (parseFloat(match[2] || 0) / 60) + (parseFloat(match[3] || 0) / 3600);
+        let lng = parseFloat(match[5]) + (parseFloat(match[6] || 0) / 60) + (parseFloat(match[7] || 0) / 3600);
+        if (match[4].toUpperCase() === 'S') lat = -lat;
+        if (match[8].toUpperCase() === 'W') lng = -lng;
+        return { lat, lng };
+    }
+    
+    // Try Google Maps URL paste: contains @40.7,-74.0 or !3d40.7!4d-74.0
+    match = str.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (match) {
+        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    }
+    match = str.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+    if (match) {
+        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    }
+    
+    return null;
+}
+
+function addGlobeItem(sectionId) {
+    const coordsInput = document.getElementById(`input_${sectionId}_coords`).value;
+    const label = document.getElementById(`input_${sectionId}_label`).value;
+    
+    const coords = parseCoordinates(coordsInput);
+    if (!coords) {
+        discoAlert('Could not parse coordinates. Try formats like:\n• 40.71, -74.00\n• 40°42\'N 74°0\'W\n• Paste Google Maps URL');
+        return;
+    }
+    
+    addContentObject(sectionId, 'points', { lat: coords.lat, lng: coords.lng, label: label || '', id: Date.now() });
+    document.getElementById(`input_${sectionId}_coords`).value = '';
+    document.getElementById(`input_${sectionId}_label`).value = '';
+}
+
+function getContentPreview(section) {
+    const c = section.content || {};
+    switch(section.moduleType) {
+        case 'single-image':
+        case 'zoom-detail':
+        case 'hotspots':
+            return c.imageUrl ? '🖼 Image set' : '';
+        case 'layers':
+        case 'gallery':
+        case 'collage':
+            return (c.images && c.images.length) ? `🖼 ${c.images.length} images` : '';
+        case 'before-after':
+            return (c.beforeUrl && c.afterUrl) ? '🖼 Before/After set' : '';
+        case 'video':
+            return c.videoUrl ? '🎬 Video set' : '';
+        case 'pull-quote':
+            return c.quote ? `"${c.quote.substring(0, 30)}..."` : '';
+        case 'stat-counter':
+            return (c.stats && c.stats.length) ? `📊 ${c.stats.length} stats` : '';
+        case 'timeline':
+            return (c.events && c.events.length) ? `📅 ${c.events.length} events` : '';
+        case 'chart':
+            return (c.data && c.data.length) ? `📈 ${c.data.length} data points` : '';
+        case 'card-stack':
+            return (c.cards && c.cards.length) ? `🃏 ${c.cards.length} cards` : '';
+        case 'globe':
+            return (c.points && c.points.length) ? `🌍 ${c.points.length} locations` : '';
+        case 'matte':
+            return c.matteText ? `✨ "${c.matteText}"` : '';
+        case 'silence-mapping':
+            return (c.gaps && c.gaps.length) ? `🔇 ${c.gaps.length} silence gaps` : '';
+        case 'epistemic-text':
+            return (c.claims && c.claims.length) ? `🔬 ${c.claims.length} claims` : (c.bodyText ? `📝 "${c.bodyText.substring(0,30)}..."` : '');
+        case 'adversarial-verification':
+            return c.claim ? `⚖️ "${c.claim.substring(0,30)}..."` : '';
+        default:
+            return '';
+    }
+}
+
+function renderSections() {
+    const container = document.getElementById('sectionsContainer');
+    const currentTake = parseInt(document.getElementById('currentTake').value);
+    
+    document.getElementById('sectionCount').textContent = sections.length;
+    const totalDuration = sections.reduce((acc, s) => acc + parseInt(s.duration || 0), 0);
+    document.getElementById('totalDuration').textContent = totalDuration;
+    
+    // Update take info
+    const takeCount = sections.filter(s => (s.take || 1) === currentTake).length;
+    document.getElementById('takeInfo').textContent = `Take ${currentTake}: ${takeCount} section${takeCount !== 1 ? 's' : ''} will export`;
+
+    if (sections.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📝</div>
+                <p>Start planning your scroll presentation.<br>Click "+ Add" to create your first section.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    sections.forEach((section, index) => {
+        const mod = getModuleInfo(section.moduleType);
+        const isEditing = editingId === section.id;
+        const sectionTake = section.take || 1;
+        const isActiveTake = sectionTake === currentTake;
+        const hasDuplicates = sections.filter(s => s.moduleType === section.moduleType).length > 1;
+        const contentPreview = getContentPreview(section);
+        
+        html += `
+            <div class="section ${draggedId === section.id ? 'dragging' : ''} ${!isActiveTake ? 'dimmed' : ''}" 
+                 draggable="true" 
+                 data-id="${section.id}"
+                 ondragstart="handleDragStart(event, ${section.id})"
+                 ondragover="handleDragOver(event, ${section.id})"
+                 ondragend="handleDragEnd()"
+                 style="border-left: 4px solid ${section.color};">
+                <div class="section-header" ondblclick="toggleEdit(${section.id})">
+                    <span class="drag-handle">⋮⋮</span>
+                    <span class="module-badge" style="background: ${section.color}33; color: ${section.color};">
+                        ${mod.name}
+                    </span>
+                    ${hasDuplicates ? `<span class="take-badge ${isActiveTake ? 'active' : ''}">T${sectionTake}</span>` : ''}
+                    <input type="text" class="section-title-input" value="${section.title}" 
+                           onchange="updateSection(${section.id}, 'title', this.value)"
+                           onclick="event.stopPropagation()" />
+                    <span class="section-duration">${section.duration}</span>
+                    <div class="section-actions">
+                        <button class="section-btn ${isEditing ? 'edit-active' : ''}" onclick="event.stopPropagation(); toggleEdit(${section.id})">
+                            ${isEditing ? 'Done' : '✎'}
+                        </button>
+                        <button class="section-btn" onclick="removeSection(${section.id}, event)">×</button>
+                    </div>
+                </div>
+                <div class="section-edit ${isEditing ? 'active' : ''}">
+                    <div class="edit-grid">
+                        <div class="edit-field">
+                            <label>Module Type</label>
+                            <select onchange="updateSection(${section.id}, 'moduleType', this.value)">
+                                ${moduleTypes.map(m => `<option value="${m.id}" ${section.moduleType === m.id ? 'selected' : ''}>${m.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="edit-field">
+                            <label>Duration</label>
+                            <select onchange="updateSection(${section.id}, 'duration', this.value)">
+                                ${['1s','2s','3s','4s','5s','6s','8s','10s'].map(d => `<option value="${d}" ${section.duration === d ? 'selected' : ''}>${d}</option>`).join('')}
+                            </select>
+                        </div>
+                        ${hasDuplicates ? `
+                        <div class="edit-field">
+                            <label>Take</label>
+                            <select onchange="updateSection(${section.id}, 'take', parseInt(this.value))">
+                                ${[1,2,3,4,5].map(t => `<option value="${t}" ${sectionTake === t ? 'selected' : ''}>Take ${t}</option>`).join('')}
+                            </select>
+                        </div>
+                        ` : ''}
+                        <div class="edit-field">
+                            <label>Color</label>
+                            <div class="color-options">
+                                ${colors.map(c => `<button class="color-btn ${section.color === c ? 'active' : ''}" style="background: ${c};" onclick="updateSection(${section.id}, 'color', '${c}')"></button>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="module-inputs">
+                        <div class="module-inputs-title">Module Content</div>
+                        ${getModuleInputsHtml(section)}
+                    </div>
+                    <div class="edit-field" style="margin-top:16px;">
+                        <label>Notes</label>
+                        <textarea placeholder="Planning notes..." 
+                                  onchange="updateSection(${section.id}, 'notes', this.value)">${section.notes || ''}</textarea>
+                    </div>
+                </div>
+                ${!isEditing && contentPreview ? `<div class="content-preview">${contentPreview}</div>` : ''}
+                ${!isEditing && section.notes ? `<div class="notes-preview">${section.notes.length > 100 ? section.notes.slice(0, 100) + '...' : section.notes}</div>` : ''}
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Export to Modules
+function exportToModules() {
+    const currentTake = parseInt(document.getElementById('currentTake').value);
+    const exportSections = sections.filter(s => (s.take || 1) === currentTake && s.moduleType !== 'text');
+    
+    if (exportSections.length === 0) {
+        discoAlert('No sections to export in Take ' + currentTake);
+        return;
+    }
+    
+    const results = [];
+    const exportedTypes = new Set();
+    
+    exportSections.forEach(section => {
+        if (exportedTypes.has(section.moduleType)) return; // Skip duplicates within same take
+        exportedTypes.add(section.moduleType);
+        
+        const state = buildModuleState(section);
+        if (state) {
+            const keyOverrides = { 'silence-mapping': 'disco_silence-mapping_v3' };
+            const key = keyOverrides[section.moduleType] || ('disco_' + section.moduleType);
+            try {
+                localStorage.setItem(key, JSON.stringify(state));
+                localStorage.setItem(key + '_from_planner', 'true');
+                results.push({ module: getModuleInfo(section.moduleType).name, success: true });
+            } catch(e) {
+                results.push({ module: getModuleInfo(section.moduleType).name, success: false, error: e.message });
+            }
+        }
+    });
+    
+    // Show results
+    let html = '<div class="export-result"><div class="export-result-title">✓ Exported Take ' + currentTake + ' to Modules</div>';
+    results.forEach(r => {
+        html += `<div class="export-result-item">${r.success ? '✓' : '✗'} ${r.module}${r.error ? ' - ' + r.error : ''}</div>`;
+    });
+    html += '<p style="color:#888;font-size:12px;margin-top:12px;">Visit each module to see pre-populated content.</p></div>';
+    
+    document.getElementById('exportResult').innerHTML = html;
+    document.getElementById('exportModal').classList.add('active');
+}
+
+function buildModuleState(section) {
+    const c = section.content || {};
+    
+    switch(section.moduleType) {
+        case 'single-image':
+            if (!c.imageUrl) return null;
+            return {
+                imageUrl: c.imageUrl,
+                inputs: { 
+                    imageUrl: c.imageUrl,
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'layers':
+            if (!c.images || !c.images.length) return null;
+            return {
+                layers: c.images.map((url, i) => ({
+                    id: Date.now() + i,
+                    url: url,
+                    depth: i / (c.images.length || 1),
+                    opacity: 1,
+                    fadeIn: 0,
+                    fadeOut: 100,
+                    blend: 'normal'
+                })),
+                textLayers: [],
+                inputs: {
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'before-after':
+            if (!c.beforeUrl || !c.afterUrl) return null;
+            return {
+                beforeUrl: c.beforeUrl,
+                afterUrl: c.afterUrl,
+                inputs: { 
+                    beforeUrl: c.beforeUrl, 
+                    afterUrl: c.afterUrl,
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'video':
+            if (!c.videoUrl) return null;
+            return {
+                videoUrl: c.videoUrl,
+                inputs: { 
+                    videoUrl: c.videoUrl,
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'pull-quote':
+            if (!c.quote) return null;
+            return {
+                inputs: {
+                    quoteText: c.quote,
+                    attribution: c.attribution || ''
+                },
+                bgImageData: c.imageUrl || ''
+            };
+        
+        case 'gallery':
+            if (!c.images || !c.images.length) return null;
+            var now = Date.now();
+            // Convert GitHub URLs to raw URLs
+            function convertGithubUrl(url) {
+                if (!url) return url;
+                if (url.includes('github.com') && url.includes('/blob/')) {
+                    return url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/').split('?')[0];
+                }
+                return url;
+            }
+            return {
+                images: c.images.map(function(url, i) {
+                    var convertedUrl = convertGithubUrl(url);
+                    return {
+                        id: now + i * 1000,
+                        src: convertedUrl,
+                        name: (convertedUrl && typeof convertedUrl === 'string') ? (convertedUrl.split('/').pop() || 'Image') : 'Image',
+                        textEnabled: false,
+                        text: '',
+                        textSize: 32,
+                        textColor: '#ffffff',
+                        textAlign: 'center',
+                        textPosition: 'bottom',
+                        textX: 0,
+                        textY: 0,
+                        textBgEnabled: true,
+                        textBgOpacity: 80,
+                        textLineHeight: 1.4,
+                        textLetterSpacing: 0,
+                        captionEnabled: true,
+                        caption: c.caption || '',
+                        credit: c.captionCredit || '',
+                        link: '',
+                        startScroll: Math.round(i * 100 / c.images.length),
+                        endScroll: Math.round((i + 1) * 100 / c.images.length)
+                    };
+                }),
+                inputs: {
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'hotspots':
+            if (!c.imageUrl) return null;
+            return {
+                imageUrl: c.imageUrl,
+                hotspots: [],
+                inputs: { 
+                    imageUrl: c.imageUrl,
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'stat-counter':
+            if (!c.stats || !c.stats.length) return null;
+            return {
+                stats: c.stats,
+                inputs: {}
+            };
+        
+        case 'timeline':
+            if (!c.events || !c.events.length) return null;
+            return {
+                events: c.events,
+                inputs: {}
+            };
+        
+        case 'chart':
+            if (!c.data || !c.data.length) return null;
+            return {
+                data: c.data,
+                chartType: c.chartType || 'bar',
+                orientation: 'horizontal',
+                pieStyle: 'pie',
+                stagger: true,
+                sizing: 'fit',
+                inputs: {}
+            };
+        
+        case 'card-stack':
+            if (!c.cards || !c.cards.length) return null;
+            return {
+                cards: c.cards.map((card, i) => ({
+                    id: Date.now() + i,
+                    text: card.text || '',
+                    image: card.image || '',
+                    bgColor: '#1a1a1a'
+                })),
+                inputs: {}
+            };
+        
+        case 'globe':
+            if (!c.points || !c.points.length) return null;
+            return {
+                points: c.points.map(function(p) {
+                    return {
+                        id: p.id || Date.now(),
+                        label: p.label || '',
+                        lat: p.lat,
+                        lng: p.lng,
+                        color: p.color || '#ff3333',
+                        size: p.size || 8,
+                        showLabel: p.showLabel !== false
+                    };
+                }),
+                lines: [],
+                inputs: {}
+            };
+        
+        case 'collage':
+            if (!c.images || !c.images.length) return null;
+            return {
+                images: c.images.map((url, i) => ({
+                    id: Date.now() + i,
+                    url: url,
+                    x: 10 + (i % 3) * 30,
+                    y: 10 + Math.floor(i / 3) * 30,
+                    width: 35,
+                    height: 35,
+                    rotation: 0,
+                    zIndex: i
+                })),
+                inputs: {
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'zoom-detail':
+            if (!c.imageUrl) return null;
+            return {
+                imageUrl: c.imageUrl,
+                inputs: { 
+                    imageUrl: c.imageUrl,
+                    captionText: c.caption || '',
+                    captionCredit: c.captionCredit || ''
+                }
+            };
+        
+        case 'matte':
+            return {
+                config: {
+                    matteSource: 'text',
+                    matteText: c.matteText || 'REVEAL',
+                    fontSize: 120,
+                    fontSizeMobile: 65,
+                    textAnim: 'random',
+                    textPosition: 'center',
+                    letterStagger: 50,
+                    letterOrder: [],
+                    matteImageUrl: '',
+                    bgImageUrl: c.imageUrl || '',
+                    surroundColor: '#000000',
+                    sizing: 'contain',
+                    containerHeight: 500
+                },
+                inputs: {
+                    'matte-text': c.matteText || 'REVEAL',
+                    'bg-image-url': c.imageUrl || ''
+                },
+                textAnim: 'random',
+                textPosition: 'center',
+                sizing: 'contain'
+            };
+        
+        case 'text-scroll':
+            if (!c.blocks || !c.blocks.length) return null;
+            return {
+                blocks: c.blocks.map(b => ({
+                    text: b.text,
+                    bgType: b.bgType === 'inherit' ? 'inherit' : (b.bgValue && b.bgValue.startsWith('#') ? 'color' : 'image'),
+                    bgColor: b.bgType === 'color' ? b.bgValue : '#1a1a1a',
+                    bgImage: b.bgType === 'image' ? b.bgValue : ''
+                })),
+                fontSize: 48,
+                textColor: '#ffffff',
+                textPosition: 'center',
+                backdropBlur: 0,
+                backdropDarken: 30,
+                bgEffect: 'static',
+                transitionSpeed: 600,
+                scrollDuration: 200,
+                desktopOffset: 50,
+                mobileOffset: 200
+            };
+        
+        case 'chapter-marker':
+            if (!c.titleText) return null;
+            return {
+                chapterNum: c.chapterNum || '',
+                titleText: c.titleText,
+                subtitleText: c.subtitleText || '',
+                titleSize: 72,
+                titleColor: '#ffffff',
+                bgType: 'solid',
+                bgColor1: '#0f0f0f',
+                bgColor2: '#1a1a2e',
+                entryEffect: c.entryEffect || 'fadeUp',
+                triggerPoint: 20,
+                scrollDuration: 150,
+                desktopOffset: 50,
+                mobileOffset: 200
+            };
+        
+        case 'key-facts':
+            if (!c.facts || !c.facts.length) return null;
+            return {
+                facts: c.facts,
+                panelTitle: c.panelTitle || 'What You Need to Know',
+                sourceText: c.sourceText || '',
+                accentColor: '#4a9eff',
+                panelBg: '#1a1a1a',
+                borderColor: '#2a2a2a',
+                maxWidth: 600,
+                staggerDelay: 100,
+                scrollDuration: 150,
+                desktopOffset: 50,
+                mobileOffset: 200
+            };
+        
+        case 'body-module':
+            if (!c.bodyText) return null;
+            return {
+                bodyText: c.bodyText,
+                textAlign: 'left',
+                imageUrl: c.imageUrl || '',
+                imageCaption: c.imageCaption || '',
+                imagePosition: c.imagePosition || 'right',
+                textColor: '#cccccc',
+                headlineColor: '#ffffff',
+                bgColor: '#0a0a0a',
+                fontSize: 17,
+                maxWidth: 650
+            };
+
+        case 'silence-mapping':
+            if (!c.gaps || !c.gaps.length) return null;
+            return {
+                title: c.title || 'Silence Mapping',
+                intro: c.intro || '',
+                footer: c.footer || '',
+                showTitle: true,
+                showIntro: !!(c.intro),
+                showFooter: !!(c.footer),
+                gaps: c.gaps.map(g => ({
+                    label: g.label || '',
+                    description: g.description || '',
+                    type: g.type || 'omission',
+                    severity: g.severity || 5,
+                    id: g.id || Date.now()
+                })),
+                mobileOffset: 200
+            };
+
+        case 'epistemic-text':
+            if (!c.bodyText && (!c.claims || !c.claims.length)) return null;
+            return {
+                headline: { on: !!(c.headline), text: c.headline || '' },
+                subheadline: { on: false, text: '' },
+                kicker: { on: false, text: '' },
+                byline: { on: false, text: '' },
+                dateline: { on: false, text: '' },
+                bodyText: c.bodyText || '',
+                defaultMode: 'highlighted',
+                claims: (c.claims || []).map(cl => ({
+                    text: cl.text || '',
+                    level: cl.level || 'high',
+                    source: cl.source || '',
+                    id: cl.id || Date.now()
+                })),
+                mobileOffset: 200
+            };
+
+        case 'adversarial-verification':
+            if (!c.claim) return null;
+            return {
+                claim: c.claim,
+                source: c.source || '',
+                context: c.context || '',
+                showClaim: true,
+                showSource: !!(c.source),
+                showContext: !!(c.context),
+                subheading: '',
+                kicker: c.kicker || '',
+                challenges: (c.challenges || []).map(ch => ({
+                    text: ch.text || '',
+                    verdict: ch.verdict || '',
+                    evidence: ch.evidence || [],
+                    id: ch.id || Date.now()
+                })),
+                stats: { s1l: '', s1v: '', s2l: '', s2v: '' },
+                mobileOffset: 200
+            };
+        
+        default:
+            return null;
+    }
+}
+
+// Drag and drop
+function handleDragStart(e, id) {
+    draggedId = id;
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(e, targetId) {
+    e.preventDefault();
+    if (draggedId === targetId) return;
+    
+    const draggedIndex = sections.findIndex(s => s.id === draggedId);
+    const targetIndex = sections.findIndex(s => s.id === targetId);
+    
+    const [dragged] = sections.splice(draggedIndex, 1);
+    sections.splice(targetIndex, 0, dragged);
+    renderSections();
+}
+
+function handleDragEnd() {
+    draggedId = null;
+    renderSections();
+}
+
+// Save/Load
+function newProject() {
+    function doReset() {
+        document.getElementById('projectTitle').value = 'Untitled Presentation';
+        sections = [];
+        sectionIdCounter = 0;
+        editingId = null;
+        renderSections();
+    }
+    if(sections.length > 0){discoConfirm('Start a new project? Unsaved changes will be lost.', doReset);} else {doReset();}
+}
+
+function openLoadModal() {
+    const saved = JSON.parse(localStorage.getItem('disco_planner_projects') || '[]');
+    const container = document.getElementById('savedProjectsList');
+    
+    if (saved.length === 0) {
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">No saved projects yet</p>';
+    } else {
+        container.innerHTML = saved.map(p => `
+            <div class="load-item" onclick="loadProject('${p.id}')">
+                <div>
+                    <div class="load-item-title">${p.title}</div>
+                    <div class="load-item-meta">${p.sections.length} sections · ${new Date(p.savedAt).toLocaleDateString()}</div>
+                </div>
+                <button class="section-btn" onclick="event.stopPropagation(); deleteProject('${p.id}')">×</button>
+            </div>
+        `).join('');
+    }
+    
+    document.getElementById('loadModal').classList.add('active');
+}
+
+function loadProject(projectId) {
+    const saved = JSON.parse(localStorage.getItem('disco_planner_projects') || '[]');
+    const project = saved.find(p => p.id === projectId);
+    if (project) {
+        document.getElementById('projectTitle').value = project.title;
+        sections = project.sections;
+        sectionIdCounter = Math.max(...sections.map(s => s.id), 0);
+        editingId = null;
+        renderSections();
+        closeModal('loadModal');
+    }
+}
+
+function deleteProject(projectId) {
+    discoConfirm('Delete this project?', function(){
+const saved = JSON.parse(localStorage.getItem('disco_planner_projects') || '[]');
+    const updated = saved.filter(p => p.id !== projectId);
+    localStorage.setItem('disco_planner_projects', JSON.stringify(updated));
+    openLoadModal();
+});
+}
+
+function importJSON(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const project = JSON.parse(event.target.result);
+            if (project.title && project.sections) {
+                document.getElementById('projectTitle').value = project.title;
+                sections = project.sections;
+                sectionIdCounter = Math.max(...sections.map(s => s.id), 0);
+                editingId = null;
+                renderSections();
+                closeModal('loadModal');
+            }
+        } catch (err) {
+            discoAlert('Invalid project file');
+        }
+    };
+    reader.readAsText(file);
+}
+
+// Share
+function generateShareText() {
+    const title = document.getElementById('projectTitle').value;
+    let text = `# ${title}\n\n`;
+    text += `Total sections: ${sections.length}\n`;
+    text += `Estimated scroll: ${sections.reduce((acc, s) => acc + parseInt(s.duration), 0)}s\n\n`;
+    text += `---\n\n`;
+    sections.forEach((s, i) => {
+        const mod = getModuleInfo(s.moduleType);
+        text += `## ${i + 1}. ${s.title}\n`;
+        text += `**Module:** ${mod.name}\n`;
+        text += `**Duration:** ${s.duration}\n`;
+        text += `**Take:** ${s.take || 1}\n`;
+        if (s.notes) text += `**Notes:** ${s.notes}\n`;
+        text += `\n`;
+    });
+    return text;
+}
+
+function generateShareUrl() {
+    const data = {
+        title: document.getElementById('projectTitle').value,
+        sections: sections
+    };
+    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(data));
+    return window.location.origin + window.location.pathname + '#' + compressed;
+}
+
+function openSaveShareModal() {
+    const title = document.getElementById('projectTitle').value;
+    document.getElementById('saveProjectName').value = title;
+    const url = generateShareUrl();
+    document.getElementById('shareUrlBox').textContent = url;
+    document.getElementById('shareModal').classList.add('active');
+}
+
+function saveAndDownload() {
+    const newTitle = document.getElementById('saveProjectName').value.trim();
+    if (!newTitle) {
+        discoAlert('Please enter a project name');
+        return;
+    }
+    
+    // Update the title input to match
+    document.getElementById('projectTitle').value = newTitle;
+    
+    const projectId = newTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const project = {
+        id: projectId,
+        title: newTitle,
+        sections: sections,
+        savedAt: new Date().toISOString()
+    };
+    
+    // Save to localStorage
+    const existing = JSON.parse(localStorage.getItem('disco_planner_projects') || '[]');
+    const index = existing.findIndex(p => p.id === projectId);
+    if (index >= 0) {
+        existing[index] = project;
+    } else {
+        existing.push(project);
+    }
+    localStorage.setItem('disco_planner_projects', JSON.stringify(existing));
+    savePlannerState();
+    
+    // Download JSON
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = projectId + '.json';
+    a.click();
+    
+    const btn = document.getElementById('saveBtn');
+    btn.textContent = '✓ Saved!';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-success');
+    setTimeout(() => {
+        btn.textContent = '💾 Save & Download';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-primary');
+    }, 2000);
+}
+
+function copyShareUrl() {
+    navigator.clipboard.writeText(generateShareUrl());
+    discoAlert('Share URL copied! Send this link to collaborators.');
+}
+
+function copyShareText() {
+    navigator.clipboard.writeText(generateShareText());
+    discoAlert('Text copied to clipboard!');
+}
+
+function exportJSON() {
+    const data = {
+        title: document.getElementById('projectTitle').value,
+        sections: sections
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.title.toLowerCase().replace(/[^a-z0-9]/g, '-') + '.json';
+    a.click();
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+// Persistence
+var PLANNER_KEY = 'disco_planner_current';
+
+function savePlannerState() {
+    try {
+        var state = {
+            title: document.getElementById('projectTitle').value,
+            sections: sections,
+            sectionIdCounter: sectionIdCounter,
+            currentTake: document.getElementById('currentTake').value
+        };
+        localStorage.setItem(PLANNER_KEY, JSON.stringify(state));
+    } catch(e) {}
+}
+
+function loadPlannerState() {
+    try {
+        var saved = localStorage.getItem(PLANNER_KEY);
+        if (!saved) return false;
+        var state = JSON.parse(saved);
+        if (state.title) document.getElementById('projectTitle').value = state.title;
+        if (state.sections) sections = state.sections;
+        if (state.sectionIdCounter) sectionIdCounter = state.sectionIdCounter;
+        if (state.currentTake) document.getElementById('currentTake').value = state.currentTake;
+        return true;
+    } catch(e) { return false; }
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal(modal.id);
+    });
+});
+
+// Close on escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+    }
+});
+
+// Auto-save on changes
+document.addEventListener('change', savePlannerState);
+document.addEventListener('input', savePlannerState);
+
+// Wrap functions that modify state to trigger save
+var _orig_addSection = addSection;
+addSection = function() { _orig_addSection(); savePlannerState(); };
+var _orig_removeSection = removeSection;
+removeSection = function(id, e) { _orig_removeSection(id, e); savePlannerState(); };
+var _orig_updateSection = updateSection;
+updateSection = function(id, field, value) { _orig_updateSection(id, field, value); savePlannerState(); };
+var _orig_updateContent = updateContent;
+updateContent = function(id, field, value) { _orig_updateContent(id, field, value); savePlannerState(); };
+var _orig_addContentItem = addContentItem;
+addContentItem = function(sectionId, field) { _orig_addContentItem(sectionId, field); savePlannerState(); };
+var _orig_addContentObject = addContentObject;
+addContentObject = function(sectionId, field, obj) { _orig_addContentObject(sectionId, field, obj); savePlannerState(); };
+var _orig_removeContentItem = removeContentItem;
+removeContentItem = function(sectionId, field, index) { _orig_removeContentItem(sectionId, field, index); savePlannerState(); };
+
+// Init
+if (!loadFromUrl()) {
+    loadPlannerState();
+}
+renderSections();
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

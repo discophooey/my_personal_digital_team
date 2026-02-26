@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Work Folder - Presentation Disco</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: var(--sans);
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding-top: 41px;
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+.header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    font-size: 16px;
+    color: var(--accent);
+    font-family: var(--display);
+}
+
+.header button {
+    padding: 6px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all .15s;
+}
+
+.header button:hover {
+    border-color: var(--accent-dim);
+    color: var(--accent);
+}
+
+/* Setup screen */
+.setup-screen {
+    padding: 40px 20px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.setup-screen h2 {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    margin: 14px 0 20px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-group select,
+.form-group input {
+    width: 100%;
+    padding: 7px 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: var(--mono);
+    font-size: 11px;
+    outline: none;
+    transition: border-color .15s;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+    border-color: var(--accent-dim);
+}
+
+.form-group input::placeholder {
+    color: var(--text-dim);
+}
+
+.hint {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 3px;
+}
+
+.btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all .15s;
+}
+
+.btn-primary {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: #0a0a0a;
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    opacity: 0.85;
+}
+
+.btn-secondary {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.btn-secondary:hover {
+    border-color: var(--accent-dim);
+    color: var(--accent);
+}
+
+/* Browser screen */
+.browser-screen {
+    display: none;
+    height: calc(100vh - 91px);
+    display: flex;
+    flex-direction: column;
+}
+
+.breadcrumb {
+    padding: 10px 16px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+.breadcrumb a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb span {
+    margin: 0 6px;
+    color: var(--text-dim);
+}
+
+.asset-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    align-content: start;
+}
+
+.asset-item {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.asset-item:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+}
+
+.asset-item.folder {
+    background: var(--bg-secondary);
+}
+
+.asset-thumb {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background: var(--bg-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.asset-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.asset-thumb.folder-icon {
+    font-size: 48px;
+    color: var(--accent);
+}
+
+.asset-name {
+    padding: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+/* Loading & empty states */
+.loading, .empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 11px;
+}
+
+.loading::before {
+    content: '⏳';
+    display: block;
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+
+.empty::before {
+    content: '📭';
+    display: block;
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--accent);
+    color: #0a0a0a;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0;
+    transition: transform 0.3s, opacity 0.3s;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* Hidden */
+.hidden { display: none !important; }
+
+/* Disco Modal */
+.disco-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:none;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;pointer-events:none;font-family:var(--sans)}
+.disco-modal-overlay.active{display:flex;opacity:1;pointer-events:auto}
+.disco-modal{background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:12px;padding:24px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);transform:scale(0.95);transition:transform 0.2s}
+.disco-modal-overlay.active .disco-modal{transform:scale(1)}
+.disco-modal-title{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+.disco-modal-msg{color:var(--text-secondary);font-size:13px;line-height:1.5;margin-bottom:20px;white-space:pre-line}
+.disco-modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.disco-modal-btns button{padding:7px 16px;border:none;border-radius:6px;font-family:var(--mono);font-size:10px;font-weight:500;cursor:pointer;transition:all 0.15s;text-transform:uppercase;letter-spacing:0.5px;width:auto;margin:0}
+.disco-modal-btns .disco-btn-primary{background:var(--accent);color:#0a0a0a;font-weight:600;border:1px solid var(--accent)}
+.disco-modal-btns .disco-btn-primary:hover{opacity:0.85}
+.disco-modal-btns .disco-btn-secondary{background:var(--bg-tertiary);color:var(--text-dim);border:1px solid var(--border)}
+.disco-modal-btns .disco-btn-secondary:hover{border-color:var(--border-light);color:var(--text-secondary)}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>📁 Work Folder</h1>
+    <button onclick="showSetup()">⚙️ Settings</button>
+</div>
+
+<div id="setupScreen" class="setup-screen">
+    <h2>Connect Work Folder</h2>
+    
+    <div class="form-group">
+        <label>Source</label>
+        <select id="sourceType" onchange="updateSourceUI()">
+            <option value="github">GitHub (Public Repo)</option>
+            <option value="custom">Custom Server</option>
+        </select>
+    </div>
+    
+    <div class="form-group" id="githubFields">
+        <label>GitHub Folder URL</label>
+        <input type="url" id="githubUrl" placeholder="https://github.com/user/repo/tree/main/assets">
+        <div class="hint">Paste a public GitHub folder URL. Example: https://github.com/username/repo/tree/main/images</div>
+    </div>
+    
+    <div class="form-group hidden" id="customFields">
+        <label>Server URL</label>
+        <input type="url" id="customUrl" placeholder="https://myserver.com/assets">
+        <div class="hint">URL to folder with directory listing enabled, or containing an assets.json file</div>
+    </div>
+    
+    <div class="btn-row">
+        <button class="btn btn-primary" onclick="connect()">Connect</button>
+        <button class="btn btn-secondary" onclick="disconnect()">Disconnect</button>
+    </div>
+</div>
+
+<div id="browserScreen" class="browser-screen hidden">
+    <div class="breadcrumb" id="breadcrumb">
+        <a href="#" onclick="navigateTo('')">root</a>
+    </div>
+    <div class="asset-grid" id="assetGrid">
+        <div class="loading">Loading assets...</div>
+    </div>
+</div>
+
+<div class="toast" id="toast">URL copied to clipboard!</div>
+
+<script>
+let config = {
+    type: null,
+    url: null,
+    owner: null,
+    repo: null,
+    branch: null,
+    basePath: null
+};
+
+let currentPath = '';
+
+// Load saved config
+function loadConfig() {
+    const saved = localStorage.getItem('disco_workfolder');
+    if (saved) {
+        config = JSON.parse(saved);
+        document.getElementById('sourceType').value = config.type || 'github';
+        if (config.type === 'github' && config.url) {
+            document.getElementById('githubUrl').value = config.url;
+        } else if (config.type === 'custom' && config.url) {
+            document.getElementById('customUrl').value = config.url;
+        }
+        updateSourceUI();
+        
+        if (config.type && config.url) {
+            showBrowser();
+            loadFolder('');
+        }
+    }
+}
+
+// Save config
+function saveConfig() {
+    localStorage.setItem('disco_workfolder', JSON.stringify(config));
+}
+
+// Update UI based on source type
+function updateSourceUI() {
+    const type = document.getElementById('sourceType').value;
+    document.getElementById('githubFields').classList.toggle('hidden', type !== 'github');
+    document.getElementById('customFields').classList.toggle('hidden', type !== 'custom');
+}
+
+// Parse GitHub URL
+function parseGitHubUrl(url) {
+    // https://github.com/owner/repo/tree/branch/path/to/folder
+    const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/]+)(?:\/(.*))?/);
+    if (match) {
+        return {
+            owner: match[1],
+            repo: match[2],
+            branch: match[3],
+            path: match[4] || ''
+        };
+    }
+    return null;
+}
+
+// Connect to folder
+function connect() {
+    const type = document.getElementById('sourceType').value;
+    
+    if (type === 'github') {
+        const url = document.getElementById('githubUrl').value.trim();
+        if (!url) {
+            discoAlert('Please enter a GitHub folder URL');
+            return;
+        }
+        
+        const parsed = parseGitHubUrl(url);
+        if (!parsed) {
+            discoAlert('Invalid GitHub URL. Please use format:\nhttps://github.com/user/repo/tree/branch/folder');
+            return;
+        }
+        
+        config = {
+            type: 'github',
+            url: url,
+            owner: parsed.owner,
+            repo: parsed.repo,
+            branch: parsed.branch,
+            basePath: parsed.path
+        };
+    } else {
+        const url = document.getElementById('customUrl').value.trim();
+        if (!url) {
+            discoAlert('Please enter a server URL');
+            return;
+        }
+        
+        config = {
+            type: 'custom',
+            url: url.replace(/\/$/, '')
+        };
+    }
+    
+    saveConfig();
+    showBrowser();
+    loadFolder('');
+}
+
+// Disconnect
+function disconnect() {
+    config = { type: null, url: null };
+    localStorage.removeItem('disco_workfolder');
+    showSetup();
+}
+
+// Show screens
+function showSetup() {
+    document.getElementById('setupScreen').classList.remove('hidden');
+    document.getElementById('browserScreen').classList.add('hidden');
+}
+
+function showBrowser() {
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('browserScreen').classList.remove('hidden');
+}
+
+// Load folder contents
+async function loadFolder(path) {
+    currentPath = path;
+    const grid = document.getElementById('assetGrid');
+    grid.innerHTML = '<div class="loading">Loading assets...</div>';
+    
+    updateBreadcrumb(path);
+    
+    try {
+        let items = [];
+        
+        if (config.type === 'github') {
+            items = await loadGitHubFolder(path);
+        } else {
+            items = await loadCustomFolder(path);
+        }
+        
+        renderGrid(items);
+    } catch (err) {
+        console.error(err);
+        grid.innerHTML = '<div class="empty">Failed to load folder.<br>' + err.message + '</div>';
+    }
+}
+
+// Load GitHub folder via API
+async function loadGitHubFolder(subPath) {
+    const fullPath = config.basePath ? (subPath ? config.basePath + '/' + subPath : config.basePath) : subPath;
+    const apiUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${fullPath}?ref=${config.branch}`;
+    
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+        throw new Error('GitHub API error: ' + response.status);
+    }
+    
+    const data = await response.json();
+    
+    return data.map(item => ({
+        name: item.name,
+        type: item.type === 'dir' ? 'folder' : 'file',
+        url: item.type === 'file' ? item.download_url : null,
+        path: subPath ? subPath + '/' + item.name : item.name
+    })).filter(item => {
+        // Only show folders and image files
+        if (item.type === 'folder') return true;
+        const ext = item.name.split('.').pop().toLowerCase();
+        return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+    });
+}
+
+// Load custom server folder
+async function loadCustomFolder(subPath) {
+    const url = subPath ? config.url + '/' + subPath : config.url;
+    
+    // Try assets.json first
+    try {
+        const jsonUrl = url + '/assets.json';
+        const response = await fetch(jsonUrl);
+        if (response.ok) {
+            const data = await response.json();
+            return data.images || data.files || data;
+        }
+    } catch (e) {
+        // assets.json not found, try directory listing
+    }
+    
+    // Try parsing directory listing HTML
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error('Server returned ' + response.status);
+    }
+    
+    const html = await response.text();
+    const items = [];
+    
+    // Parse links from directory listing
+    const linkRegex = /href="([^"]+)"/g;
+    let match;
+    while ((match = linkRegex.exec(html)) !== null) {
+        const href = match[1];
+        // Skip parent dir and hidden files
+        if (href === '../' || href.startsWith('.') || href.startsWith('?')) continue;
+        
+        const isFolder = href.endsWith('/');
+        const name = href.replace(/\/$/, '');
+        const ext = name.split('.').pop().toLowerCase();
+        
+        if (isFolder || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
+            items.push({
+                name: name,
+                type: isFolder ? 'folder' : 'file',
+                url: isFolder ? null : url + '/' + name,
+                path: subPath ? subPath + '/' + name : name
+            });
+        }
+    }
+    
+    return items;
+}
+
+// Update breadcrumb
+function updateBreadcrumb(path) {
+    const crumb = document.getElementById('breadcrumb');
+    let html = '<a href="#" onclick="navigateTo(\'\')">root</a>';
+    
+    if (path) {
+        const parts = path.split('/');
+        let cumPath = '';
+        parts.forEach((part, i) => {
+            cumPath += (i > 0 ? '/' : '') + part;
+            const p = cumPath;
+            html += ` <span>/</span> <a href="#" onclick="navigateTo('${p}')">${part}</a>`;
+        });
+    }
+    
+    crumb.innerHTML = html;
+}
+
+// Navigate to path
+function navigateTo(path) {
+    loadFolder(path);
+    return false;
+}
+
+// Render grid
+function renderGrid(items) {
+    const grid = document.getElementById('assetGrid');
+    
+    if (items.length === 0) {
+        grid.innerHTML = '<div class="empty">No images found in this folder</div>';
+        return;
+    }
+    
+    // Sort: folders first, then files
+    items.sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+    });
+    
+    grid.innerHTML = items.map(item => {
+        if (item.type === 'folder') {
+            return `
+                <div class="asset-item folder" onclick="navigateTo('${item.path}')">
+                    <div class="asset-thumb folder-icon">📁</div>
+                    <div class="asset-name">${item.name}</div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="asset-item" onclick="copyUrl('${item.url}')">
+                    <div class="asset-thumb"><img src="${item.url}" loading="lazy" onerror="this.parentElement.innerHTML='🖼️'"></div>
+                    <div class="asset-name">${item.name}</div>
+                </div>
+            `;
+        }
+    }).join('');
+}
+
+// Copy URL to clipboard
+function copyUrl(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        showToast('URL copied to clipboard!');
+    }).catch(err => {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('URL copied to clipboard!');
+    });
+}
+
+// Show toast notification
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// Init
+loadConfig();
+updateSourceUI();
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

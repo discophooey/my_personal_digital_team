@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrolltastic Matte</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); padding-top: 41px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+.app { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 41px); transition: grid-template-columns 0.3s; }
+.app.controls-hidden { grid-template-columns: 0 1fr; }
+.controls { background: var(--bg-primary); padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); transition: opacity 0.3s, padding 0.3s; }
+.app.controls-hidden .controls { opacity: 0; padding: 0; overflow: hidden; }
+
+.toggle-btn { position: fixed; top: 10px; left: 10px; z-index: 100; width: 32px; height: 32px; padding: 0; border-radius: 8px; font-size: 14px; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; transition: all .15s; }
+.toggle-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.module-title { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em; }
+.module-title span { color: var(--accent); }
+
+h2 { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; transition: all .15s; }
+h2:hover { border-color: var(--border-light); background: var(--bg-tertiary); }
+h2::after { content: '▾'; font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+h2.collapsed::after { transform: rotate(-90deg); }
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0; }
+
+.control-group { margin-bottom: 10px; }
+label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+input[type="text"], input[type="number"], select, textarea {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary);
+    border-radius: 6px; font-family: var(--mono); font-size: 11px; outline: none; transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent-dim); }
+textarea { min-height: 60px; resize: vertical; }
+input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="color"] { width: 36px; height: 24px; border: 1px solid var(--border); background: var(--bg-tertiary); cursor: pointer; border-radius: 4px; padding: 1px; }
+input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent); }
+
+button {
+    width: 100%; padding: 8px 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--accent); border: 1px solid var(--accent); color: #0a0a0a; font-weight: 600;
+    border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: all .15s;
+}
+button:hover { opacity: 0.85; }
+button.secondary { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.row { display: flex; gap: 8px; align-items: flex-start; }
+.row > * { flex: 1; }
+.hint { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+.range-val { font-family: var(--mono); font-size: 9px; color: var(--accent); float: right; text-transform: none; letter-spacing: 0; }
+
+/* Toggle Groups */
+.tg-group { display: flex; gap: 8px; }
+.tg-btn { flex: 1; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-family: var(--mono); font-size: 10px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; transition: all .15s; }
+.tg-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+.tg-btn.active { background: var(--accent); border-color: var(--accent); color: #0a0a0a; font-weight: 600; }
+
+/* Position Grid */
+.position-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 10px; }
+.pos-btn { padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer; text-align: center; font-size: 14px; transition: all .15s; }
+.pos-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+.pos-btn.active { background: var(--accent); border-color: var(--accent); color: #0a0a0a; }
+
+/* Preview Area */
+.preview-area { background: var(--bg-deep); display: flex; flex-direction: column; overflow: hidden; }
+.preview-area.fit-frame { background: var(--bg-secondary); }
+.preview-area.fit-frame .preview-stage,
+.preview-area.fit-frame .sticky-stage { border: 2px solid var(--accent-dim); box-sizing: border-box; max-width: 700px; margin: 0 auto; }
+
+.preview-header {
+    padding: 0 16px; height: 34px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+}
+.preview-header label { font-size: 9px; display: flex; align-items: center; gap: 5px; cursor: pointer; margin: 0; }
+#progressDisplay { color: var(--accent); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+
+.preview-scroll { flex: 1; overflow-y: auto; }
+.preview-container { position: relative; }
+.preview-stage { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
+
+/* Matte Container */
+.matte-wrap { position: relative; width: 90%; min-height: 500px; overflow: hidden; border-radius: 12px; }
+.matte-wrap.fit { width: auto; height: auto; }
+.matte-wrap.contain { width: 98%; height: 90vh; min-height: auto; }
+.matte-wrap.fill { width: 100%; min-height: 70vh; }
+
+/* Background Layer */
+.matte-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; z-index: 1; }
+
+/* Solid Surround Layer */
+.matte-surround { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; opacity: 0; }
+
+/* Text Matte Layer */
+.matte-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; display: flex; padding: 20px; box-sizing: border-box; }
+.matte-text.pos-center { align-items: center; justify-content: center; }
+.matte-text.pos-top { align-items: flex-start; justify-content: center; }
+.matte-text.pos-bottom { align-items: flex-end; justify-content: center; }
+.matte-text.pos-left { align-items: center; justify-content: flex-start; }
+.matte-text.pos-right { align-items: center; justify-content: flex-end; }
+.matte-text.pos-top-left { align-items: flex-start; justify-content: flex-start; }
+.matte-text.pos-top-right { align-items: flex-start; justify-content: flex-end; }
+.matte-text.pos-bottom-left { align-items: flex-end; justify-content: flex-start; }
+.matte-text.pos-bottom-right { align-items: flex-end; justify-content: flex-end; }
+
+/* Text content wrapper */
+.matte-text-inner { font-family: 'AP', 'Roboto', sans-serif; font-weight: 700; white-space: nowrap; background-clip: text; -webkit-background-clip: text; color: transparent; background-size: cover; background-position: center; }
+.matte-fade { opacity: 0; }
+
+/* Letter animation */
+.matte-letter { display: inline-block; opacity: 0; background-clip: text; -webkit-background-clip: text; color: transparent; }
+
+/* Image Matte */
+.matte-image { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3; max-width: 80%; max-height: 80%; opacity: 0; }
+
+/* Export Modal */
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; }
+.modal.active { display: flex; }
+.modal-content { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; width: 90%; max-width: 800px; max-height: 85vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h1 { font-family: var(--mono); font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin: 0; }
+.modal-close { background: none; border: none; color: var(--text-dim); font-size: 22px; cursor: pointer; width: auto; padding: 4px 8px; margin: 0; }
+.modal-close:hover { color: var(--accent); }
+textarea.code {
+    width: 100%; height: 300px;
+    background: var(--bg-deep); border: 1px solid var(--border); color: var(--accent);
+    font-family: var(--mono); font-size: 10px; padding: 12px; border-radius: 8px; outline: none;
+}
+textarea.code:focus { border-color: var(--accent-dim); }
+
+/* Disco Confirm/Alert Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--bg-primary);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;font-family:var(--mono);">
+<a href="index.html" style="padding:10px 16px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.5px;">← Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Zoom Detail</a>
+<a href="text-scroll.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Text Scroll</a>
+<a href="chapter-marker.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chapter Marker</a>
+<a href="key-facts.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Key Facts</a>
+<a href="body-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Body Module</a>
+<a href="epistemic-text.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Epistemic Text</a>
+<a href="adversarial-verification.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Adversarial</a>
+<a href="silence-mapping.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Silence Map</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:var(--accent)!important;background:var(--bg-secondary);}</style>
+
+<button class="toggle-btn" onclick="toggleControls()">☰</button>
+<div class="app" id="app">
+    <div class="controls">
+        <div class="module-title">Matte <span>Module</span></div>
+
+        <h2 onclick="toggleSection(this)">Matte Source</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Matte Text</label>
+                <input type="text" id="matte-text" value="REVEAL" oninput="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Font Size - Desktop (px) <span class="range-val" id="fontSizeVal">120</span></label>
+                <input type="range" id="font-size" min="40" max="300" value="120" oninput="document.getElementById('fontSizeVal').textContent=this.value; updatePreview();">
+            </div>
+            <div class="control-group">
+                <label>Font Size - Mobile (px) <span class="range-val" id="fontSizeMobileVal">65</span></label>
+                <input type="range" id="font-size-mobile" min="20" max="150" value="65" oninput="document.getElementById('fontSizeMobileVal').textContent=this.value; updatePreview();">
+            </div>
+            <div class="control-group">
+                <label>Text Animation</label>
+                <div class="tg-group">
+                    <div class="tg-btn" data-textanim="letters" onclick="setTextAnim('letters')">Letters</div>
+                    <div class="tg-btn active" data-textanim="random" onclick="setTextAnim('random')">Random</div>
+                    <div class="tg-btn" data-textanim="fade" onclick="setTextAnim('fade')">Fade</div>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Letter Stagger (ms) <span class="range-val" id="staggerVal">50</span></label>
+                <input type="range" id="letter-stagger" min="0" max="200" value="50" oninput="document.getElementById('staggerVal').textContent=this.value; updatePreview();">
+            </div>
+            <div class="control-group">
+                <label>Text Position</label>
+                <div class="position-grid">
+                    <div class="pos-btn" data-pos="top-left" onclick="setTextPosition('top-left')">↖</div>
+                    <div class="pos-btn" data-pos="top" onclick="setTextPosition('top')">↑</div>
+                    <div class="pos-btn" data-pos="top-right" onclick="setTextPosition('top-right')">↗</div>
+                    <div class="pos-btn" data-pos="left" onclick="setTextPosition('left')">←</div>
+                    <div class="pos-btn active" data-pos="center" onclick="setTextPosition('center')">●</div>
+                    <div class="pos-btn" data-pos="right" onclick="setTextPosition('right')">→</div>
+                    <div class="pos-btn" data-pos="bottom-left" onclick="setTextPosition('bottom-left')">↙</div>
+                    <div class="pos-btn" data-pos="bottom" onclick="setTextPosition('bottom')">↓</div>
+                    <div class="pos-btn" data-pos="bottom-right" onclick="setTextPosition('bottom-right')">↘</div>
+                </div>
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Background</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Background Image URL</label>
+                <input type="text" id="bg-image-url" placeholder="Any direct image URL (CDN, S3, etc)">
+            </div>
+            <button onclick="loadBgImage()">Load Image</button>
+            <div class="hint">Leave empty for gradient</div>
+            <div class="control-group" style="margin-top:10px;">
+                <label>Surround Color</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="color" id="surround-color" value="#000000" oninput="updatePreview()">
+                    <span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);">Color that fades in around the matte</span>
+                </div>
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Animation</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Scroll Duration (vh) <span class="range-val" id="scrollDurationVal">200%</span></label>
+                <input type="range" id="scrollDuration" min="150" max="500" value="200" oninput="document.getElementById('scrollDurationVal').textContent=this.value+'%'; updatePreviewHeight();">
+            </div>
+        </div>
+
+        <h2 class="collapsed" onclick="toggleSection(this)">Sizing</h2>
+        <div class="section collapsed">
+            <div class="control-group">
+                <label>Container Sizing</label>
+                <div class="tg-group">
+                    <div class="tg-btn" data-sizing="fit" onclick="setSizing('fit')">Fit</div>
+                    <div class="tg-btn active" data-sizing="contain" onclick="setSizing('contain')">Contain</div>
+                    <div class="tg-btn" data-sizing="fill" onclick="setSizing('fill')">Fill</div>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Container Height (px) <span class="range-val" id="heightVal">500</span></label>
+                <input type="range" id="container-height" min="300" max="800" value="500" oninput="document.getElementById('heightVal').textContent=this.value; updatePreview();">
+            </div>
+            <div class="control-group">
+                <label>Aspect Ratio</label>
+                <select id="aspectRatio" onchange="updatePreview()">
+                    <option value="auto" selected>Auto (from height)</option>
+                    <option value="16:9">16:9 Widescreen</option>
+                    <option value="4:3">4:3 Standard</option>
+                    <option value="1:1">1:1 Square</option>
+                    <option value="21:9">21:9 Ultrawide</option>
+                    <option value="9:16">9:16 Vertical</option>
+                    <option value="3:2">3:2 Photo</option>
+                </select>
+                <div class="hint">Overrides container height when set</div>
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Export</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Mobile Top Offset (px) <span class="range-val" id="mobileOffsetVal">200px</span></label>
+                <input type="range" id="mobileOffset" min="0" max="300" value="200" oninput="document.getElementById('mobileOffsetVal').textContent=this.value+'px';">
+                <div class="hint">For AP mobile nav/banners</div>
+            </div>
+            <div class="control-group">
+                <label>Desktop Top Offset (px) <span class="range-val" id="desktopOffsetVal">0px</span></label>
+                <input type="range" id="desktopOffset" min="0" max="200" value="0" oninput="document.getElementById('desktopOffsetVal').textContent=this.value+'px';">
+            </div>
+            <button onclick="generateExport()">Generate HTML</button>
+            <button class="secondary" onclick="copyCode()">📋 Copy Code</button>
+            <button class="secondary" onclick="downloadHTML()">💾 Download</button>
+            <button class="secondary" onclick="resetModule()" style="margin-top:6px;">↺ Reset</button>
+        </div>
+    </div>
+
+    <div class="preview-area" id="previewArea">
+        <div class="preview-header">
+            <span>Preview</span>
+            <label>
+                <input type="checkbox" id="fitFrameToggle" onchange="toggleFitFrame()"> Fit Frame
+            </label>
+            <span id="progressDisplay">0%</span>
+        </div>
+        <div class="preview-scroll" id="previewScroll">
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-stage" id="previewStage">
+                    <div class="matte-wrap" id="matteWrap">
+                        <div class="matte-bg" id="matteBg"></div>
+                        <div class="matte-surround" id="matteSurround"></div>
+                        <div class="matte-text" id="matteText"></div>
+                        <img class="matte-image" id="matteImage" src="" alt="matte" style="display:none;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <div class="modal-header"><h1>Export Code</h1><button class="modal-close" onclick="closeModal()">&times;</button></div>
+        <textarea class="code" id="exportCode" readonly></textarea>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+            <button onclick="copyCode()">📋 Copy</button>
+            <button class="secondary" onclick="downloadHTML()">💾 Download</button>
+            <button class="secondary" onclick="sendToStackBuilder()">📚 Stack</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var _fromPlanner=new URLSearchParams(location.search).get('planner')==='1';
+
+function toggleControls() { document.getElementById('app').classList.toggle('controls-hidden'); }
+function toggleSection(el) { el.classList.toggle('collapsed'); el.nextElementSibling.classList.toggle('collapsed'); }
+function closeModal() { document.getElementById('exportModal').classList.remove('active'); }
+
+// Toggle Fit Frame preview mode
+function toggleFitFrame() {
+    const area = document.getElementById('previewArea');
+    const scroll = document.getElementById('previewScroll');
+    const stage = document.getElementById('previewStage') || document.querySelector('.sticky-stage');
+    const toggle = document.getElementById('fitFrameToggle');
+
+    if (toggle.checked) {
+        area.classList.add('fit-frame');
+        if (stage) {
+            const scrollRect = scroll.getBoundingClientRect();
+            const scale = Math.min((scrollRect.width - 40) / stage.offsetWidth, 0.85);
+            stage.style.transform = 'scale(' + scale + ')';
+            stage.style.transformOrigin = 'top center';
+        }
+    } else {
+        area.classList.remove('fit-frame');
+        if (stage) {
+            stage.style.transform = '';
+            stage.style.transformOrigin = '';
+        }
+    }
+}
+
+// Config
+var config = {
+    matteSource: 'text',
+    matteText: 'REVEAL',
+    fontSize: 120,
+    fontSizeMobile: 65,
+    textAnim: 'random',
+    textPosition: 'center',
+    letterStagger: 50,
+    letterOrder: [],
+    matteImageUrl: '',
+    bgImageUrl: '',
+    surroundColor: '#000000',
+    sizing: 'contain',
+    containerHeight: 500
+};
+
+function setTextAnim(anim) {
+    config.textAnim = anim;
+    document.querySelectorAll('[data-textanim]').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.textanim === anim);
+    });
+    updatePreview();
+}
+
+function setTextPosition(pos) {
+    config.textPosition = pos;
+    document.querySelectorAll('[data-pos]').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.pos === pos);
+    });
+    updatePreview();
+}
+
+function setSizing(sizing) {
+    config.sizing = sizing;
+    document.querySelectorAll('[data-sizing]').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.sizing === sizing);
+    });
+    updatePreview();
+}
+
+// Load Image Functions
+function loadBgImage() {
+    var url = document.getElementById('bg-image-url').value.trim();
+    if (!url) { discoAlert('Enter background image URL'); return; }
+    if (url.includes('github.com') && url.includes('/blob/')) {
+        url = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/').split('?')[0];
+        document.getElementById('bg-image-url').value = url;
+    }
+    var img = new Image();
+    img.onload = function() {
+        config.bgImageUrl = url;
+        updatePreview();
+    };
+    img.onerror = function() { discoAlert('Failed to load background image'); };
+    img.src = url;
+}
+
+// Preview Height
+function updatePreviewHeight() {
+    document.getElementById('previewContainer').style.height = (parseInt(document.getElementById('scrollDuration').value) || 200) + 'vh';
+}
+
+// Preview Update
+function updatePreview() {
+    config.matteText = document.getElementById('matte-text').value;
+    config.fontSize = parseInt(document.getElementById('font-size').value) || 120;
+    config.fontSizeMobile = parseInt(document.getElementById('font-size-mobile').value) || 65;
+    config.letterStagger = parseInt(document.getElementById('letter-stagger').value) || 50;
+    config.bgImageUrl = document.getElementById('bg-image-url').value;
+    config.surroundColor = document.getElementById('surround-color').value;
+    config.containerHeight = parseInt(document.getElementById('container-height').value) || 500;
+
+    var wrap = document.getElementById('matteWrap');
+    var bg = document.getElementById('matteBg');
+    var surround = document.getElementById('matteSurround');
+    var textEl = document.getElementById('matteText');
+    var imageEl = document.getElementById('matteImage');
+
+    // Container sizing
+    var aspectRatio = document.getElementById('aspectRatio').value;
+    wrap.className = 'matte-wrap ' + config.sizing;
+    if (aspectRatio !== 'auto') {
+        wrap.style.minHeight = '0';
+        wrap.style.aspectRatio = aspectRatio.replace(':', '/');
+        wrap.style.height = 'auto';
+        wrap.style.maxHeight = '90vh';
+    } else {
+        wrap.style.minHeight = config.containerHeight + 'px';
+        wrap.style.aspectRatio = '';
+        wrap.style.height = '';
+        wrap.style.maxHeight = '';
+    }
+
+    // Background
+    if (config.bgImageUrl) {
+        bg.style.backgroundImage = 'url(' + config.bgImageUrl + ')';
+    } else {
+        bg.style.backgroundImage = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    }
+
+    // Surround
+    surround.style.background = config.surroundColor;
+
+    // Text matte
+    textEl.style.display = 'flex';
+    imageEl.style.display = 'none';
+
+    // Set position class
+    textEl.className = 'matte-text pos-' + config.textPosition;
+
+    // Build letters for letters/random modes
+    if (config.textAnim === 'letters' || config.textAnim === 'random') {
+        var bgImg = config.bgImageUrl
+            ? 'url(' + config.bgImageUrl + ')'
+            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        var letters = config.matteText.split('').map(function(char, i) {
+            return '<span class="matte-letter" data-index="' + i + '" style="background-image:' + bgImg + ';">' + (char === ' ' ? '&nbsp;' : char) + '</span>';
+        }).join('');
+        textEl.innerHTML = '<span class="matte-text-inner" style="font-size:' + config.fontSize + 'px;">' + letters + '</span>';
+
+        // Generate random order for random mode
+        if (config.textAnim === 'random') {
+            var indices = [];
+            for (var i = 0; i < config.matteText.length; i++) indices.push(i);
+            for (var i = indices.length - 1; i > 0; i--) {
+                var j = Math.floor(Math.random() * (i + 1));
+                var temp = indices[i]; indices[i] = indices[j]; indices[j] = temp;
+            }
+            config.letterOrder = indices;
+        }
+
+        // Calculate cover dimensions
+        if (config.bgImageUrl) {
+            var img = new Image();
+            img.onload = function() {
+                if (!img.naturalWidth || !img.naturalHeight) return;
+                requestAnimationFrame(function() {
+                    var wrap = document.getElementById('matteWrap');
+                    var wrapRect = wrap.getBoundingClientRect();
+                    var containerW = wrapRect.width;
+                    var containerH = wrapRect.height;
+                    var imgW = img.naturalWidth;
+                    var imgH = img.naturalHeight;
+
+                    var scale = Math.max(containerW / imgW, containerH / imgH);
+                    var bgW = imgW * scale;
+                    var bgH = imgH * scale;
+                    var bgStartX = (containerW - bgW) / 2;
+                    var bgStartY = (containerH - bgH) / 2;
+
+                    var letters = textEl.querySelectorAll('.matte-letter');
+                    letters.forEach(function(letter) {
+                        var letterRect = letter.getBoundingClientRect();
+                        var letterX = letterRect.left - wrapRect.left;
+                        var letterY = letterRect.top - wrapRect.top;
+                        var imgPixelX = letterX - bgStartX;
+                        var imgPixelY = letterY - bgStartY;
+
+                        letter.style.backgroundSize = bgW + 'px ' + bgH + 'px';
+                        letter.style.backgroundPosition = '-' + imgPixelX + 'px -' + imgPixelY + 'px';
+                    });
+                });
+            };
+            img.src = config.bgImageUrl;
+        }
+    } else {
+        // Fade mode
+        var bgImg = config.bgImageUrl
+            ? 'url(' + config.bgImageUrl + ')'
+            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        textEl.innerHTML = '<span class="matte-text-inner matte-fade" style="font-size:' + config.fontSize + 'px;background-image:' + bgImg + ';">' + config.matteText + '</span>';
+
+        if (config.bgImageUrl) {
+            var img = new Image();
+            img.onload = function() {
+                if (!img.naturalWidth || !img.naturalHeight) return;
+                requestAnimationFrame(function() {
+                    var wrap = document.getElementById('matteWrap');
+                    var inner = textEl.querySelector('.matte-text-inner');
+                    if (!inner) return;
+
+                    var wrapRect = wrap.getBoundingClientRect();
+                    var innerRect = inner.getBoundingClientRect();
+                    var containerW = wrapRect.width;
+                    var containerH = wrapRect.height;
+                    var imgW = img.naturalWidth;
+                    var imgH = img.naturalHeight;
+
+                    var scale = Math.max(containerW / imgW, containerH / imgH);
+                    var bgW = imgW * scale;
+                    var bgH = imgH * scale;
+                    var bgStartX = (containerW - bgW) / 2;
+                    var bgStartY = (containerH - bgH) / 2;
+
+                    var innerX = innerRect.left - wrapRect.left;
+                    var innerY = innerRect.top - wrapRect.top;
+                    var imgPixelX = innerX - bgStartX;
+                    var imgPixelY = innerY - bgStartY;
+
+                    inner.style.backgroundSize = bgW + 'px ' + bgH + 'px';
+                    inner.style.backgroundPosition = '-' + imgPixelX + 'px -' + imgPixelY + 'px';
+                });
+            };
+            img.src = config.bgImageUrl;
+        }
+    }
+
+    applyEffect();
+}
+
+// Scroll-based Animation
+function applyEffect() {
+    var scroll = document.getElementById('previewScroll');
+    var container = document.getElementById('previewContainer');
+    var scrollTop = scroll.scrollTop;
+    var maxScroll = container.offsetHeight - scroll.clientHeight;
+    var progress = maxScroll > 0 ? scrollTop / maxScroll : 0;
+
+    document.getElementById('progressDisplay').textContent = Math.round(progress * 100) + '%';
+
+    var surround = document.getElementById('matteSurround');
+    var textEl = document.getElementById('matteText');
+
+    // Surround fades in
+    surround.style.opacity = easeOut(progress);
+
+    if (config.textAnim === 'letters' || config.textAnim === 'random') {
+        var letters = textEl.querySelectorAll('.matte-letter');
+        var totalLetters = letters.length;
+
+        letters.forEach(function(letter, i) {
+            var orderIndex = config.textAnim === 'random' && config.letterOrder.length
+                ? config.letterOrder.indexOf(i)
+                : i;
+            var staggerOffset = (orderIndex / totalLetters) * 0.5;
+            var letterProgress = Math.max(0, Math.min(1, (progress - staggerOffset) / 0.3));
+            var eased = easeOut(letterProgress);
+            letter.style.opacity = eased;
+        });
+    } else {
+        var inner = textEl.querySelector('.matte-text-inner');
+        if (inner) {
+            inner.style.opacity = easeOut(progress);
+        }
+    }
+}
+
+function easeOut(t) {
+    return 1 - Math.pow(1 - t, 3);
+}
+
+// Scroll Event
+var rafId = null;
+function onScroll() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(applyEffect);
+}
+document.getElementById('previewScroll').addEventListener('scroll', onScroll, { passive: true });
+
+// Export Generation
+function generateExport() {
+    var uid = 'm' + Math.random().toString(36).substr(2, 4);
+    var dur = document.getElementById('scrollDuration').value;
+    var mobileOffset = document.getElementById('mobileOffset').value;
+    var desktopOffset = document.getElementById('desktopOffset').value;
+
+    var bgStyle = config.bgImageUrl
+        ? 'background-image:url(' + config.bgImageUrl + ');background-size:cover;background-position:center;'
+        : 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);';
+
+    var textBgStyle = config.bgImageUrl
+        ? 'background-image:url(' + config.bgImageUrl + ');background-size:cover;background-position:center;'
+        : 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);';
+
+    var matteContent = '';
+    var useLetters = config.textAnim === 'letters' || config.textAnim === 'random';
+    var letterCount = config.matteText.length;
+    var isRandom = config.textAnim === 'random';
+
+    if (useLetters) {
+        var letterBgImg = config.bgImageUrl
+            ? 'url(' + config.bgImageUrl + ')'
+            : 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)';
+        var letters = config.matteText.split('').map(function(char, i) {
+            var orderIdx = isRandom && config.letterOrder.length ? config.letterOrder.indexOf(i) : i;
+            return '<span class="ml" data-i="' + orderIdx + '" style="background-image:' + letterBgImg + '">' + (char === ' ' ? '&nbsp;' : char) + '</span>';
+        }).join('');
+        matteContent = '<div class="mt"><span class="mi">' + letters + '</span></div>';
+    } else {
+        matteContent = '<div class="mt"><span class="mi mf" style="' + textBgStyle + '">' + config.matteText + '</span></div>';
+    }
+
+    // Base64 encoded JS for AP CMS compatibility
+    var imgUrl = config.bgImageUrl ? config.bgImageUrl : '';
+    var js = '(function(){var w=document.getElementById(\'' + uid + '\'),m=' + mobileOffset + ',d=' + desktopOffset + ',c=0,n=' + letterCount + ';';
+
+    // Add background positioning calculation if using image
+    if (config.bgImageUrl) {
+        js += 'var img=new Image();img.onload=function(){var mw=w.querySelector(".mw"),els=w.querySelectorAll(".mi,.ml");if(!mw||!els.length)return;var wr=mw.getBoundingClientRect(),cw=wr.width,ch=wr.height,iw=img.naturalWidth,ih=img.naturalHeight,sc=Math.max(cw/iw,ch/ih),bw=iw*sc,bh=ih*sc,bx=(cw-bw)/2,by=(ch-bh)/2;els.forEach(function(el){var er=el.getBoundingClientRect(),ex=er.left-wr.left,ey=er.top-wr.top;el.style.backgroundSize=bw+"px "+bh+"px";el.style.backgroundPosition="-"+(ex-bx)+"px -"+(ey-by)+"px"})};img.src="' + imgUrl + '";';
+    }
+
+    // Animation with proper letter stagger using data-i attribute
+    if (useLetters) {
+        js += '(function a(){var extP=window.SCROLLTASTIC_PROGRESS&&window.SCROLLTASTIC_PROGRESS["' + uid + '"];var t;if(extP!==undefined){t=extP;}else{var r=w.getBoundingClientRect();t=((innerWidth<768?m:d)-r.top)/(w.offsetHeight-innerHeight);t=t<0?0:t>1?1:t;}c+=(t-c)*.1;var e=function(x){return 1-Math.pow(1-x,3)};w.querySelector(".ms").style.opacity=e(c);w.querySelectorAll(".ml").forEach(function(el){var i=parseInt(el.dataset.i)||0,st=(i/n)*.5,lp=Math.max(0,Math.min(1,(c-st)/.3));el.style.opacity=e(lp)});requestAnimationFrame(a)})()})()';
+    } else {
+        js += '(function a(){var extP=window.SCROLLTASTIC_PROGRESS&&window.SCROLLTASTIC_PROGRESS["' + uid + '"];var t;if(extP!==undefined){t=extP;}else{var r=w.getBoundingClientRect();t=((innerWidth<768?m:d)-r.top)/(w.offsetHeight-innerHeight);t=t<0?0:t>1?1:t;}c+=(t-c)*.1;var e=function(x){return 1-Math.pow(1-x,3)};w.querySelectorAll(".ms,.mf,.mm").forEach(function(el){el.style.opacity=e(c)});requestAnimationFrame(a)})()})()';
+    }
+
+    var b64 = btoa(js);
+
+    // Use @import inside style block (same as preview) - link tags may be stripped by CMS/Stack Builder
+    var code = '<!-- Matte -->\n<style>\n@import url(\'https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap\');\n#' + uid + '{position:relative;width:100%;min-height:' + dur + 'vh}\n#' + uid + ' .st{position:-webkit-sticky;position:sticky;top:0;height:100vh;display:flex;align-items:center;justify-content:center}\n#' + uid + ' .mw{position:relative;width:90%;' + (document.getElementById('aspectRatio').value !== 'auto' ? 'aspect-ratio:' + document.getElementById('aspectRatio').value.replace(':','/') + ';' : 'min-height:' + config.containerHeight + 'px;') + 'overflow:hidden;border-radius:12px}\n#' + uid + ' .mw.contain{width:98%;height:90vh;min-height:auto}\n#' + uid + ' .mb{position:absolute;inset:0;' + bgStyle + 'z-index:1}\n#' + uid + ' .ms{position:absolute;inset:0;background:' + config.surroundColor + ';z-index:2;opacity:0}\n#' + uid + ' .mt{position:absolute;inset:0;z-index:3;display:flex;padding:20px;box-sizing:border-box;align-items:' + (config.textPosition.includes('top')?'flex-start':config.textPosition.includes('bottom')?'flex-end':'center') + ';justify-content:' + (config.textPosition.includes('left')?'flex-start':config.textPosition.includes('right')?'flex-end':'center') + '}\n#' + uid + ' .mi{font-family:\'AP\',\'Roboto\',sans-serif;font-weight:700;font-size:' + config.fontSize + 'px;white-space:nowrap;-webkit-background-clip:text;background-clip:text;color:transparent;background-size:cover;background-position:center}\n#' + uid + ' .ml{display:inline-block;opacity:0;font-family:\'AP\',\'Roboto\',sans-serif;font-weight:700;-webkit-background-clip:text;background-clip:text;color:transparent;background-size:cover;background-position:center}\n#' + uid + ' .mf,.mm{opacity:0}\n@media(max-width:768px){#' + uid + ' .mi,#' + uid + ' .ml{font-size:' + config.fontSizeMobile + 'px}}\n</style>\n<div id="' + uid + '">\n<div class="st"><div class="mw ' + config.sizing + '">\n<div class="mb"></div>\n<div class="ms"></div>\n' + matteContent + '\n</div></div>\n</div>\n<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="eval(atob(\'' + b64 + '\'))">';
+
+    document.getElementById('exportCode').value = code;localStorage.setItem('disco_matte_export',code);
+    if(!_fromPlanner){document.getElementById('exportModal').classList.add('active')};
+}
+
+function copyCode() {
+    var code = document.getElementById('exportCode');
+    if (!code.value) { generateExport(); return; }
+    code.select();
+    document.execCommand('copy');
+    discoAlert('Code copied to clipboard!');
+}
+
+function downloadHTML() {
+    var code = document.getElementById('exportCode').value;
+    if (!code) { generateExport(); return; }
+    var blob = new Blob([code], { type: 'text/html' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'matte-embed.html';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function sendToStackBuilder() {var _em=document.getElementById('exportModal');if(_em){_em.classList.remove('active');_em.classList.remove('open');}
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate HTML first'); return; }
+    var queue = JSON.parse(localStorage.getItem('disco_stack_queue') || '[]');
+    queue.push({ name: 'Matte', html: code, timestamp: Date.now() });
+    localStorage.setItem('disco_stack_queue', JSON.stringify(queue));
+    discoStackSend()
+}
+
+// Init
+updatePreviewHeight();
+updatePreview();
+</script>
+<script>
+(function(){
+  var path = location.pathname.split('/').pop() || 'index.html';
+  document.querySelectorAll('#disco-nav a').forEach(function(a){
+    if(a.getAttribute('href') === path){
+      a.style.color = '#4a9eff';
+      a.style.borderBottom = '2px solid #4a9eff';
+    }
+  });
+})();
+</script>
+<script>
+// Persistence for matte
+(function() {
+    var KEY = 'disco_matte';
+
+    function saveState() {
+        var state = { inputs: {}, config: config };
+
+        document.querySelectorAll('input[id], select[id], textarea[id]').forEach(function(el) {
+            if (el.type === 'checkbox') state.inputs[el.id] = el.checked;
+            else if (el.type === 'file') return;
+            else state.inputs[el.id] = el.value;
+        });
+
+        // Save toggle states
+        state.textAnim = config.textAnim;
+        state.textPosition = config.textPosition;
+        state.sizing = config.sizing;
+
+        try { localStorage.setItem(KEY, JSON.stringify(state)); localStorage.removeItem(KEY + '_from_planner'); } catch(e) {}
+    }
+
+    function loadState() {
+        try {
+            var saved = localStorage.getItem(KEY);
+            if (!saved) return;
+            var state = JSON.parse(saved);
+
+            // Restore config
+            if (state.config) {
+                Object.keys(state.config).forEach(function(k) {
+                    config[k] = state.config[k];
+                });
+            }
+
+            // Restore inputs
+            Object.keys(state.inputs || {}).forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    if (el.type === 'checkbox') el.checked = state.inputs[id];
+                    else if (el.type === 'file') return;
+                    else el.value = state.inputs[id];
+
+                    // Update value displays
+                    var valEl = document.getElementById(id + 'Val');
+                    if (valEl && el.type === 'range') {
+                        var suffix = id.toLowerCase().includes('offset') ? 'px' : (id.toLowerCase().includes('duration') ? '%' : '');
+                        valEl.textContent = el.value + suffix;
+                    }
+                }
+            });
+
+            // Restore toggle states
+            if (state.textAnim) setTextAnim(state.textAnim);
+            if (state.textPosition) setTextPosition(state.textPosition);
+            if (state.sizing) setSizing(state.sizing);
+
+            updatePreviewHeight();
+            updatePreview();
+        } catch(e) { console.warn('Load state error:', e); }
+    }
+
+    window.resetModule = function() {
+        discoConfirm('Reset all settings to defaults?', function(){localStorage.removeItem(KEY);
+            location.reload();});
+    };
+
+    document.addEventListener('change', saveState);
+    document.addEventListener('input', saveState);
+
+    setTimeout(loadState, 150);
+})();
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

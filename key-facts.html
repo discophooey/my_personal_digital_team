@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrolltastic Key Facts Panel</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); padding-top: 41px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+.app { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 41px); }
+.controls { background: var(--bg-primary); padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); }
+.preview-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.preview-header {
+    padding: 0 16px; height: 34px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+}
+.preview-header label { font-size: 9px; display: flex; align-items: center; gap: 5px; cursor: pointer; margin: 0; }
+#progressDisplay { color: var(--accent); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+.preview-scroll { flex: 1; overflow-y: auto; background: var(--bg-deep); }
+.preview-container { min-height: 300vh; position: relative; }
+.preview-stage { position: sticky; top: 50px; width: 100%; max-width: 600px; padding: 20px; margin: 0 auto; }
+.preview-panel { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 30px; }
+.preview-panel-title { font-size: 14px; color: #4a9eff; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; opacity: 0; transform: translateY(10px); transition: all 0.4s; }
+.preview-panel-title.on { opacity: 1; transform: translateY(0); }
+.preview-fact { display: flex; gap: 12px; padding: 16px 0; border-bottom: 1px solid #2a2a2a; opacity: 0; transform: translateX(-20px); transition: all 0.4s; }
+.preview-fact:last-child { border-bottom: none; }
+.preview-fact.on { opacity: 1; transform: translateX(0); }
+.preview-fact-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.preview-fact-text { font-size: 15px; line-height: 1.5; color: #ccc; }
+.preview-source { font-size: 12px; color: #666; margin-top: 20px; padding-top: 16px; border-top: 1px solid #2a2a2a; opacity: 0; transition: all 0.4s; }
+.preview-source.on { opacity: 1; }
+.range-val { font-family: var(--mono); font-size: 9px; color: var(--accent); float: right; text-transform: none; letter-spacing: 0; }
+
+.module-title { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em; }
+.module-title span { color: var(--accent); }
+
+h2 { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; transition: all .15s; }
+h2:hover { border-color: var(--border-light); background: var(--bg-tertiary); }
+h2::after { content: '\25be'; font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+h2.collapsed::after { transform: rotate(-90deg); }
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0; }
+
+.control-group { margin-bottom: 10px; }
+label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+input[type="text"], input[type="url"], input[type="number"], select, textarea {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary);
+    border-radius: 6px; font-family: var(--mono); font-size: 11px; outline: none; transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent-dim); }
+input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="color"] { width: 36px; height: 24px; border: 1px solid var(--border); background: var(--bg-tertiary); cursor: pointer; border-radius: 4px; padding: 1px; }
+input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent); }
+
+button {
+    width: 100%; padding: 8px 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--accent); border: 1px solid var(--accent); color: #0a0a0a; font-weight: 600;
+    border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: all .15s;
+}
+button:hover { opacity: 0.85; }
+button.secondary { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.row { display: flex; gap: 8px; align-items: flex-start; }
+.row > * { flex: 1; }
+.hint { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+
+
+.inline-group { display: flex; gap: 10px; align-items: center; }
+.inline-group > * { flex: 1; }
+.save-load-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.save-load-bar button { flex: 1; margin: 0; }
+.facts-list { background: #0a0a0a; border-radius: 6px; padding: 10px; margin: 10px 0; max-height: 250px; overflow-y: auto; }
+.fact-item { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px; padding: 10px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.2s; }
+.fact-item:hover { border-color: #4a9eff; }
+.fact-item.selected { border-color: #4a9eff; background: #1a2a3a; }
+.fact-item .fact-text { font-size: 12px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+.modal.active { display: flex; }
+.modal-content { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
+.modal-content h3 { color: #4a9eff; margin-bottom: 16px; }
+.modal-content textarea { height: 200px; font-family: monospace; font-size: 11px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-actions button { flex: 1; }
+.saved-list { max-height: 200px; overflow-y: auto; margin: 10px 0; }
+.saved-item { background: #2a2a2a; padding: 10px 12px; border-radius: 6px; margin-bottom: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.saved-item:hover { background: #3a3a3a; }
+.saved-item .name { color: #fff; }
+.saved-item .date { color: #666; font-size: 11px; }
+.saved-item .delete { background: none; border: none; color: #888; cursor: pointer; padding: 4px 8px; margin: 0; width: auto; }
+.saved-item .delete:hover { color: #e74c3c; }
+
+/* Lightbox for expandable facts */
+.kf-lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 100000; align-items: center; justify-content: center; flex-direction: column; }
+.kf-lightbox.active { display: flex; }
+.kf-lightbox-close { position: absolute; top: 20px; right: 20px; background: #333; border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 20px; }
+.kf-lightbox-close:hover { background: #4a9eff; }
+.kf-lightbox-content { max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+.kf-lightbox-title { color: #fff; font-size: 18px; font-weight: 600; margin-bottom: 20px; width: 100%; text-align: left; padding-bottom: 16px; border-bottom: 1px solid #333; }
+.kf-lightbox-text { color: #e0e0e0; font-size: 16px; line-height: 1.8; width: 100%; }
+.kf-lightbox-img { max-width: 100%; max-height: 60vh; border-radius: 8px; display: block; }
+.kf-lightbox-img.fit-contain { object-fit: contain; }
+.kf-lightbox-img.fit-cover { object-fit: cover; width: 100%; height: 60vh; }
+.kf-lightbox-img.fit-fill { object-fit: fill; width: 100%; height: 60vh; }
+.kf-lightbox-caption { color: #ccc; font-size: 14px; margin-top: 16px; width: 100%; text-align: left; }
+.kf-lightbox-credit { color: #666; font-size: 12px; margin-top: 4px; width: 100%; text-align: left; }
+.kf-lightbox-nav { position: absolute; bottom: 20px; display: flex; gap: 20px; color: #666; font-size: 12px; }
+.kf-lightbox-nav span { cursor: pointer; padding: 8px 16px; background: #333; border-radius: 4px; }
+.kf-lightbox-nav span:hover { background: #4a9eff; color: #000; }
+.preview-fact.expandable { cursor: pointer; }
+.preview-fact.expandable:hover { background: rgba(74,158,255,0.1); margin: 0 -10px; padding: 16px 10px; border-radius: 6px; }
+.preview-fact .expand-hint { font-size: 10px; color: #4a9eff; margin-left: auto; opacity: 0.7; }
+
+/* Disco Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--bg-primary);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;font-family:var(--mono);">
+<a href="index.html" style="padding:10px 16px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.5px;">&#8592; Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Zoom Detail</a>
+<a href="text-scroll.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Text Scroll</a>
+<a href="chapter-marker.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chapter Marker</a>
+<a href="key-facts.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Key Facts</a>
+<a href="body-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Body Module</a>
+<a href="epistemic-text.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Epistemic Text</a>
+<a href="adversarial-verification.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Adversarial</a>
+<a href="silence-mapping.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Silence Map</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:var(--accent)!important;background:var(--bg-secondary);}</style>
+<div class="app" style="margin-top:41px;height:calc(100vh - 41px);">
+    <div class="controls">
+        <div class="module-title">Key <span>Facts</span></div>
+        
+        <div class="save-load-bar">
+            <button class="secondary" onclick="openSaveModal()">💾 Save</button>
+            <button class="secondary" onclick="openLoadModal()">📂 Load</button>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Panel Content</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Panel Title</label>
+                <input type="text" id="panelTitle" value="What You Need to Know" oninput="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Source Attribution</label>
+                <input type="text" id="sourceText" placeholder="Source:" oninput="updatePreview()">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Facts</h2>
+        <div class="section">
+            <div class="facts-list" id="factsList"></div>
+            <button onclick="addFact()">+ Add Fact</button>
+        </div>
+        
+        <div id="factEditor" style="display:none;">
+            <h2 onclick="toggleSection(this)">Edit Fact</h2>
+            <div class="section">
+                <div class="control-group">
+                    <label>Fact Text</label>
+                    <textarea id="factText" rows="3" oninput="updateFact()"></textarea>
+                </div>
+                <div class="control-group">
+                    <label>Icon</label>
+                    <select id="factIcon" onchange="updateFact()">
+                        <option value="•">• Bullet</option>
+                        <option value="→">→ Arrow</option>
+                        <option value="✓">✓ Check</option>
+                        <option value="!">! Alert</option>
+                        <option value="?">? Question</option>
+                        <option value="★">★ Star</option>
+                        <option value="1">1 Number</option>
+                    </select>
+                </div>
+                <div class="control-group" style="margin-top:16px;padding-top:16px;border-top:1px solid #2a2a2a;">
+                    <label><input type="checkbox" id="factExpandable" onchange="updateFact()"> Click to expand (popout)</label>
+                </div>
+                <div id="expandControls" style="display:none;margin-top:12px;background:#0a0a0a;padding:12px;border-radius:6px;">
+                    <div class="control-group">
+                        <label>Expand Type</label>
+                        <select id="factExpandType" onchange="updateFact();toggleExpandType()">
+                            <option value="text">Text (detailed content)</option>
+                            <option value="image">Image</option>
+                            <option value="both">Text + Image</option>
+                        </select>
+                    </div>
+                    <div id="expandTextControls">
+                        <div class="control-group">
+                            <label>Detail Text (shown in popout)</label>
+                            <textarea id="factDetailText" rows="5" oninput="updateFact()" placeholder="Longer detailed text to show when user clicks..."></textarea>
+                        </div>
+                    </div>
+                    <div id="expandImageControls" style="display:none;">
+                        <div class="control-group">
+                            <label>Image URL</label>
+                            <input type="text" id="factImageUrl" oninput="updateFact()" placeholder="https://...">
+                            <button class="secondary" style="margin-top:6px;" onclick="loadFactImage()">Load Image</button>
+                        </div>
+                        <div id="factImagePreview" style="display:none;margin-bottom:12px;">
+                            <img id="factImagePreviewImg" style="max-width:100%;max-height:150px;border-radius:4px;border:1px solid #333;">
+                        </div>
+                        <div class="control-group">
+                            <label>Image Fit</label>
+                            <select id="factImageFit" onchange="updateFact()">
+                                <option value="contain">Contain</option>
+                                <option value="cover">Cover</option>
+                                <option value="fill">Fill</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label>Image Caption</label>
+                            <input type="text" id="factImageCaption" oninput="updateFact()" placeholder="Caption text...">
+                        </div>
+                        <div class="control-group">
+                            <label>Caption Credit</label>
+                            <input type="text" id="factImageCredit" oninput="updateFact()" placeholder="Photo by...">
+                        </div>
+                    </div>
+                </div>
+                <button class="danger" style="margin-top:12px;" onclick="deleteFact()">Delete Fact</button>
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Style</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Accent Color</label>
+                <input type="color" id="accentColor" value="#4a9eff" onchange="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Panel Background</label>
+                <input type="color" id="panelBg" value="#1a1a1a" onchange="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Border Color</label>
+                <input type="color" id="borderColor" value="#2a2a2a" onchange="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Max Width (px)</label>
+                <input type="number" id="maxWidth" value="600" min="400" max="800" oninput="updatePreview()">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Animation</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Stagger Delay (ms)</label>
+                <input type="range" id="staggerDelay" min="50" max="300" value="100" oninput="updatePreview()">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Layout</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Container Height <span class="range-val" id="containerHeightVal">85vh</span></label>
+                <input type="range" id="containerHeight" min="30" max="100" value="85" oninput="document.getElementById('containerHeightVal').textContent=this.value+'vh'; updatePreview();">
+            </div>
+            <div class="control-group">
+                <label>Scroll Duration (%)</label>
+                <input type="range" id="scrollDuration" min="100" max="300" value="150" oninput="updatePreviewHeight()">
+            </div>
+            <div class="inline-group">
+                <div class="control-group">
+                    <label>Desktop Offset (px)</label>
+                    <input type="number" id="desktopOffset" value="50" min="0" max="200">
+                </div>
+                <div class="control-group">
+                    <label>Mobile Offset (px)</label>
+                    <input type="number" id="mobileOffset" value="200" min="0" max="300">
+                </div>
+            </div>
+        </div>
+        
+        <button onclick="generateExport()">Generate HTML</button>
+    </div>
+    
+    <div class="preview-wrap">
+        <div class="preview-header">
+            <span>Preview (scroll to animate)</span>
+            <span id="progressDisplay">0%</span>
+        </div>
+        <div class="preview-scroll" id="previewScroll">
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-stage" id="previewStage">
+                    <div class="preview-panel" id="previewPanel">
+                        <div class="preview-panel-title" id="previewTitle">What You Need to Know</div>
+                        <div id="previewFacts"></div>
+                        <div class="preview-source" id="previewSource"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox for expandable facts -->
+<div class="kf-lightbox" id="kfLightbox" onclick="closeLightbox()">
+    <button class="kf-lightbox-close" onclick="closeLightbox()">✕</button>
+    <div class="kf-lightbox-content" id="kfLightboxContent" onclick="event.stopPropagation()"></div>
+    <div class="kf-lightbox-nav">
+        <span onclick="event.stopPropagation();navigateLightbox(-1)">← Prev</span>
+        <span onclick="event.stopPropagation();navigateLightbox(1)">Next →</span>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <h3>Export HTML</h3>
+        <div class="control-group">
+            <label>Generated Code</label>
+            <textarea id="exportCode" readonly></textarea>
+        </div>
+        <div class="modal-actions">
+            <button onclick="copyCode()">📋 Copy</button>
+            <button onclick="downloadCode()">⬇️ Download</button><button onclick="downloadCodeTxt()" class="secondary">📄 .txt</button>
+            <button onclick="sendToStackBuilder()">📚 Stack</button>
+            <button class="secondary" onclick="closeModal('exportModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Save Modal -->
+<div class="modal" id="saveModal">
+    <div class="modal-content">
+        <h3>Save Project</h3>
+        <div class="control-group">
+            <label>Project Name</label>
+            <input type="text" id="saveName" placeholder="My Key Facts">
+        </div>
+        <div class="modal-actions">
+            <button onclick="saveProject()">💾 Save</button>
+            <button class="secondary" onclick="closeModal('saveModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Load Modal -->
+<div class="modal" id="loadModal">
+    <div class="modal-content">
+        <h3>Load Project</h3>
+        <div class="saved-list" id="savedList"></div>
+        <div class="modal-actions">
+            <button class="secondary" onclick="closeModal('loadModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var _fromPlanner=new URLSearchParams(location.search).get('planner')==='1';
+
+var facts = [];
+var selectedFactIndex = -1;
+var STORAGE_KEY = 'disco_key-facts';
+var PROJECTS_KEY = 'disco_key-facts_projects';
+
+function toggleSection(el) {
+    el.classList.toggle('collapsed');
+    el.nextElementSibling.classList.toggle('collapsed');
+}
+
+function renderFactsList() {
+    var html = '';
+    facts.forEach(function(f, i) {
+        var expandBadge = f.expandable ? ' <span style="color:#4a9eff;font-size:10px;">[+]</span>' : '';
+        html += '<div class="fact-item ' + (i === selectedFactIndex ? 'selected' : '') + '" onclick="selectFact(' + i + ')">';
+        html += '<div class="fact-text">' + f.icon + ' ' + (f.text || '(empty)') + expandBadge + '</div>';
+        html += '</div>';
+    });
+    document.getElementById('factsList').innerHTML = html || '<div style="color:#666;font-size:12px;text-align:center;padding:20px;">No facts yet. Add one!</div>';
+}
+
+function addFact() {
+    facts.push({ 
+        text: 'Key fact goes here', 
+        icon: '•',
+        expandable: false,
+        expandType: 'text',
+        detailText: '',
+        imageUrl: '',
+        imageFit: 'contain',
+        imageCaption: '',
+        imageCredit: ''
+    });
+    selectedFactIndex = facts.length - 1;
+    renderFactsList();
+    loadFactEditor();
+    updatePreview();
+    saveState();
+}
+
+function selectFact(i) {
+    selectedFactIndex = i;
+    renderFactsList();
+    loadFactEditor();
+}
+
+function loadFactEditor() {
+    if (selectedFactIndex < 0 || selectedFactIndex >= facts.length) {
+        document.getElementById('factEditor').style.display = 'none';
+        return;
+    }
+    document.getElementById('factEditor').style.display = 'block';
+    var f = facts[selectedFactIndex];
+    document.getElementById('factText').value = f.text;
+    document.getElementById('factIcon').value = f.icon;
+    document.getElementById('factExpandable').checked = f.expandable || false;
+    document.getElementById('factExpandType').value = f.expandType || 'text';
+    document.getElementById('factDetailText').value = f.detailText || '';
+    document.getElementById('factImageUrl').value = f.imageUrl || '';
+    document.getElementById('factImageFit').value = f.imageFit || 'contain';
+    document.getElementById('factImageCaption').value = f.imageCaption || '';
+    document.getElementById('factImageCredit').value = f.imageCredit || '';
+    document.getElementById('expandControls').style.display = f.expandable ? 'block' : 'none';
+    toggleExpandType();
+    // Show image preview if URL exists
+    if (f.imageUrl) {
+        document.getElementById('factImagePreviewImg').src = f.imageUrl;
+        document.getElementById('factImagePreview').style.display = 'block';
+    } else {
+        document.getElementById('factImagePreview').style.display = 'none';
+    }
+}
+
+function updateFact() {
+    if (selectedFactIndex < 0) return;
+    var f = facts[selectedFactIndex];
+    f.text = document.getElementById('factText').value;
+    f.icon = document.getElementById('factIcon').value;
+    f.expandable = document.getElementById('factExpandable').checked;
+    f.expandType = document.getElementById('factExpandType').value;
+    f.detailText = document.getElementById('factDetailText').value;
+    f.imageUrl = document.getElementById('factImageUrl').value;
+    f.imageFit = document.getElementById('factImageFit').value;
+    f.imageCaption = document.getElementById('factImageCaption').value;
+    f.imageCredit = document.getElementById('factImageCredit').value;
+    document.getElementById('expandControls').style.display = f.expandable ? 'block' : 'none';
+    renderFactsList();
+    updatePreview();
+    saveState();
+}
+
+function toggleExpandType() {
+    var type = document.getElementById('factExpandType').value;
+    document.getElementById('expandTextControls').style.display = (type === 'text' || type === 'both') ? 'block' : 'none';
+    document.getElementById('expandImageControls').style.display = (type === 'image' || type === 'both') ? 'block' : 'none';
+}
+
+function loadFactImage() {
+    var url = document.getElementById('factImageUrl').value.trim();
+    if (!url) { discoAlert('Enter an image URL first'); return; }
+    // Convert GitHub blob URLs to raw
+    if (url.includes('github.com') && url.includes('/blob/')) {
+        url = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/').split('?')[0];
+        document.getElementById('factImageUrl').value = url;
+    }
+    var img = document.getElementById('factImagePreviewImg');
+    img.onload = function() {
+        document.getElementById('factImagePreview').style.display = 'block';
+        updateFact();
+    };
+    img.onerror = function() {
+        discoAlert('Failed to load image. Check the URL.');
+        document.getElementById('factImagePreview').style.display = 'none';
+    };
+    img.src = url;
+}
+
+function deleteFact() {
+    if (selectedFactIndex < 0) return;
+    discoConfirm('Delete this fact?', function(){
+facts.splice(selectedFactIndex, 1);
+    selectedFactIndex = Math.min(selectedFactIndex, facts.length - 1);
+    renderFactsList();
+    loadFactEditor();
+    updatePreview();
+    saveState();
+});
+}
+
+function updatePreviewHeight() {
+    var dur = parseInt(document.getElementById('scrollDuration').value) || 150;
+    document.getElementById('previewContainer').style.minHeight = dur + 'vh';
+}
+
+function updatePreview() {
+    var panel = document.getElementById('previewPanel');
+    var stage = document.getElementById('previewStage');
+    var title = document.getElementById('previewTitle');
+    var factsEl = document.getElementById('previewFacts');
+    var source = document.getElementById('previewSource');
+    
+    var panelTitle = document.getElementById('panelTitle').value;
+    var sourceText = document.getElementById('sourceText').value;
+    var accentColor = document.getElementById('accentColor').value;
+    var panelBg = document.getElementById('panelBg').value;
+    var borderColor = document.getElementById('borderColor').value;
+    var maxWidth = document.getElementById('maxWidth').value;
+    var staggerDelay = document.getElementById('staggerDelay').value;
+    var containerHeight = document.getElementById('containerHeight').value;
+    
+    panel.style.background = panelBg;
+    panel.style.borderColor = borderColor;
+    stage.style.maxWidth = maxWidth + 'px';
+    stage.style.minHeight = containerHeight + 'vh';
+    title.textContent = panelTitle;
+    title.style.color = accentColor;
+    
+    var factsHtml = '';
+    facts.forEach(function(f, i) {
+        var expandClass = f.expandable ? ' expandable' : '';
+        var clickHandler = f.expandable ? ' onclick="openFactLightbox(' + i + ')"' : '';
+        var expandHint = f.expandable ? '<span class="expand-hint">more</span>' : '';
+        factsHtml += '<div class="preview-fact' + expandClass + '" style="transition-delay:' + (i * staggerDelay) + 'ms;"' + clickHandler + '>';
+        factsHtml += '<div class="preview-fact-icon" style="background:' + accentColor + '22;color:' + accentColor + ';">' + f.icon + '</div>';
+        factsHtml += '<div class="preview-fact-text">' + f.text + '</div>';
+        factsHtml += expandHint;
+        factsHtml += '</div>';
+    });
+    factsEl.innerHTML = factsHtml;
+    
+    source.textContent = sourceText;
+    source.style.display = sourceText ? 'block' : 'none';
+    
+    var scroll = document.getElementById('previewScroll');
+    var container = document.getElementById('previewContainer');
+    var scrollTop = scroll.scrollTop;
+    var maxScroll = container.offsetHeight - scroll.clientHeight;
+    var progress = maxScroll > 0 ? scrollTop / maxScroll : 0;
+    
+    document.getElementById('progressDisplay').textContent = Math.round(progress * 100) + '%';
+    
+    var threshold = 0.1;
+    var increment = 0.8 / (facts.length + 2);
+    
+    if (progress > threshold) {
+        title.classList.add('on');
+    } else {
+        title.classList.remove('on');
+    }
+    
+    var factEls = factsEl.querySelectorAll('.preview-fact');
+    factEls.forEach(function(el, i) {
+        if (progress > threshold + increment * (i + 1)) {
+            el.classList.add('on');
+        } else {
+            el.classList.remove('on');
+        }
+    });
+    
+    if (progress > threshold + increment * (facts.length + 1)) {
+        source.classList.add('on');
+    } else {
+        source.classList.remove('on');
+    }
+    
+    saveState();
+}
+
+document.getElementById('previewScroll').addEventListener('scroll', updatePreview);
+
+var currentLightboxIndex = -1;
+
+function openFactLightbox(index) {
+    var f = facts[index];
+    if (!f || !f.expandable) return;
+    currentLightboxIndex = index;
+    var content = document.getElementById('kfLightboxContent');
+    var html = '';
+    var caption = f.imageCaption ? '<div class="kf-lightbox-caption">' + f.imageCaption + '</div>' : '';
+    var credit = f.imageCredit ? '<div class="kf-lightbox-credit">' + f.imageCredit + '</div>' : '';
+    
+    // Add fact text as title
+    html += '<div class="kf-lightbox-title">' + f.text + '</div>';
+    
+    // Text + Image mode
+    if (f.expandType === 'both') {
+        if (f.detailText) {
+            html += '<div class="kf-lightbox-text">' + f.detailText.replace(/\n/g, '<br>') + '</div>';
+        }
+        if (f.imageUrl) {
+            html += '<img class="kf-lightbox-img fit-' + (f.imageFit || 'contain') + '" src="' + f.imageUrl + '" alt="" style="margin-top:16px;display:block;">';
+            html += caption + credit;
+        }
+    }
+    // Image only mode
+    else if (f.expandType === 'image') {
+        if (f.imageUrl) {
+            html += '<img class="kf-lightbox-img fit-' + (f.imageFit || 'contain') + '" src="' + f.imageUrl + '" alt="" style="display:block;">';
+            html += caption + credit;
+        } else {
+            html += '<div class="kf-lightbox-text">No image URL set</div>';
+        }
+    }
+    // Text only mode (default)
+    else {
+        html += '<div class="kf-lightbox-text">' + (f.detailText || '').replace(/\n/g, '<br>') + '</div>';
+    }
+    
+    content.innerHTML = html;
+    document.getElementById('kfLightbox').classList.add('active');
+}
+
+function closeLightbox() {
+    document.getElementById('kfLightbox').classList.remove('active');
+    currentLightboxIndex = -1;
+}
+
+function navigateLightbox(direction) {
+    if (currentLightboxIndex < 0) return;
+    
+    // Find next/prev expandable fact
+    var newIndex = currentLightboxIndex;
+    var attempts = 0;
+    do {
+        newIndex = newIndex + direction;
+        if (newIndex < 0) newIndex = facts.length - 1;
+        if (newIndex >= facts.length) newIndex = 0;
+        attempts++;
+    } while (!facts[newIndex].expandable && attempts < facts.length);
+    
+    if (facts[newIndex].expandable) {
+        openFactLightbox(newIndex);
+    }
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', function(e) {
+    if (currentLightboxIndex < 0) return;
+    if (e.key === 'Escape') {
+        closeLightbox();
+    } else if (e.key === 'ArrowLeft') {
+        navigateLightbox(-1);
+    } else if (e.key === 'ArrowRight') {
+        navigateLightbox(1);
+    }
+});
+
+function generateExport() {
+    if (facts.length === 0) { discoAlert('Add at least one fact'); return; }
+    
+    var uid = 'kf' + Math.random().toString(36).substr(2, 9);
+    var panelTitle = document.getElementById('panelTitle').value;
+    var sourceText = document.getElementById('sourceText').value;
+    var accentColor = document.getElementById('accentColor').value;
+    var panelBg = document.getElementById('panelBg').value;
+    var borderColor = document.getElementById('borderColor').value;
+    var maxWidth = document.getElementById('maxWidth').value;
+    var staggerDelay = document.getElementById('staggerDelay').value;
+    var scrollMult = parseInt(document.getElementById('scrollDuration').value) / 100;
+    var desktopOffset = document.getElementById('desktopOffset').value;
+    var mobileOffset = document.getElementById('mobileOffset').value;
+    var containerHeight = document.getElementById('containerHeight').value;
+    
+    var hasExpandable = facts.some(function(f) { return f.expandable; });
+    
+    var factsHtml = '';
+    var factsData = [];
+    facts.forEach(function(f, i) {
+        var expandClass = f.expandable ? ' kf-expand' : '';
+        var clickAttr = f.expandable ? ' data-idx="' + i + '"' : '';
+        factsHtml += '<div class="kf-fact' + expandClass + '" style="transition-delay:' + (i * staggerDelay) + 'ms"' + clickAttr + '>\n';
+        factsHtml += '<div class="kf-icon">' + f.icon + '</div>\n';
+        factsHtml += '<div class="kf-text">' + f.text + '</div>\n';
+        if (f.expandable) factsHtml += '<span class="kf-hint">more</span>\n';
+        factsHtml += '</div>\n';
+        if (f.expandable) {
+            factsData.push({
+                n: f.text,
+                t: f.expandType || 'text',
+                x: (f.detailText || ''),
+                i: f.imageUrl || '',
+                f: f.imageFit || 'contain',
+                c: f.imageCaption || '',
+                r: f.imageCredit || ''
+            });
+        } else {
+            factsData.push(null);
+        }
+    });
+    
+    // Escape the JSON for safe embedding
+    var factsDataJson = JSON.stringify(factsData).replace(/'/g, "\\'").replace(/</g, '\\x3c').replace(/>/g, '\\x3e');
+    
+    var lightboxCss = hasExpandable ? 
+        '#' + uid + ' .kf-expand{cursor:pointer}#' + uid + ' .kf-expand:hover{background:rgba(74,158,255,.1);margin:0 -10px;padding:16px 10px;border-radius:6px}#' + uid + ' .kf-hint{margin-left:auto;color:' + accentColor + ';font-size:12px;opacity:.7}\n' +
+        '.kf-lb-' + uid + '{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:999999;align-items:center;justify-content:center;flex-direction:column}\n' +
+        '.kf-lb-' + uid + '.on{display:flex}\n' +
+        '.kf-lb-' + uid + ' .lb-close{position:absolute;top:20px;right:20px;background:#333;border:none;color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:20px}\n' +
+        '.kf-lb-' + uid + ' .lb-close:hover{background:' + accentColor + '}\n' +
+        '.kf-lb-' + uid + ' .lb-content{max-width:800px;width:90%;max-height:80vh;overflow-y:auto;padding:20px;display:flex;flex-direction:column}\n' +
+        '.kf-lb-' + uid + ' .lb-title{color:#fff;font-size:18px;font-weight:600;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #333}\n' +
+        '.kf-lb-' + uid + ' .lb-txt{color:#e0e0e0;font-size:16px;line-height:1.8}\n' +
+        '.kf-lb-' + uid + ' .lb-img{max-width:100%;max-height:60vh;border-radius:8px;margin-top:16px}\n' +
+        '.kf-lb-' + uid + ' .lb-img.fit-cover{object-fit:cover;width:100%;height:60vh}\n' +
+        '.kf-lb-' + uid + ' .lb-img.fit-fill{object-fit:fill;width:100%;height:60vh}\n' +
+        '.kf-lb-' + uid + ' .lb-cap{color:#ccc;font-size:14px;margin-top:16px;text-align:left}\n' +
+        '.kf-lb-' + uid + ' .lb-credit{color:#666;font-size:12px;margin-top:4px;text-align:left}\n' +
+        '.kf-lb-' + uid + ' .lb-nav{position:absolute;bottom:20px;display:flex;gap:20px}\n' +
+        '.kf-lb-' + uid + ' .lb-nav span{cursor:pointer;padding:8px 16px;background:#333;border-radius:4px;color:#888;font-size:12px}\n' +
+        '.kf-lb-' + uid + ' .lb-nav span:hover{background:' + accentColor + ';color:#000}\n' : '';
+    
+    var lightboxJs = hasExpandable ?
+        'var fd=' + JSON.stringify(factsData) + ';\n' +
+        'var curIdx=-1;\n' +
+        'var lbEl=document.createElement("div");lbEl.className="kf-lb-' + uid + '";\n' +
+        'lbEl.innerHTML=\'<button class="lb-close">✕</button><div class="lb-content"></div><div class="lb-nav"><span class="lb-prev">← Prev</span><span class="lb-next">Next →</span></div>\';\n' +
+        'document.body.appendChild(lbEl);\n' +
+        'var lbC=lbEl.querySelector(".lb-content");\n' +
+        'function closeLb(){lbEl.classList.remove("on");curIdx=-1;}\n' +
+        'function showFact(idx){\n' +
+        'var d=fd[idx];if(!d)return;\n' +
+        'curIdx=idx;\n' +
+        'var html=\'<div class="lb-title">\'+d.n+\'</div>\';\n' +
+        'if(d.t==="both"){\n' +
+        'if(d.x)html+=\'<div class="lb-txt">\'+d.x.replace(/\\n/g,"<br>")+\'</div>\';\n' +
+        'if(d.i)html+=\'<img class="lb-img fit-\'+d.f+\'" src="\'+d.i+\'">\'+(d.c?\'<div class="lb-cap">\'+d.c+\'</div>\':\'\')+(d.r?\'<div class="lb-credit">\'+d.r+\'</div>\':\'\');\n' +
+        '}else if(d.t==="image"&&d.i){\n' +
+        'html+=\'<img class="lb-img fit-\'+d.f+\'" src="\'+d.i+\'">\'+(d.c?\'<div class="lb-cap">\'+d.c+\'</div>\':\'\')+(d.r?\'<div class="lb-credit">\'+d.r+\'</div>\':\'\');\n' +
+        '}else{\n' +
+        'if(d.x)html+=\'<div class="lb-txt">\'+d.x.replace(/\\n/g,"<br>")+\'</div>\';\n' +
+        '}\n' +
+        'lbC.innerHTML=html;\n' +
+        'lbEl.classList.add("on");\n' +
+        '}\n' +
+        'function navLb(dir){\n' +
+        'if(curIdx<0)return;\n' +
+        'var n=curIdx,a=0;\n' +
+        'do{n+=dir;if(n<0)n=fd.length-1;if(n>=fd.length)n=0;a++;}while(!fd[n]&&a<fd.length);\n' +
+        'if(fd[n])showFact(n);\n' +
+        '}\n' +
+        'lbEl.querySelector(".lb-close").onclick=function(e){e.stopPropagation();closeLb();};\n' +
+        'lbEl.querySelector(".lb-prev").onclick=function(e){e.stopPropagation();navLb(-1);};\n' +
+        'lbEl.querySelector(".lb-next").onclick=function(e){e.stopPropagation();navLb(1);};\n' +
+        'lbEl.onclick=closeLb;\n' +
+        'lbC.onclick=function(e){e.stopPropagation();};\n' +
+        'document.addEventListener("keydown",function(e){\n' +
+        'if(curIdx<0)return;\n' +
+        'if(e.key==="Escape")closeLb();\n' +
+        'else if(e.key==="ArrowLeft")navLb(-1);\n' +
+        'else if(e.key==="ArrowRight")navLb(1);\n' +
+        '});\n' +
+        'w.querySelectorAll(".kf-expand").forEach(function(el){\n' +
+        'el.addEventListener("click",function(e){\n' +
+        'e.stopPropagation();\n' +
+        'var idx=parseInt(this.getAttribute("data-idx"));\n' +
+        'showFact(idx);\n' +
+        '});\n' +
+        '});\n' : '';
+    
+    var code = '<style>\n' +
+'#' + uid + '{position:relative;min-height:' + containerHeight + 'vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}\n' +
+'#' + uid + ' .kf-stage{position:-webkit-sticky;position:sticky;top:' + desktopOffset + 'px;width:100%;max-width:' + maxWidth + 'px;margin:0 auto;padding:20px}\n' +
+'#' + uid + ' .kf-panel{background:' + panelBg + ';border:1px solid ' + borderColor + ';border-radius:12px;padding:30px}\n' +
+'#' + uid + ' .kf-title{font-size:14px;color:' + accentColor + ';text-transform:uppercase;letter-spacing:2px;margin-bottom:20px;opacity:0;transform:translateY(10px);transition:all 0.4s}\n' +
+'#' + uid + '.on .kf-title{opacity:1;transform:translateY(0)}\n' +
+'#' + uid + ' .kf-fact{display:flex;gap:12px;padding:16px 0;border-bottom:1px solid ' + borderColor + ';opacity:0;transform:translateX(-20px);transition:all 0.4s}\n' +
+'#' + uid + ' .kf-fact:last-child{border-bottom:none}\n' +
+'#' + uid + '.on .kf-fact{opacity:1;transform:translateX(0)}\n' +
+'#' + uid + ' .kf-icon{width:24px;height:24px;border-radius:50%;background:' + accentColor + '22;color:' + accentColor + ';display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}\n' +
+'#' + uid + ' .kf-text{font-size:15px;line-height:1.5;color:#ccc}\n' +
+'#' + uid + ' .kf-source{font-size:12px;color:#666;margin-top:20px;padding-top:16px;border-top:1px solid ' + borderColor + ';opacity:0;transition:all 0.4s 0.2s}\n' +
+'#' + uid + '.on .kf-source{opacity:1}\n' +
+lightboxCss +
+'@media(max-width:768px){#' + uid + ' .kf-stage{top:' + mobileOffset + 'px}}\n' +
+'</style>\n' +
+'<div id="' + uid + '">\n' +
+'<div class="kf-stage">\n' +
+'<div class="kf-panel">\n' +
+'<div class="kf-title">' + panelTitle + '</div>\n' +
+factsHtml +
+(sourceText ? '<div class="kf-source">' + sourceText + '</div>\n' : '') +
+'</div>\n' +
+'</div>\n' +
+'</div>\n' +
+'<scr' + 'ipt>\n' +
+'(function(){\n' +
+'var w=document.getElementById("' + uid + '");\n' +
+'var stage=w.querySelector(".kf-stage");\n' +
+'var scrollMult=' + scrollMult + ';\n' +
+'function setH(){w.style.height=(stage.offsetHeight*scrollMult)+"px";}\n' +
+'setH();window.addEventListener("resize",setH);\n' +
+'function upd(){\n' +
+'var extP=window.SCROLLTASTIC_PROGRESS&&window.SCROLLTASTIC_PROGRESS["' + uid + '"];\n' +
+'var progress;\n' +
+'if(extP!==undefined){progress=extP;}else{\n' +
+'var r=w.getBoundingClientRect();\n' +
+'var wh=window.innerHeight;\n' +
+'var scrolled=Math.max(0,-r.top);\n' +
+'var scrollRange=w.offsetHeight-wh;\n' +
+'if(scrollRange<=0){progress=r.top<wh*0.8?1:0;}else{progress=Math.max(0,Math.min(1,scrolled/scrollRange));}\n' +
+'}\n' +
+'if(progress>0.05){w.classList.add("on");}else{w.classList.remove("on");}\n' +
+'requestAnimationFrame(upd);\n' +
+'}\n' +
+'upd();\n' +
+lightboxJs +
+'})();\n' +
+'<\/scr' + 'ipt>';
+    
+    document.getElementById('exportCode').value = code;localStorage.setItem('disco_key-facts_export',code);
+    if(!_fromPlanner){document.getElementById('exportModal').classList.add('active')};
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function copyCode() {
+    var code = document.getElementById('exportCode');
+    code.select();
+    document.execCommand('copy');
+    discoAlert('Copied!');
+}
+
+function downloadCode() {
+    var code = document.getElementById('exportCode').value;
+    var filename = prompt('Save as:', 'key-facts');
+    if (!filename) return;
+    var blob = new Blob([code], { type: 'text/html' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename.replace(/[^a-z0-9_-]/gi, '_') + '.html';
+    a.click();
+}
+
+function sendToStackBuilder() {var _em=document.getElementById('exportModal');if(_em){_em.classList.remove('active');_em.classList.remove('open');}
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate HTML first'); return; }
+    var queue = JSON.parse(localStorage.getItem('disco_stack_queue') || '[]');
+    queue.push({ name: 'Key Facts', html: code, timestamp: Date.now() });
+    localStorage.setItem('disco_stack_queue', JSON.stringify(queue));
+    discoStackSend()
+}
+
+function openSaveModal() {
+    document.getElementById('saveName').value = '';
+    document.getElementById('saveModal').classList.add('active');
+}
+
+function openLoadModal() {
+    renderSavedList();
+    document.getElementById('loadModal').classList.add('active');
+}
+
+function saveProject() {
+    var name = document.getElementById('saveName').value.trim();
+    if (!name) { discoAlert('Enter a project name'); return; }
+    
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var data = getCurrentState();
+    data.name = name;
+    data.savedAt = Date.now();
+    data.id = 'proj_' + Date.now();
+    
+    projects.unshift(data);
+    if (projects.length > 20) projects = projects.slice(0, 20);
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    
+    closeModal('saveModal');
+    discoAlert('Saved!');
+}
+
+function renderSavedList() {
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var html = '';
+    if (projects.length === 0) {
+        html = '<div style="color:#666;text-align:center;padding:20px;">No saved projects</div>';
+    } else {
+        projects.forEach(function(p) {
+            var date = new Date(p.savedAt).toLocaleDateString();
+            html += '<div class="saved-item">';
+            html += '<div onclick="loadProject(\'' + p.id + '\')"><span class="name">' + p.name + '</span><br><span class="date">' + date + '</span></div>';
+            html += '<button class="delete" onclick="event.stopPropagation();deleteProject(\'' + p.id + '\')">×</button>';
+            html += '</div>';
+        });
+    }
+    document.getElementById('savedList').innerHTML = html;
+}
+
+function loadProject(id) {
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var proj = projects.find(function(p) { return p.id === id; });
+    if (!proj) return;
+    
+    facts = proj.facts || [];
+    selectedFactIndex = facts.length > 0 ? 0 : -1;
+    
+    document.getElementById('panelTitle').value = proj.panelTitle || 'What You Need to Know';
+    document.getElementById('sourceText').value = proj.sourceText || '';
+    document.getElementById('accentColor').value = proj.accentColor || '#4a9eff';
+    document.getElementById('panelBg').value = proj.panelBg || '#1a1a1a';
+    document.getElementById('borderColor').value = proj.borderColor || '#2a2a2a';
+    document.getElementById('maxWidth').value = proj.maxWidth || 600;
+    document.getElementById('staggerDelay').value = proj.staggerDelay || 100;
+    document.getElementById('scrollDuration').value = proj.scrollDuration || 150;
+    document.getElementById('desktopOffset').value = proj.desktopOffset || 50;
+    document.getElementById('mobileOffset').value = proj.mobileOffset || 200;
+    document.getElementById('containerHeight').value = proj.containerHeight || 85;
+    document.getElementById('containerHeightVal').textContent = (proj.containerHeight || 85) + 'vh';
+    
+    renderFactsList();
+    loadFactEditor();
+    updatePreviewHeight();
+    updatePreview();
+    closeModal('loadModal');
+}
+
+function deleteProject(id) {
+    discoConfirm('Delete this project?', function(){
+var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    projects = projects.filter(function(p) { return p.id !== id; });
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    renderSavedList();
+});
+}
+
+function getCurrentState() {
+    return {
+        facts: facts,
+        panelTitle: document.getElementById('panelTitle').value,
+        sourceText: document.getElementById('sourceText').value,
+        accentColor: document.getElementById('accentColor').value,
+        panelBg: document.getElementById('panelBg').value,
+        borderColor: document.getElementById('borderColor').value,
+        maxWidth: document.getElementById('maxWidth').value,
+        staggerDelay: document.getElementById('staggerDelay').value,
+        scrollDuration: document.getElementById('scrollDuration').value,
+        desktopOffset: document.getElementById('desktopOffset').value,
+        mobileOffset: document.getElementById('mobileOffset').value,
+        containerHeight: document.getElementById('containerHeight').value
+    };
+}
+
+function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getCurrentState()));
+}
+
+function loadState() {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        var s = JSON.parse(saved);
+        facts = s.facts || [];
+        document.getElementById('panelTitle').value = s.panelTitle || 'What You Need to Know';
+        document.getElementById('sourceText').value = s.sourceText || '';
+        document.getElementById('accentColor').value = s.accentColor || '#4a9eff';
+        document.getElementById('panelBg').value = s.panelBg || '#1a1a1a';
+        document.getElementById('borderColor').value = s.borderColor || '#2a2a2a';
+        document.getElementById('maxWidth').value = s.maxWidth || 600;
+        document.getElementById('staggerDelay').value = s.staggerDelay || 100;
+        document.getElementById('scrollDuration').value = s.scrollDuration || 150;
+        document.getElementById('desktopOffset').value = s.desktopOffset || 50;
+        document.getElementById('mobileOffset').value = s.mobileOffset || 200;
+        document.getElementById('containerHeight').value = s.containerHeight || 85;
+        document.getElementById('containerHeightVal').textContent = (s.containerHeight || 85) + 'vh';
+    }
+    renderFactsList();
+    if (facts.length > 0) {
+        selectedFactIndex = 0;
+        loadFactEditor();
+    }
+    updatePreviewHeight();
+    updatePreview();
+}
+
+loadState();
+
+function downloadCodeTxt() {
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate code first'); return; }
+    var filename = prompt('Save as:', 'key-facts');
+    if (!filename) return;
+    var safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    var blob = new Blob([code], {type:'text/plain'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = safeName + '.txt';
+    a.click();
+}
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

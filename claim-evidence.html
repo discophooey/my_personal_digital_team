@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claim vs Evidence — Scrolltastic</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg-deep);color:var(--text-primary);padding-top:41px}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+.app{display:grid;grid-template-columns:380px 1fr;height:calc(100vh - 41px);overflow:hidden}
+.controls{background:var(--bg-primary);padding:20px;overflow-y:auto;border-right:1px solid var(--border)}
+.module-title{font-family:var(--display);font-size:22px;font-weight:400;color:var(--text-primary);margin-bottom:20px;line-height:1.3}
+.module-title span{color:var(--accent)}
+.preview-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.preview-wrap.fit-frame{background:#1a1a1a}
+.preview-wrap.fit-frame .pv-sticky,.preview-wrap.fit-frame .pv-fixed{border:3px solid #4a9eff;box-sizing:border-box;max-width:700px;margin:0 auto}
+.preview-mode-bar{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex:0 0 auto;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px}
+.preview-mode-btn{padding:4px 12px;font-size:11px;border-radius:3px;background:#1a1a1a;color:#888;border:1px solid #2a2a2a;cursor:pointer;font-weight:600}
+.preview-mode-btn.active{background:#4a9eff;color:#000;border-color:#4a9eff}
+.scrub-controls{display:flex;align-items:center;gap:8px;margin-left:auto}
+.scrub-controls input[type="range"]{width:180px}
+.scrub-controls span{font-size:11px;color:#888}
+.preview-scroll{flex:1;overflow-y:auto;position:relative}
+.scroll-spacer{position:relative}
+.pv-sticky{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#0a0a0a}
+.pv-fixed{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#0a0a0a}
+h2{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;margin:20px 0 12px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase}
+h2:hover{background:#222}
+h2::after{content:'▾';font-size:10px;transition:transform 0.2s}
+h2.collapsed::after{transform:rotate(-90deg)}
+.section{overflow:hidden;max-height:2000px;transition:max-height 0.3s;margin-bottom:16px}
+.section.collapsed{max-height:0}
+label{display:block;font-family:var(--mono);font-size:10px;color:var(--text-dim);margin:8px 0 3px;text-transform:uppercase;letter-spacing:0.5px}
+input[type="text"],input[type="number"],input[type="url"],select,textarea{width:100%;background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:6px 8px;border-radius:6px;font-family:var(--mono);font-size:11px;transition:border-color 0.2s}
+input[type="text"]:focus,input[type="number"]:focus,input[type="url"]:focus,select:focus,textarea:focus{border-color:var(--accent-dim)}
+textarea{resize:vertical;min-height:60px}
+input[type="range"]{width:100%;margin:4px 0;-webkit-appearance:none;background:transparent}
+input[type="range"]::-webkit-slider-runnable-track{height:3px;background:var(--border);border-radius:2px}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--accent);margin-top:-5px;cursor:pointer;box-shadow:0 0 6px rgba(74,158,255,0.3)}
+input[type="color"]{width:40px;height:28px;border:1px solid #2a2a2a;background:#111;cursor:pointer;padding:1px}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+button{background:var(--accent);color:#0a0a0a;border:1px solid var(--accent);padding:8px 14px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+button:hover{opacity:0.85}
+button.secondary{background:var(--bg-tertiary);color:var(--text-primary);border-color:var(--border)}
+button.small{padding:4px 8px;font-size:11px}
+button.load-btn{flex:0 0 auto;padding:6px 10px;font-size:11px;background:#2a2a2a;color:#e0e0e0}
+.url-row{display:flex;gap:4px;align-items:center}
+.url-row input{flex:1}
+.media-type-row{display:flex;gap:4px;margin-bottom:4px}
+.media-type-btn{padding:3px 10px;font-size:10px;border-radius:3px;background:#1a1a1a;color:#888;border:1px solid #2a2a2a;cursor:pointer;font-weight:600}
+.media-type-btn.active{background:#4a9eff;color:#000;border-color:#4a9eff}
+.pair-card{background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:10px;margin:6px 0;position:relative}
+.pair-card .remove-btn{position:absolute;top:6px;right:6px;background:none;color:#666;font-size:14px;padding:2px 6px;cursor:pointer;border:none}
+.pair-card .remove-btn:hover{color:#ff4a4a}
+.pair-num{display:inline-block;background:#4a9eff;color:#000;font-size:10px;font-weight:700;width:20px;height:20px;text-align:center;line-height:20px;border-radius:50%;margin-right:6px}
+.pair-sides{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.pair-side{border:1px solid #2a2a2a;border-radius:4px;padding:8px}
+.pair-side.claim{border-color:#5a2727}
+.pair-side.evidence{border-color:#2d5a27}
+.pair-side-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.pair-side.claim .pair-side-label{color:#ff6b6b}
+.pair-side.evidence .pair-side-label{color:#51cf66}
+.checkbox-row{display:flex;align-items:center;gap:6px}
+.checkbox-row input[type="checkbox"]{width:auto;margin:0}
+.checkbox-row label{margin:0;display:inline}
+.ctrl-row{display:flex;align-items:center;gap:6px;margin-top:6px;padding:6px;background:#1a1a1a;border-radius:4px}
+.ctrl-row label{margin:0;font-size:10px;color:#888;flex:0 0 auto;white-space:nowrap}
+.ctrl-row input[type="range"]{flex:1;margin:0}
+.ctrl-row span{font-size:10px;color:#4a9eff;min-width:36px;text-align:right}
+.color-toggle{display:flex;gap:4px;align-items:center}
+.color-opt{padding:4px 12px;font-size:11px;border-radius:3px;border:1px solid #2a2a2a;cursor:pointer;font-weight:600}
+.color-opt.active{border-color:#4a9eff}
+.color-opt.dark{background:#111;color:#e0e0e0}
+.color-opt.light{background:#f0f0f0;color:#111}
+/* Preview */
+.pv-header{text-align:center;padding:12px 16px 4px;flex:0 0 auto}
+.pv-header h1{font-size:20px;margin-bottom:4px}
+.pv-header p{font-size:12px}
+.pv-counter{font-size:11px;text-align:center;margin-bottom:4px;flex:0 0 auto}
+.pv-split{flex:1;display:flex;position:relative;overflow:hidden;min-height:0}
+.pv-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;padding:16px;position:relative}
+.pv-side.claim-side{background:rgba(90,39,39,0.15);border-right:1px solid #2a2a2a}
+.pv-side.evidence-side{background:rgba(45,90,39,0.15)}
+.pv-side-inner{display:flex;flex-direction:column;align-items:center;width:100%;position:relative}
+.pv-side-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;text-align:center;width:100%}
+.pv-side.claim-side .pv-side-label{color:#ff6b6b}
+.pv-side.evidence-side .pv-side-label{color:#51cf66}
+.pv-side-source{font-size:10px;margin-bottom:4px;font-style:italic;text-align:center;width:100%}
+.pv-side-text{line-height:1.5;text-align:center;width:100%}
+.pv-side-detail{margin-top:6px;line-height:1.4;text-align:center;width:100%}
+.pv-media{position:relative;width:100%;margin:10px auto;border-radius:6px;overflow:hidden;background:#000}
+.pv-media img{width:100%;display:block;border-radius:6px;max-height:50vh;object-fit:contain}
+.pv-media video{width:100%;display:block;border-radius:6px;max-height:50vh;object-fit:contain}
+.pv-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(0,0,0,0.6);border:2px solid rgba(255,255,255,0.8);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s}
+.pv-play:hover{background:rgba(74,158,255,0.7)}
+.pv-play svg{width:16px;height:16px;fill:#fff;margin-left:2px}
+.pv-play.on svg.pi{display:none}.pv-play:not(.on) svg.pa{display:none}
+.pv-verdict{text-align:center;padding:8px 16px;margin-top:8px;border-radius:4px;font-size:12px;font-weight:600;width:100%;max-width:300px}
+.pv-verdict.false{background:rgba(255,107,107,0.15);color:#ff6b6b}
+.pv-verdict.misleading{background:rgba(255,212,59,0.15);color:#ffd43b}
+.pv-verdict.unverified{background:rgba(136,136,136,0.15);color:#888}
+.pv-verdict.true{background:rgba(81,207,102,0.15);color:#51cf66}
+.pv-verdict.partly{background:rgba(255,146,43,0.15);color:#ff922b}
+.pv-divider{position:absolute;left:50%;top:0;bottom:0;width:3px;background:#2a2a2a;transform:translateX(-50%);z-index:2}
+.pv-divider-label{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;font-size:10px;font-weight:600;letter-spacing:1px;white-space:nowrap;z-index:3}
+.pv-nav{display:flex;justify-content:center;gap:8px;padding:8px;flex:0 0 auto}
+.pv-dot{width:10px;height:10px;border-radius:50%;background:#2a2a2a;cursor:pointer;transition:background 0.3s}
+.pv-dot.active{background:#4a9eff}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100000;justify-content:center;align-items:center}
+.modal.active{display:flex}
+.modal-content{background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;padding:20px;width:700px;max-height:80vh;display:flex;flex-direction:column}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.modal-header h1{font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
+.modal-close{background:none;border:none;color:var(--text-dim);font-size:22px;cursor:pointer;padding:0;width:auto}
+.code{flex:1;background:#111;border:1px solid #2a2a2a;color:#e0e0e0;font-family:var(--mono);font-size:11px;padding:10px;border-radius:6px;resize:none;min-height:200px}
+
+/* Disco Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--bg-primary);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;font-family:var(--mono);">
+<a href="index.html" style="padding:10px 16px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.5px;">← Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Zoom Detail</a>
+<a href="text-scroll.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Text Scroll</a>
+<a href="chapter-marker.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chapter Marker</a>
+<a href="key-facts.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Key Facts</a>
+<a href="body-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Body Module</a>
+<a href="epistemic-text.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Epistemic Text</a>
+<a href="adversarial-verification.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Adversarial</a>
+<a href="silence-mapping.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Silence Map</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:var(--accent)!important;background:var(--bg-secondary);}</style>
+
+<div class="app">
+<div class="controls" id="editorPanel">
+<div class="module-title">Claim vs. <span>Evidence</span></div>
+<div class="section">
+<label>Module Title</label><input type="text" id="moduleTitle" placeholder="e.g. Viral Claims About the Factory Fire">
+<label>Subtitle</label><input type="text" id="moduleSubtitle" placeholder="e.g. What was shared vs. what we found">
+<label>Side Labels</label>
+<div class="row"><input type="text" id="claimLabel" value="THE CLAIM" placeholder="Left side label"><input type="text" id="evidLabel" value="THE EVIDENCE" placeholder="Right side label"></div>
+<label>Text Color</label>
+<div class="color-toggle" id="textColorToggle">
+<div class="color-opt dark active" onclick="setTextColor('dark')">● White text</div>
+<div class="color-opt light" onclick="setTextColor('light')">● Black text</div>
+</div>
+</div>
+<h2 onclick="toggleSection(this)">Claim / Evidence Pairs</h2>
+<div class="section"><div id="pairList"></div><button class="small secondary" onclick="addPair()" style="margin-top:8px">+ Add Pair</button></div>
+<h2 onclick="toggleSection(this)">Export Settings</h2>
+<div class="section">
+<label>Scroll Duration <span id="scrollDurVal">400</span>vh</label><input type="range" id="scrollDuration" min="100" max="1500" value="400" step="50">
+<div class="row"><div><label>Mobile Offset (px)</label><input type="number" id="mobileOffset" value="200" min="0" max="300"></div><div><label>Desktop Offset (px)</label><input type="number" id="desktopOffset" value="0" min="0" max="200"></div></div>
+<label>Background Color</label><div class="row"><input type="color" id="bgColor" value="#0a0a0a" style="flex:0 0 40px"><div class="checkbox-row" style="flex:1"><input type="checkbox" id="bgTransparent"><label>Transparent</label></div></div>
+</div>
+<div style="display:flex;gap:8px;margin-top:16px;padding-bottom:20px"><button onclick="generateExport()">Generate Export</button><button class="secondary" onclick="window.resetModule()">Reset</button></div>
+</div>
+
+<div class="preview-wrap">
+<div class="preview-mode-bar">
+<button class="preview-mode-btn active" id="modeScroll" onclick="setMode('scroll')">Scroll</button>
+<button class="preview-mode-btn" id="modeScrub" onclick="setMode('scrub')">Scrub</button>
+<div class="scrub-controls" id="scrubControls" style="display:none"><span>Scrub:</span><input type="range" id="scrubber" min="0" max="100" value="0"><span id="scrubVal">0%</span></div>
+<label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:#888"><input type="checkbox" id="fitFrameToggle" onchange="toggleFitFrame()"> Fit Frame</label>
+</div>
+<div class="preview-scroll" id="scrollPreview">
+<div class="scroll-spacer" id="scrollSpacer" style="height:400vh">
+<div class="pv-sticky" id="pvS1">
+<div class="pv-header"><h1 id="pvTitle1"></h1><p id="pvSub1"></p></div>
+<div class="pv-counter" id="pvCount1"></div>
+<div class="pv-split"><div class="pv-side claim-side" id="pvClaim1"><div class="pv-side-inner"><div class="pv-side-label" id="pvClaimLbl1">THE CLAIM</div><div class="pv-side-source"></div><div class="pv-side-text"></div></div></div><div class="pv-divider"></div><div class="pv-divider-label">VS</div><div class="pv-side evidence-side" id="pvEvid1"><div class="pv-side-inner"><div class="pv-side-label" id="pvEvidLbl1">THE EVIDENCE</div><div class="pv-side-source"></div><div class="pv-side-text"></div></div></div></div>
+<div class="pv-nav" id="pvNav1"></div>
+</div></div></div>
+<div class="pv-fixed" id="scrubPreview" style="display:none">
+<div class="pv-header"><h1 id="pvTitle2"></h1><p id="pvSub2"></p></div>
+<div class="pv-counter" id="pvCount2"></div>
+<div class="pv-split"><div class="pv-side claim-side" id="pvClaim2"><div class="pv-side-inner"><div class="pv-side-label" id="pvClaimLbl2">THE CLAIM</div><div class="pv-side-source"></div><div class="pv-side-text"></div></div></div><div class="pv-divider"></div><div class="pv-divider-label">VS</div><div class="pv-side evidence-side" id="pvEvid2"><div class="pv-side-inner"><div class="pv-side-label" id="pvEvidLbl2">THE EVIDENCE</div><div class="pv-side-source"></div><div class="pv-side-text"></div></div></div></div>
+<div class="pv-nav" id="pvNav2"></div>
+</div></div></div>
+
+<div class="modal" id="exportModal"><div class="modal-content"><div class="modal-header"><h1>Export Code</h1><button class="modal-close" onclick="closeModal()">&times;</button></div><textarea class="code" id="exportCode" readonly></textarea><div style="margin-top:12px;display:flex;gap:8px;"><button onclick="copyCode()">📋 Copy</button><button class="secondary" onclick="downloadCode()">💾 Download</button><button onclick="downloadCodeTxt()" class="secondary">📄 .txt</button><button class="secondary" onclick="sendToStackBuilder()">📚 Stack</button></div></div></div>
+
+<script>
+var _fromPlanner=new URLSearchParams(location.search).get('planner')==='1';
+function toggleSection(el){el.classList.toggle('collapsed');el.nextElementSibling.classList.toggle('collapsed');}
+
+var pairs=[],previewMode='scroll',textColorMode='dark';
+function isVideo(url){return url&&/\.(mp4|webm|ogg|mov)($|\?)/i.test(url);}
+function fixUrl(url){if(url&&url.includes('github.com')&&url.includes('/blob/'))url=url.replace('github.com','raw.githubusercontent.com').replace('/blob/','/').split('?')[0];return url;}
+function loadUrl(pi,side){var input=document.querySelector('#pair-'+pi+'-'+side+'-url');if(input&&input.value){var url=input.value.trim();pairs[pi][side+'Media']=url;pairs[pi][side+'MediaType']=isVideo(url)?'video':(pairs[pi][side+'MediaType']||'image');updatePreview();triggerSave();}}
+function lastDefaults(){var last=pairs.length>0?pairs[pairs.length-1]:{};return {textScale:last.textScale||100,claimOffY:last.claimOffY||0,evidOffY:last.evidOffY||0};}
+
+function setTextColor(mode){
+    textColorMode=mode;
+    document.querySelectorAll('.color-opt').forEach(function(el){el.classList.remove('active');});
+    document.querySelector('.color-opt.'+mode).classList.add('active');
+    updatePreview();triggerSave();
+}
+function getTextColors(){
+    if(textColorMode==='light')return {main:'#111111',sub:'#444444',source:'#666666',counter:'#666666',divider:'#888888'};
+    return {main:'#e0e0e0',sub:'#888888',source:'#666666',counter:'#888888',divider:'#888888'};
+}
+
+function setMode(m){previewMode=m;document.getElementById('modeScroll').classList.toggle('active',m==='scroll');document.getElementById('modeScrub').classList.toggle('active',m==='scrub');document.getElementById('scrollPreview').style.display=m==='scroll'?'':'none';document.getElementById('scrubPreview').style.display=m==='scrub'?'':'none';document.getElementById('scrubControls').style.display=m==='scrub'?'flex':'none';updatePreview();}
+function toggleFitFrame(){var wrap=document.querySelector('.preview-wrap');var toggle=document.getElementById('fitFrameToggle');if(toggle.checked){wrap.classList.add('fit-frame');}else{wrap.classList.remove('fit-frame');}}
+function addPair(data){var d=lastDefaults();pairs.push(data||{claimText:'',claimSource:'',claimMedia:'',claimMediaType:'image',evidenceText:'',evidenceSource:'',evidenceMedia:'',evidenceMediaType:'image',evidenceDetail:'',verdict:'false',textScale:d.textScale,claimOffY:d.claimOffY,evidOffY:d.evidOffY});renderPairs();updatePreview();}
+function removePair(i){pairs.splice(i,1);renderPairs();updatePreview();}
+function updatePair(i,f,v){pairs[i][f]=v;if(f==='claimMedia')pairs[i].claimMediaType=isVideo(v)?'video':pairs[i].claimMediaType;if(f==='evidenceMedia')pairs[i].evidenceMediaType=isVideo(v)?'video':pairs[i].evidenceMediaType;updatePreview();triggerSave();}
+function setPairMediaType(i,side,t){pairs[i][side+'MediaType']=t;renderPairs();updatePreview();triggerSave();}
+
+function renderPairs(){
+    var el=document.getElementById('pairList');el.innerHTML='';
+    pairs.forEach(function(p,i){
+        var div=document.createElement('div');div.className='pair-card';
+        var cmt=p.claimMediaType||'image',emt=p.evidenceMediaType||'image';
+        var ts=p.textScale||100,coy=p.claimOffY||0,eoy=p.evidOffY||0;
+        div.innerHTML='<button class="remove-btn" onclick="removePair('+i+')">&times;</button><span class="pair-num">'+(i+1)+'</span> Pair '+(i+1)+
+            '<div class="ctrl-row"><label>Text Scale</label><input type="range" min="50" max="200" value="'+ts+'" oninput="updatePair('+i+',\'textScale\',parseInt(this.value));this.nextElementSibling.textContent=this.value+\'%\'"><span>'+ts+'%</span></div>'+
+            '<div class="row"><div class="ctrl-row"><label>Claim Y</label><input type="range" min="-200" max="200" value="'+coy+'" oninput="updatePair('+i+',\'claimOffY\',parseInt(this.value));this.nextElementSibling.textContent=this.value+\'px\'"><span>'+coy+'px</span></div>'+
+            '<div class="ctrl-row"><label>Evid Y</label><input type="range" min="-200" max="200" value="'+eoy+'" oninput="updatePair('+i+',\'evidOffY\',parseInt(this.value));this.nextElementSibling.textContent=this.value+\'px\'"><span>'+eoy+'px</span></div></div>'+
+            '<div class="pair-sides"><div class="pair-side claim"><div class="pair-side-label">CLAIM</div>'+
+            '<textarea placeholder="The viral claim..." onchange="updatePair('+i+',\'claimText\',this.value)">'+esc(p.claimText)+'</textarea>'+
+            '<input type="text" value="'+esc(p.claimSource)+'" placeholder="Source" onchange="updatePair('+i+',\'claimSource\',this.value)" style="margin-top:4px">'+
+            '<div class="media-type-row" style="margin-top:4px"><button class="media-type-btn'+(cmt==='image'?' active':'')+'" onclick="setPairMediaType('+i+',\'claim\',\'image\')">Img</button><button class="media-type-btn'+(cmt==='video'?' active':'')+'" onclick="setPairMediaType('+i+',\'claim\',\'video\')">Vid</button></div>'+
+            '<div class="url-row"><input type="url" id="pair-'+i+'-claim-url" value="'+esc(p.claimMedia)+'" placeholder="Media URL" onchange="updatePair('+i+',\'claimMedia\',this.value)"><button class="load-btn" onclick="loadUrl('+i+',\'claim\')">↵ Load</button></div></div>'+
+            '<div class="pair-side evidence"><div class="pair-side-label">EVIDENCE</div>'+
+            '<textarea placeholder="The verified facts..." onchange="updatePair('+i+',\'evidenceText\',this.value)">'+esc(p.evidenceText)+'</textarea>'+
+            '<input type="text" value="'+esc(p.evidenceSource)+'" placeholder="Source" onchange="updatePair('+i+',\'evidenceSource\',this.value)" style="margin-top:4px">'+
+            '<div class="media-type-row" style="margin-top:4px"><button class="media-type-btn'+(emt==='image'?' active':'')+'" onclick="setPairMediaType('+i+',\'evidence\',\'image\')">Img</button><button class="media-type-btn'+(emt==='video'?' active':'')+'" onclick="setPairMediaType('+i+',\'evidence\',\'video\')">Vid</button></div>'+
+            '<div class="url-row"><input type="url" id="pair-'+i+'-evidence-url" value="'+esc(p.evidenceMedia)+'" placeholder="Media URL" onchange="updatePair('+i+',\'evidenceMedia\',this.value)"><button class="load-btn" onclick="loadUrl('+i+',\'evidence\')">↵ Load</button></div>'+
+            '<textarea placeholder="Additional detail..." onchange="updatePair('+i+',\'evidenceDetail\',this.value)" style="margin-top:4px;min-height:30px">'+esc(p.evidenceDetail)+'</textarea></div></div>'+
+            '<label>Verdict</label><select onchange="updatePair('+i+',\'verdict\',this.value)">'+
+            vOpt('false','✗ False',p.verdict)+vOpt('misleading','⚠ Misleading',p.verdict)+vOpt('partly','◐ Partly true',p.verdict)+vOpt('unverified','? Unverified',p.verdict)+vOpt('true','✓ True',p.verdict)+'</select>';
+        el.appendChild(div);
+    });
+}
+function vOpt(v,l,s){return '<option value="'+v+'"'+(s===v?' selected':'')+'>'+l+'</option>';}
+function getProgress(){if(previewMode==='scrub')return parseFloat(document.getElementById('scrubber').value)/100;var spacer=document.getElementById('scrollSpacer'),scroller=document.getElementById('scrollPreview');return spacer.offsetHeight-scroller.clientHeight>0?Math.max(0,Math.min(1,scroller.scrollTop/(spacer.offsetHeight-scroller.clientHeight))):0;}
+function makeMediaHTML(url,mediaType){if(!url)return '';var isVid=mediaType==='video'||isVideo(url);if(isVid)return '<div class="pv-media"><video src="'+url+'" preload="metadata" muted playsinline></video><div class="pv-play"><svg class="pi" viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg><svg class="pa" viewBox="0 0 24 24"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg></div></div>';return '<div class="pv-media"><img src="'+url+'"></div>';}
+function wirePlay(el){el.querySelectorAll('.pv-play').forEach(function(b){b.addEventListener('click',function(){var v=b.parentElement.querySelector('video');if(!v)return;if(v.paused){v.play();b.classList.add('on');}else{v.pause();b.classList.remove('on');}});});}
+var verdictLabels={'false':'✗ FALSE',misleading:'⚠ MISLEADING',partly:'◐ PARTLY TRUE',unverified:'? UNVERIFIED','true':'✓ TRUE'};
+
+function updatePreview(){
+    var progress=getProgress(),suffix=previewMode==='scrub'?'2':'1';
+    var tc=getTextColors();
+    document.getElementById('scrollSpacer').style.height=document.getElementById('scrollDuration').value+'vh';
+    var titleEl=document.getElementById('pvTitle'+suffix),subEl=document.getElementById('pvSub'+suffix),ctrEl=document.getElementById('pvCount'+suffix);
+    titleEl.textContent=document.getElementById('moduleTitle').value||'Claim vs. Evidence';titleEl.style.color=tc.main;
+    subEl.textContent=document.getElementById('moduleSubtitle').value||'';subEl.style.color=tc.sub;
+    ctrEl.style.color=tc.counter;
+    document.getElementById('pvClaimLbl'+suffix).textContent=document.getElementById('claimLabel').value||'THE CLAIM';
+    document.getElementById('pvEvidLbl'+suffix).textContent=document.getElementById('evidLabel').value||'THE EVIDENCE';
+    // VS label color
+    var dvlbl=document.querySelectorAll('.pv-divider-label');dvlbl.forEach(function(d){d.style.color=tc.divider;});
+    if(!pairs.length){ctrEl.textContent='';document.getElementById('pvNav'+suffix).innerHTML='';return;}
+    var idx=Math.min(Math.floor(progress*pairs.length),pairs.length-1),p=pairs[idx];
+    ctrEl.textContent=(idx+1)+' of '+pairs.length;
+    var claimEl=document.getElementById('pvClaim'+suffix),evidEl=document.getElementById('pvEvid'+suffix);
+    var ts=(p.textScale||100)/100;var coy=p.claimOffY||0,eoy=p.evidOffY||0;
+    var claimInner=claimEl.querySelector('.pv-side-inner'),evidInner=evidEl.querySelector('.pv-side-inner');
+    claimInner.style.transform='translateY('+coy+'px)';evidInner.style.transform='translateY('+eoy+'px)';
+    claimInner.querySelector('.pv-side-text').textContent=p.claimText||'';claimInner.querySelector('.pv-side-text').style.fontSize=(15*ts)+'px';claimInner.querySelector('.pv-side-text').style.color=tc.main;
+    claimInner.querySelector('.pv-side-source').textContent=p.claimSource||'';claimInner.querySelector('.pv-side-source').style.color=tc.source;
+    evidInner.querySelector('.pv-side-text').textContent=p.evidenceText||'';evidInner.querySelector('.pv-side-text').style.fontSize=(15*ts)+'px';evidInner.querySelector('.pv-side-text').style.color=tc.main;
+    evidInner.querySelector('.pv-side-source').textContent=p.evidenceSource||'';evidInner.querySelector('.pv-side-source').style.color=tc.source;
+    [claimInner,evidInner].forEach(function(el){el.querySelectorAll('.pv-media,.pv-side-detail,.pv-verdict').forEach(function(x){x.remove();});});
+    if(fixUrl(p.claimMedia)){claimInner.insertAdjacentHTML('beforeend',makeMediaHTML(fixUrl(p.claimMedia),p.claimMediaType));wirePlay(claimInner);}
+    if(fixUrl(p.evidenceMedia)){evidInner.insertAdjacentHTML('beforeend',makeMediaHTML(fixUrl(p.evidenceMedia),p.evidenceMediaType));wirePlay(evidInner);}
+    if(p.evidenceDetail){var d=document.createElement('div');d.className='pv-side-detail';d.textContent=p.evidenceDetail;d.style.fontSize=(12*ts)+'px';d.style.color=tc.sub;evidInner.appendChild(d);}
+    var vDiv=document.createElement('div');vDiv.className='pv-verdict '+p.verdict;vDiv.textContent=verdictLabels[p.verdict]||'';evidInner.appendChild(vDiv);
+    var nav=document.getElementById('pvNav'+suffix);nav.innerHTML='';pairs.forEach(function(_,i){var dot=document.createElement('div');dot.className='pv-dot'+(i===idx?' active':'');nav.appendChild(dot);});
+}
+
+document.getElementById('scrubber').addEventListener('input',function(){document.getElementById('scrubVal').textContent=Math.round(this.value)+'%';updatePreview();});
+document.getElementById('scrollPreview').addEventListener('scroll',function(){if(previewMode==='scroll')updatePreview();});
+document.getElementById('scrollDuration').addEventListener('input',function(){document.getElementById('scrollDurVal').textContent=this.value;updatePreview();});
+['moduleTitle','moduleSubtitle','claimLabel','evidLabel'].forEach(function(id){document.getElementById(id).addEventListener('input',updatePreview);});
+
+var SAVE_KEY='disco_claim-evidence';
+function triggerSave(){clearTimeout(triggerSave._t);triggerSave._t=setTimeout(saveState,200);}
+function saveState(){var state={pairs:pairs,textColorMode:textColorMode,inputs:{}};document.querySelectorAll('#editorPanel input[id],#editorPanel select[id],#editorPanel textarea[id]').forEach(function(el){if(el.type==='checkbox')state.inputs[el.id]=el.checked;else if(el.type==='file')return;else state.inputs[el.id]=el.value;});try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));}catch(e){}}
+function loadState(){try{var saved=localStorage.getItem(SAVE_KEY);if(!saved)return;var state=JSON.parse(saved);Object.keys(state.inputs||{}).forEach(function(id){var el=document.getElementById(id);if(el){if(el.type==='checkbox')el.checked=state.inputs[id];else el.value=state.inputs[id];}});if(state.textColorMode)setTextColor(state.textColorMode);if(state.pairs){pairs=state.pairs;pairs.forEach(function(p){if(!p.claimMediaType)p.claimMediaType='image';if(!p.evidenceMediaType)p.evidenceMediaType='image';if(p.textScale==null)p.textScale=100;if(p.claimOffY==null)p.claimOffY=0;if(p.evidOffY==null)p.evidOffY=0;});renderPairs();}document.getElementById('scrollDurVal').textContent=document.getElementById('scrollDuration').value;updatePreview();}catch(e){console.warn('Load error:',e);}}
+window.resetModule=function(){discoConfirm('Reset all settings to defaults?', function(){localStorage.removeItem(SAVE_KEY);location.reload();});};
+document.addEventListener('change',saveState);document.addEventListener('input',saveState);
+
+function generateExport(){
+    var uid='ce'+Math.random().toString(36).substr(2,9),sd=document.getElementById('scrollDuration').value,mo=document.getElementById('mobileOffset').value,dko=document.getElementById('desktopOffset').value;
+    var bg=document.getElementById('bgColor').value,bgt=document.getElementById('bgTransparent').checked,title=document.getElementById('moduleTitle').value,subtitle=document.getElementById('moduleSubtitle').value;
+    var claimLbl=document.getElementById('claimLabel').value||'THE CLAIM',evidLbl=document.getElementById('evidLabel').value||'THE EVIDENCE';
+    var tc=getTextColors();
+    var css='#'+uid+'{position:relative;width:100%;height:'+sd+'vh;background:'+(bgt?'transparent':bg)+';}#'+uid+' .ce-s{position:sticky;top:'+dko+'px;height:calc(100vh - '+dko+'px);display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;}#'+uid+' .ce-h{text-align:center;padding:12px 16px 4px;}#'+uid+' .ce-h h1{font-size:20px;color:'+tc.main+';margin-bottom:4px;}#'+uid+' .ce-h p{font-size:12px;color:'+tc.sub+';}#'+uid+' .ce-c{font-size:11px;color:'+tc.counter+';text-align:center;margin-bottom:4px;}#'+uid+' .ce-sp{flex:1;display:flex;overflow:hidden;position:relative;}#'+uid+' .ce-si{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow-y:auto;}#'+uid+' .ce-in{display:flex;flex-direction:column;align-items:center;width:100%;}#'+uid+' .ce-cl{background:rgba(90,39,39,0.15);border-right:1px solid #2a2a2a;}#'+uid+' .ce-ev{background:rgba(45,90,39,0.15);}#'+uid+' .ce-lb{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;text-align:center;width:100%;}#'+uid+' .ce-cl .ce-lb{color:#ff6b6b;}#'+uid+' .ce-ev .ce-lb{color:#51cf66;}#'+uid+' .ce-sr{font-size:10px;color:'+tc.source+';margin-bottom:4px;font-style:italic;text-align:center;width:100%;}#'+uid+' .ce-tx{line-height:1.5;color:'+tc.main+';text-align:center;width:100%;}#'+uid+' .ce-md{position:relative;width:100%;margin:10px auto;border-radius:6px;overflow:hidden;background:#000;}#'+uid+' .ce-md img,#'+uid+' .ce-md video{width:100%;display:block;border-radius:6px;max-height:50vh;object-fit:contain;}#'+uid+' .ce-pb{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(0,0,0,0.6);border:2px solid rgba(255,255,255,0.8);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;}#'+uid+' .ce-pb:hover{background:rgba(74,158,255,0.7);}#'+uid+' .ce-pb svg{width:16px;height:16px;fill:#fff;margin-left:2px;}#'+uid+' .ce-pb.on svg.pi{display:none;}#'+uid+' .ce-pb:not(.on) svg.pa{display:none;}#'+uid+' .ce-dt{color:'+tc.sub+';margin-top:6px;line-height:1.4;text-align:center;}#'+uid+' .ce-v{text-align:center;padding:8px 16px;margin-top:8px;border-radius:4px;font-size:12px;font-weight:600;max-width:300px;}#'+uid+' .ce-v-false{background:rgba(255,107,107,0.15);color:#ff6b6b;}#'+uid+' .ce-v-misleading{background:rgba(255,212,59,0.15);color:#ffd43b;}#'+uid+' .ce-v-unverified{background:rgba(136,136,136,0.15);color:#888;}#'+uid+' .ce-v-true{background:rgba(81,207,102,0.15);color:#51cf66;}#'+uid+' .ce-v-partly{background:rgba(255,146,43,0.15);color:#ff922b;}#'+uid+' .ce-dv{position:absolute;left:50%;top:0;bottom:0;width:3px;background:#2a2a2a;transform:translateX(-50%);z-index:2;}#'+uid+' .ce-vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;font-size:10px;color:'+tc.divider+';font-weight:600;letter-spacing:1px;z-index:3;}#'+uid+' .ce-nav{display:flex;justify-content:center;gap:8px;padding:8px;}#'+uid+' .ce-dot{width:10px;height:10px;border-radius:50%;background:#2a2a2a;transition:background 0.3s;}#'+uid+' .ce-dot-a{background:#4a9eff;}@media(max-width:768px){#'+uid+' .ce-s{top:'+mo+'px;height:calc(100vh - '+mo+'px);}#'+uid+' .ce-sp{flex-direction:column;}#'+uid+' .ce-cl{border-right:none;border-bottom:1px solid #2a2a2a;}#'+uid+' .ce-si{padding:12px;}#'+uid+' .ce-dv,#'+uid+' .ce-vs{display:none;}}';
+    var dotsHTML='';pairs.forEach(function(_,i){dotsHTML+='<div class="ce-dot" data-i="'+i+'"></div>';});
+    var pJSON=JSON.stringify(pairs);
+    var js='(function(){var uid="'+uid+'";var w=document.getElementById(uid);if(!w)return;var pairs='+pJSON+';var clI=w.querySelector(".ce-cl .ce-in"),evI=w.querySelector(".ce-ev .ce-in"),ctr=w.querySelector(".ce-c"),dots=w.querySelectorAll(".ce-dot");var vL={"false":"\\u2717 FALSE","misleading":"\\u26A0 MISLEADING","partly":"\\u25D0 PARTLY TRUE","unverified":"? UNVERIFIED","true":"\\u2713 TRUE"};function isVid(u){return u&&/\\.(mp4|webm|ogg|mov)($|\\?)/i.test(u);}function mkM(u,mt){if(!u)return"";var iv=mt==="video"||isVid(u);if(iv)return\'<div class="ce-md"><video src="\'+u+\'" preload="metadata" muted playsinline></video><div class="ce-pb"><svg class="pi" viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg><svg class="pa" viewBox="0 0 24 24"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg></div></div>\';return\'<div class="ce-md"><img src="\'+u+\'"></div>\';}function wPB(el){el.querySelectorAll(".ce-pb").forEach(function(b){b.addEventListener("click",function(){var v=b.parentElement.querySelector("video");if(!v)return;if(v.paused){v.play();b.classList.add("on");}else{v.pause();b.classList.remove("on");}});});}var lI=-1;function up(){var r=w.getBoundingClientRect();var sc=Math.max(0,-r.top);var rn=w.offsetHeight-window.innerHeight;var p=rn>0?Math.max(0,Math.min(1,sc/rn)):0;var ext=window.SCROLLTASTIC_PROGRESS&&window.SCROLLTASTIC_PROGRESS[uid];if(ext!==undefined)p=ext;if(!pairs.length)return;var idx=Math.min(Math.floor(p*pairs.length),pairs.length-1);ctr.textContent=(idx+1)+" of "+pairs.length;dots.forEach(function(d,i){d.classList.toggle("ce-dot-a",i===idx);});if(idx===lI){requestAnimationFrame(up);return;}lI=idx;var pr=pairs[idx];var ts=(pr.textScale||100)/100;clI.style.transform="translateY("+(pr.claimOffY||0)+"px)";evI.style.transform="translateY("+(pr.evidOffY||0)+"px)";clI.querySelector(".ce-tx").textContent=pr.claimText||"";clI.querySelector(".ce-tx").style.fontSize=(15*ts)+"px";clI.querySelector(".ce-sr").textContent=pr.claimSource||"";evI.querySelector(".ce-tx").textContent=pr.evidenceText||"";evI.querySelector(".ce-tx").style.fontSize=(15*ts)+"px";evI.querySelector(".ce-sr").textContent=pr.evidenceSource||"";[clI,evI].forEach(function(el){el.querySelectorAll(".ce-md,.ce-dt,.ce-v").forEach(function(x){x.remove();});});if(pr.claimMedia){clI.insertAdjacentHTML("beforeend",mkM(pr.claimMedia,pr.claimMediaType));wPB(clI);}if(pr.evidenceMedia){evI.insertAdjacentHTML("beforeend",mkM(pr.evidenceMedia,pr.evidenceMediaType));wPB(evI);}if(pr.evidenceDetail){var d=document.createElement("div");d.className="ce-dt";d.textContent=pr.evidenceDetail;d.style.fontSize=(12*ts)+"px";evI.appendChild(d);}var v=document.createElement("div");v.className="ce-v ce-v-"+pr.verdict;v.textContent=vL[pr.verdict]||"";evI.appendChild(v);requestAnimationFrame(up);}up();})();';
+    var b64=btoa(unescape(encodeURIComponent(js)));
+    var code='<style>'+css+'</style>\n<div id="'+uid+'">\n<div class="ce-s">\n<div class="ce-h">'+(title?'<h1>'+esc(title)+'</h1>':'')+(subtitle?'<p>'+esc(subtitle)+'</p>':'')+'</div>\n<div class="ce-c"></div>\n<div class="ce-sp">\n<div class="ce-si ce-cl"><div class="ce-in"><div class="ce-lb">'+esc(claimLbl)+'</div><div class="ce-sr"></div><div class="ce-tx"></div></div></div>\n<div class="ce-dv"></div><div class="ce-vs">VS</div>\n<div class="ce-si ce-ev"><div class="ce-in"><div class="ce-lb">'+esc(evidLbl)+'</div><div class="ce-sr"></div><div class="ce-tx"></div></div></div>\n</div>\n<div class="ce-nav">'+dotsHTML+'</div>\n</div>\n</div>\n<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="eval(atob(\''+b64+'\'))">';
+    document.getElementById('exportCode').value=code;localStorage.setItem('disco_claim-evidence_export',code);if(!_fromPlanner){document.getElementById('exportModal').classList.add('active')};
+}
+function closeModal(){document.getElementById('exportModal').classList.remove('active');}
+function copyCode(){var c=document.getElementById('exportCode');if(!c.value){generateExport();return;}c.select();document.execCommand('copy');discoAlert('Copied!');}
+function downloadCode(){var c=document.getElementById('exportCode').value;if(!c){generateExport();return;}var f=prompt('Save as:','claim-evidence');if(!f)return;var b=new Blob([c],{type:'text/html'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=f.replace(/[^a-z0-9_-]/gi,'_')+'.html';a.click();}
+function downloadCodeTxt(){var c=document.getElementById('exportCode').value;if(!c){discoAlert('Generate code first');return;}var f=prompt('Save as:','claim-evidence');if(!f)return;var b=new Blob([c],{type:'text/plain'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=f.replace(/[^a-z0-9_-]/gi,'_')+'.txt';a.click();}
+function sendToStackBuilder(){var _em=document.getElementById('exportModal');if(_em){_em.classList.remove('active');_em.classList.remove('open');}var c=document.getElementById('exportCode').value;if(!c){discoAlert('Generate HTML first');return;}var q=JSON.parse(localStorage.getItem('disco_stack_queue')||'[]');q.push({name:'Claim vs Evidence',html:c,timestamp:Date.now()});localStorage.setItem('disco_stack_queue',JSON.stringify(q));discoStackSend();}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+window.addEventListener('DOMContentLoaded',function(){setTimeout(function(){loadState();if(pairs.length===0){
+addPair({claimText:'"The factory was abandoned when the fire started. No workers were inside."',claimSource:'@LocalNews247 — shared 45,000 times',claimMedia:'',claimMediaType:'image',evidenceText:'Shift records show 34 workers clocked in. Emergency services rescued 12 people from the building.',evidenceSource:'Fire Department incident report, employee timesheets',evidenceMedia:'',evidenceMediaType:'image',evidenceDetail:'Cross-referenced payroll system timestamps with fire department dispatch logs.',verdict:'false',textScale:100,claimOffY:0,evidOffY:0});
+addPair({claimText:'"Fire department response time was over 45 minutes."',claimSource:'Viral Facebook post',claimMedia:'',claimMediaType:'image',evidenceText:'Dispatch records show first unit arrived in 8 minutes. Full response took 14 minutes.',evidenceSource:'Fire Department CAD records',evidenceMedia:'',evidenceMediaType:'image',evidenceDetail:'The 45-minute figure appears to reference time until fire was fully contained, not response time.',verdict:'misleading',textScale:100,claimOffY:0,evidOffY:0});
+addPair({claimText:'"Building had failed its last three safety inspections."',claimSource:'Shared across multiple platforms',claimMedia:'',claimMediaType:'image',evidenceText:'Two failures in 18 months. Third inspection passed with minor violations.',evidenceSource:'City Building Department records (FOIA)',evidenceMedia:'',evidenceMediaType:'image',evidenceDetail:'The "three failures" claim originates from a misreading of the inspection log.',verdict:'partly',textScale:100,claimOffY:0,evidOffY:0});}updatePreview();},150);});
+(function(){var p=location.pathname.split('/').pop()||'index.html';document.querySelectorAll('#disco-nav a').forEach(function(a){if(a.getAttribute('href')===p){a.style.color='#4a9eff';a.style.borderBottom='2px solid #4a9eff';}});})();
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

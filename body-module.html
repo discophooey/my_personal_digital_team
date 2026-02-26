@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrolltastic Body Module</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); padding-top: 41px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+.app { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 41px); }
+
+.controls { background: var(--bg-primary); overflow-y: auto; padding: 20px; border-right: 1px solid var(--border); }
+.preview-wrap { display: flex; flex-direction: column; overflow: hidden; }
+.preview-header { padding: 0 16px; height: 34px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-secondary); border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+.preview-header span { color: var(--text-dim); font-size: 9px; }
+.preview-scroll { flex: 1; overflow-y: auto; background: var(--bg-deep); }
+.preview-container { position: relative; }
+.preview-stage { position: sticky; top: 0; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.preview-body { max-width: 800px; margin: 0 auto; padding: 40px 20px; transition: max-width 0.3s; }
+.preview-body.with-image { max-width: 1100px; }
+.preview-content { display: flex; gap: 40px; align-items: flex-start; }
+.preview-content.img-left { flex-direction: row; }
+.preview-content.img-right { flex-direction: row-reverse; }
+.preview-content.no-image { display: block; }
+.preview-text-col { flex: 1; max-width: 650px; }
+.preview-img-col { width: 400px; flex-shrink: 0; }
+.preview-img-wrap { position: relative; cursor: pointer; }
+.preview-img-wrap img { width: 100%; border-radius: 6px; display: block; }
+.preview-img-wrap::after { content: '⤢'; position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.7); color: #fff; width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: 0; transition: opacity 0.2s; }
+.preview-img-wrap:hover::after { opacity: 1; }
+.preview-caption { font-size: 12px; color: #666; margin-top: 8px; line-height: 1.4; }
+.preview-module-caption { font-size: 12px; color: #666; margin-top: 20px; padding-top: 20px; border-top: 1px solid #333; }
+.preview-text { line-height: 1.7; color: #ccc; }
+.preview-text h2 { font-size: 24px; color: #fff; margin-bottom: 16px; font-weight: 600; }
+.preview-text h3 { font-size: 20px; color: #fff; margin: 24px 0 12px; font-weight: 600; }
+.preview-text p { margin-bottom: 16px; }
+.preview-text strong { color: #fff; }
+.preview-text em { font-style: italic; }
+
+.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; cursor: pointer; }
+.lightbox.active { display: flex; }
+.lightbox img { max-width: 90%; max-height: 80vh; border-radius: 8px; }
+.lightbox-caption { color: #888; font-size: 14px; margin-top: 16px; max-width: 600px; text-align: center; }
+.lightbox-close { position: absolute; top: 20px; right: 20px; background: #333; border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 20px; padding: 0; margin: 0; }
+
+.module-title { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em; }
+.module-title span { color: var(--accent); }
+
+.range-val { font-family: var(--mono); font-size: 9px; color: var(--accent); float: right; text-transform: none; letter-spacing: 0; }
+
+.controls > h2 { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; transition: all .15s; }
+.controls > h2:hover { border-color: var(--border-light); background: var(--bg-tertiary); }
+.controls > h2::after { content: '▾'; font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+.controls > h2.collapsed::after { transform: rotate(-90deg); }
+
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0 !important; }
+.control-group { margin-bottom: 10px; }
+.control-group label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.control-group input[type="text"], .control-group input[type="url"], .control-group input[type="number"], .control-group select, .control-group textarea { width: 100%; padding: 7px 10px; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); border-radius: 6px; font-family: var(--mono); font-size: 11px; outline: none; transition: border-color .15s; }
+.control-group input[type="text"]:focus, .control-group input[type="url"]:focus, .control-group input[type="number"]:focus, .control-group select:focus, .control-group textarea:focus { border-color: var(--accent-dim); }
+.control-group input[type="color"] { width: 36px; height: 24px; border: 1px solid var(--border); background: var(--bg-tertiary); cursor: pointer; border-radius: 4px; padding: 1px; }
+.control-group input[type="checkbox"] { width: auto; margin-right: 6px; accent-color: var(--accent); }
+.control-group textarea { min-height: 150px; line-height: 1.5; }
+
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 3px; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+
+.inline-group { display: flex; gap: 8px; align-items: center; }
+.inline-group > * { flex: 1; }
+button { width: 100%; padding: 8px 14px; font-family: var(--mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: var(--accent); border: 1px solid var(--accent); color: #0a0a0a; border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: all .15s; }
+button:hover { opacity: 0.85; }
+button.secondary { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+button.danger { background: #c0392b; color: #fff; border-color: #c0392b; }
+button.danger:hover { background: #e74c3c; }
+.toolbar { display: flex; gap: 4px; margin-bottom: 8px; }
+.toolbar button { width: auto; padding: 6px 10px; margin: 0; font-size: 12px; }
+.save-load-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.save-load-bar button { flex: 1; margin: 0; }
+.checkbox-row { display: flex; align-items: center; margin-bottom: 12px; }
+.checkbox-row label { margin: 0; color: var(--text-secondary); font-size: 12px; font-family: var(--mono); }
+
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+.modal.active { display: flex; }
+.modal-content { background: var(--bg-secondary); border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h1 { color: var(--accent); font-family: var(--mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+.modal-close { background: none; border: none; color: #666; font-size: 28px; cursor: pointer; width: auto; padding: 0; margin: 0; }
+textarea.code { width: 100%; height: 200px; background: #0a0a0a; border: 1px solid #333; color: #4a9eff; font-family: var(--mono); font-size: 11px; padding: 12px; border-radius: 6px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-actions button { flex: 1; }
+.saved-list { max-height: 200px; overflow-y: auto; margin: 10px 0; }
+.saved-item { background: var(--bg-tertiary); padding: 10px 12px; border-radius: 6px; margin-bottom: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.saved-item:hover { background: var(--border); }
+.saved-item .name { color: var(--text-primary); }
+.saved-item .date { color: var(--text-dim); font-size: 11px; font-family: var(--mono); }
+.saved-item .delete { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px 8px; margin: 0; width: auto; }
+.saved-item .delete:hover { color: #e74c3c; }
+
+@media(max-width:768px) {
+    .preview-content { flex-direction: column !important; }
+    .preview-img-col { width: 100%; }
+}
+
+/* Disco Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--bg-primary);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;font-family:var(--mono);">
+<a href="index.html" style="padding:10px 16px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.5px;">&#8592; Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Zoom Detail</a>
+<a href="text-scroll.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Text Scroll</a>
+<a href="chapter-marker.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chapter Marker</a>
+<a href="key-facts.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Key Facts</a>
+<a href="body-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Body Module</a>
+<a href="epistemic-text.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Epistemic Text</a>
+<a href="adversarial-verification.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Adversarial</a>
+<a href="silence-mapping.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Silence Map</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:var(--accent)!important;background:var(--bg-secondary);}</style>
+<div class="app" id="app">
+    <div class="controls">
+        <div class="module-title">Body <span>Module</span></div>
+
+        <div class="save-load-bar">
+            <button class="secondary" onclick="openSaveModal()">Save</button>
+            <button class="secondary" onclick="openLoadModal()">Load</button>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Text Content</h2>
+        <div class="section">
+            <div class="toolbar">
+                <button class="secondary" onclick="insertTag('**','**')"><b>B</b></button>
+                <button class="secondary" onclick="insertTag('*','*')"><i>I</i></button>
+                <button class="secondary" onclick="insertTag('## ','')">H2</button>
+                <button class="secondary" onclick="insertTag('### ','')">H3</button>
+            </div>
+            <div class="control-group">
+                <label>Body Text (Markdown supported)</label>
+                <textarea id="bodyText" oninput="updatePreview()">## Headline Goes Here
+
+This is your body text. You can write **bold text** and *italic text* using simple markdown.
+
+### Subheading
+
+Continue writing your story here. The text will automatically wrap and maintain proper line height for readability.</textarea>
+            </div>
+            <div class="control-group">
+                <label>Text Alignment</label>
+                <select id="textAlign" onchange="updatePreview()">
+                    <option value="left">Left</option>
+                    <option value="center">Center</option>
+                    <option value="right">Right</option>
+                </select>
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Image</h2>
+        <div class="section">
+            <div class="checkbox-row">
+                <input type="checkbox" id="imageEnabled" checked onchange="updatePreview()">
+                <label for="imageEnabled">Enable Image</label>
+            </div>
+            <div id="imageSettings">
+                <div class="control-group">
+                    <label>Image URL</label>
+                    <input type="url" id="imageUrl" placeholder="https://...">
+                    <button class="secondary" onclick="loadImage()" style="margin-top:8px;">Load Image</button>
+                </div>
+                <div class="control-group">
+                    <label>Image Caption</label>
+                    <input type="text" id="imageCaption" placeholder="Photo credit / description" oninput="updatePreview()">
+                </div>
+                <div class="control-group">
+                    <label>Image Position (Desktop)</label>
+                    <select id="imagePosition" onchange="updatePreview()">
+                        <option value="right">Right of text</option>
+                        <option value="left">Left of text</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Image Y Offset <span class="range-val" id="imgOffsetYVal">0px</span></label>
+                    <input type="range" id="imgOffsetY" min="-200" max="200" value="0" oninput="document.getElementById('imgOffsetYVal').textContent=this.value+'px'; updatePreview();">
+                    <div style="font-size:10px;color:#666;margin-top:4px;">Shift image up/down relative to text</div>
+                </div>
+                <div class="control-group">
+                    <label>Image Scale <span class="range-val" id="imgScaleVal">1.0x</span></label>
+                    <input type="range" id="imgScale" min="0.5" max="2" step="0.05" value="1" oninput="document.getElementById('imgScaleVal').textContent=parseFloat(this.value).toFixed(2)+'x'; updatePreview();">
+                </div>
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Style</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Text Color</label>
+                <input type="color" id="textColor" value="#cccccc" onchange="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Headline Color</label>
+                <input type="color" id="headlineColor" value="#ffffff" onchange="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Background Color</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="color" id="bgColor" value="#0a0a0a" onchange="updatePreview()">
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="bgTransparent" checked onchange="updatePreview()"> Transparent</label>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Font Size (px)</label>
+                <input type="range" id="fontSize" min="14" max="22" value="17" oninput="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Max Width (px)</label>
+                <input type="number" id="maxWidth" value="800" min="400" max="1200" oninput="updatePreview()">
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Layout</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Scroll Duration <span class="range-val" id="scrollDurVal">200%</span></label>
+                <input type="range" id="scrollDuration" min="100" max="500" value="200" oninput="document.getElementById('scrollDurVal').textContent=this.value+'%'; updatePreview();">
+            </div>
+            <div class="control-group">
+                <label>Minimum Height <span class="range-val" id="minHeightVal">50vh</span></label>
+                <input type="range" id="minHeight" min="0" max="100" value="50" oninput="document.getElementById('minHeightVal').textContent=this.value+'vh'; updatePreview();">
+            </div>
+            <div class="inline-group">
+                <div class="control-group">
+                    <label>Desktop Top Offset (px)</label>
+                    <input type="number" id="desktopOffset" value="50" min="0" max="200">
+                </div>
+                <div class="control-group">
+                    <label>Mobile Top Offset (px)</label>
+                    <input type="number" id="mobileOffset" value="200" min="0" max="300">
+                </div>
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Caption</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Caption Text</label>
+                <input type="text" id="captionText" value="Article-style text with optional inline image. Supports markdown formatting with expandable lightbox for images." oninput="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Credit</label>
+                <input type="text" id="captionCredit" value="Marshall Ritzel" oninput="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Caption Size (px)</label>
+                <input type="range" id="captionSize" min="10" max="16" value="12" oninput="updatePreview();">
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Export</h2>
+        <div class="section">
+            <button onclick="generateExport()">Generate HTML</button>
+            <button class="danger" onclick="resetModule()">Reset</button>
+        </div>
+    </div>
+
+    <div class="preview-wrap">
+        <div class="preview-header">
+            <span>Preview</span>
+        </div>
+        <div class="preview-scroll" id="previewScroll">
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-stage" id="previewStage">
+                    <div class="preview-body" id="previewBody">
+                        <div class="preview-content" id="previewContent">
+                            <div class="preview-text-col">
+                                <div class="preview-text" id="previewText"></div>
+                            </div>
+                            <div class="preview-img-col" id="previewImgCol" style="display:none;">
+                                <div class="preview-img-wrap" onclick="openLightbox()">
+                                    <img id="previewImg" src="" alt="">
+                                </div>
+                                <div class="preview-caption" id="previewCaption"></div>
+                            </div>
+                        </div>
+                        <div class="preview-module-caption" id="previewModuleCaption"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">&#10005;</button>
+    <img id="lightboxImg" src="" alt="">
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <div class="modal-header"><h1>Export HTML</h1><button class="modal-close" onclick="closeModal('exportModal')">&times;</button></div>
+        <textarea class="code" id="exportCode" readonly></textarea>
+        <div class="modal-actions">
+            <button onclick="copyCode()">&#128203; Copy</button>
+            <button onclick="downloadCode()">&#11015;&#65039; Download</button>
+            <button onclick="downloadCodeTxt()" class="secondary">&#128196; .txt</button>
+            <button onclick="sendToStackBuilder()">&#128218; Stack</button>
+            <button class="secondary" onclick="closeModal('exportModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Save Modal -->
+<div class="modal" id="saveModal">
+    <div class="modal-content">
+        <div class="modal-header"><h1>Save Project</h1><button class="modal-close" onclick="closeModal('saveModal')">&times;</button></div>
+        <div class="control-group">
+            <label>Project Name</label>
+            <input type="text" id="saveName" placeholder="My Body Module">
+        </div>
+        <div class="modal-actions">
+            <button onclick="saveProject()">Save</button>
+            <button class="secondary" onclick="closeModal('saveModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Load Modal -->
+<div class="modal" id="loadModal">
+    <div class="modal-content">
+        <div class="modal-header"><h1>Load Project</h1><button class="modal-close" onclick="closeModal('loadModal')">&times;</button></div>
+        <div class="saved-list" id="savedList"></div>
+        <div class="modal-actions">
+            <button class="secondary" onclick="closeModal('loadModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var _fromPlanner=new URLSearchParams(location.search).get('planner')==='1';
+
+var STORAGE_KEY = 'disco_body-module';
+var PROJECTS_KEY = 'disco_body-module_projects';
+var loadedImageUrl = null;
+
+function toggleSection(el) {
+    el.classList.toggle('collapsed');
+    el.nextElementSibling.classList.toggle('collapsed');
+}
+
+function insertTag(before, after) {
+    var ta = document.getElementById('bodyText');
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    var text = ta.value;
+    var selected = text.substring(start, end);
+    ta.value = text.substring(0, start) + before + selected + after + text.substring(end);
+    ta.focus();
+    ta.selectionStart = start + before.length;
+    ta.selectionEnd = start + before.length + selected.length;
+    updatePreview();
+}
+
+function loadImage() {
+    var url = document.getElementById('imageUrl').value.trim();
+    if (!url) { discoAlert('Enter an image URL first'); return; }
+    if (url.includes('github.com') && url.includes('/blob/')) {
+        url = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/').split('?')[0];
+    }
+    var img = new Image();
+    img.onload = function() {
+        loadedImageUrl = url;
+        updatePreview();
+    };
+    img.onerror = function() { discoAlert('Could not load image. Check the URL.'); };
+    img.src = url;
+}
+
+function parseMarkdown(text) {
+    return text
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/^(?!<[h|p])(.+)$/gm, '<p>$1</p>')
+        .replace(/<p><\/p>/g, '')
+        .replace(/<p>(<h[23]>)/g, '$1')
+        .replace(/(<\/h[23]>)<\/p>/g, '$1');
+}
+
+function updatePreview() {
+    var container = document.getElementById('previewContainer');
+    var stage = document.getElementById('previewStage');
+    var body = document.getElementById('previewBody');
+    var content = document.getElementById('previewContent');
+    var textEl = document.getElementById('previewText');
+    var imgCol = document.getElementById('previewImgCol');
+    var img = document.getElementById('previewImg');
+    var caption = document.getElementById('previewCaption');
+    var scroll = document.getElementById('previewScroll');
+    var moduleCaption = document.getElementById('previewModuleCaption');
+
+    var bodyText = document.getElementById('bodyText').value;
+    var textAlign = document.getElementById('textAlign').value;
+    var imageEnabled = document.getElementById('imageEnabled').checked;
+    var imageCaption = document.getElementById('imageCaption').value;
+    var imagePosition = document.getElementById('imagePosition').value;
+    var textColor = document.getElementById('textColor').value;
+    var headlineColor = document.getElementById('headlineColor').value;
+    var bgColor = document.getElementById('bgColor').value;
+    var bgTransparent = document.getElementById('bgTransparent').checked;
+    var fontSize = document.getElementById('fontSize').value;
+    var maxWidth = document.getElementById('maxWidth').value;
+    var captionText = document.getElementById('captionText').value;
+    var captionCredit = document.getElementById('captionCredit').value;
+    var captionSize = document.getElementById('captionSize').value;
+    var scrollDuration = parseInt(document.getElementById('scrollDuration').value) / 100;
+
+    document.getElementById('imageSettings').style.display = imageEnabled ? 'block' : 'none';
+
+    stage.style.background = bgTransparent ? 'transparent' : bgColor;
+    textEl.style.textAlign = textAlign;
+    textEl.style.color = textColor;
+    textEl.style.fontSize = fontSize + 'px';
+
+    // Toggle layout based on image
+    var showImage = imageEnabled && loadedImageUrl;
+    if (showImage) {
+        body.classList.add('with-image');
+        body.style.maxWidth = '1100px';
+    } else {
+        body.classList.remove('with-image');
+        body.style.maxWidth = maxWidth + 'px';
+    }
+
+    var html = parseMarkdown(bodyText);
+    textEl.innerHTML = html;
+    textEl.querySelectorAll('h2, h3').forEach(function(h) {
+        h.style.color = headlineColor;
+    });
+    textEl.querySelectorAll('strong').forEach(function(s) {
+        s.style.color = headlineColor;
+    });
+
+    if (showImage) {
+        imgCol.style.display = 'block';
+        img.src = loadedImageUrl;
+        caption.textContent = imageCaption;
+        caption.style.display = imageCaption ? 'block' : 'none';
+        content.className = 'preview-content img-' + imagePosition;
+        var imgOffsetY = parseInt(document.getElementById('imgOffsetY').value) || 0;
+        var imgScale = parseFloat(document.getElementById('imgScale').value) || 1;
+        imgCol.style.transform = 'translateY(' + imgOffsetY + 'px) scale(' + imgScale + ')';
+        imgCol.style.transformOrigin = 'top center';
+    } else {
+        imgCol.style.display = 'none';
+        imgCol.style.transform = '';
+        content.className = 'preview-content no-image';
+    }
+
+    // Module caption
+    var fullCaption = captionText + (captionText && captionCredit ? ' · ' : '') + captionCredit;
+    moduleCaption.textContent = fullCaption;
+    moduleCaption.style.fontSize = captionSize + 'px';
+    moduleCaption.style.display = fullCaption ? 'block' : 'none';
+
+    // Set container height for scroll behavior
+    setTimeout(function() {
+        var bodyHeight = body.offsetHeight;
+        var stageHeight = stage.offsetHeight;
+        var scrollHeight = Math.max(stageHeight, bodyHeight * scrollDuration);
+        container.style.height = scrollHeight + 'px';
+    }, 50);
+
+    saveState();
+}
+
+// Scroll-driven text position in preview
+var previewScrollHandler = null;
+function setupPreviewScroll() {
+    var scroll = document.getElementById('previewScroll');
+    if (previewScrollHandler) {
+        scroll.removeEventListener('scroll', previewScrollHandler);
+    }
+    previewScrollHandler = function() {
+        var container = document.getElementById('previewContainer');
+        var body = document.getElementById('previewBody');
+        var stage = document.getElementById('previewStage');
+
+        var scrollTop = scroll.scrollTop;
+        var containerTop = container.offsetTop;
+        var scrolled = scrollTop - containerTop;
+        var scrollRange = container.offsetHeight - stage.offsetHeight;
+
+        if (scrollRange <= 0) return;
+
+        var progress = Math.max(0, Math.min(1, scrolled / scrollRange));
+
+        // Calculate how much the body needs to scroll up
+        var bodyHeight = body.offsetHeight;
+        var stageHeight = stage.offsetHeight;
+        var overflow = bodyHeight - stageHeight;
+
+        if (overflow > 0) {
+            var translateY = -progress * overflow;
+            body.style.transform = 'translateY(' + translateY + 'px)';
+        } else {
+            body.style.transform = 'translateY(0)';
+        }
+    };
+    scroll.addEventListener('scroll', previewScrollHandler);
+}
+setupPreviewScroll();
+
+function openLightbox() {
+    var imageEnabled = document.getElementById('imageEnabled').checked;
+    if (!imageEnabled || !loadedImageUrl) return;
+    document.getElementById('lightboxImg').src = loadedImageUrl;
+    document.getElementById('lightboxCaption').textContent = document.getElementById('imageCaption').value;
+    document.getElementById('lightbox').classList.add('active');
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
+
+function resetModule() {
+    discoConfirm('Reset all settings to defaults?', function(){
+document.getElementById('bodyText').value = '## Headline Goes Here\n\nThis is your body text.';
+    document.getElementById('textAlign').value = 'left';
+    document.getElementById('imageEnabled').checked = true;
+    document.getElementById('imageUrl').value = '';
+    document.getElementById('imageCaption').value = '';
+    document.getElementById('imagePosition').value = 'right';
+    document.getElementById('textColor').value = '#cccccc';
+    document.getElementById('headlineColor').value = '#ffffff';
+    document.getElementById('bgColor').value = '#0a0a0a';
+    document.getElementById('fontSize').value = 17;
+    document.getElementById('maxWidth').value = 800;
+    document.getElementById('desktopOffset').value = 50;
+    document.getElementById('mobileOffset').value = 200;
+    document.getElementById('scrollDuration').value = 200;
+    document.getElementById('scrollDurVal').textContent = '200%';
+    document.getElementById('minHeight').value = 50;
+    document.getElementById('minHeightVal').textContent = '50vh';
+    document.getElementById('captionText').value = 'Article-style text with optional inline image. Supports markdown formatting with expandable lightbox for images.';
+    document.getElementById('captionCredit').value = 'Marshall Ritzel';
+    document.getElementById('captionSize').value = 12;
+    document.getElementById('imgOffsetY').value = 0;
+    document.getElementById('imgOffsetYVal').textContent = '0px';
+    document.getElementById('imgScale').value = 1;
+    document.getElementById('imgScaleVal').textContent = '1.00x';
+    loadedImageUrl = null;
+    updatePreview();
+});
+}
+
+function generateExport() {
+    var uid = 'bm' + Math.random().toString(36).substr(2, 9);
+    var bodyText = document.getElementById('bodyText').value;
+    var textAlign = document.getElementById('textAlign').value;
+    var imageEnabled = document.getElementById('imageEnabled').checked;
+    var imageCaption = document.getElementById('imageCaption').value;
+    var imagePosition = document.getElementById('imagePosition').value;
+    var textColor = document.getElementById('textColor').value;
+    var headlineColor = document.getElementById('headlineColor').value;
+    var bgColorValue = document.getElementById('bgColor').value;
+    var bgTransparent = document.getElementById('bgTransparent').checked;
+    var bgColor = bgTransparent ? 'transparent' : bgColorValue;
+    var fontSize = document.getElementById('fontSize').value;
+    var maxWidth = document.getElementById('maxWidth').value;
+    var desktopOffset = document.getElementById('desktopOffset').value || 50;
+    var mobileOffset = document.getElementById('mobileOffset').value || 200;
+    var scrollDuration = parseInt(document.getElementById('scrollDuration').value) / 100;
+    var captionText = document.getElementById('captionText').value;
+    var captionCredit = document.getElementById('captionCredit').value;
+    var captionSize = document.getElementById('captionSize').value;
+
+    var html = parseMarkdown(bodyText);
+    var showImage = imageEnabled && loadedImageUrl;
+    var fullCaption = captionText + (captionText && captionCredit ? ' · ' : '') + captionCredit;
+
+    var imgOffsetY = parseInt(document.getElementById('imgOffsetY').value) || 0;
+    var imgScale = parseFloat(document.getElementById('imgScale').value) || 1;
+
+    var imgHTML = '';
+    var imgCSS = '';
+    var bodyMaxWidth = showImage ? '1100' : maxWidth;
+
+    if (showImage) {
+        var imgTransform = '';
+        if (imgOffsetY !== 0 || imgScale !== 1) {
+            var parts = [];
+            if (imgOffsetY !== 0) parts.push('translateY(' + imgOffsetY + 'px)');
+            if (imgScale !== 1) parts.push('scale(' + imgScale + ')');
+            imgTransform = 'transform:' + parts.join(' ') + ';transform-origin:top center;';
+        }
+
+        imgHTML = '<div class="bm-img-col">\n' +
+            '<div class="bm-img-wrap" onclick="document.getElementById(\'' + uid + 'lb\').classList.add(\'active\')">\n' +
+            '<img src="' + loadedImageUrl + '" alt="">\n' +
+            '</div>\n' +
+            (imageCaption ? '<div class="bm-caption">' + imageCaption + '</div>\n' : '') +
+            '</div>';
+
+        imgCSS = '#' + uid + ' .bm-img-col{width:400px;flex-shrink:0;' + imgTransform + '}\n' +
+            '#' + uid + ' .bm-img-wrap{position:relative;cursor:pointer}\n' +
+            '#' + uid + ' .bm-img-wrap img{width:100%;border-radius:6px;display:block}\n' +
+            '#' + uid + ' .bm-img-wrap::after{content:"⤢";position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.7);color:#fff;width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;opacity:0;transition:opacity 0.2s}\n' +
+            '#' + uid + ' .bm-img-wrap:hover::after{opacity:1}\n' +
+            '#' + uid + ' .bm-caption{font-size:12px;color:#666;margin-top:8px;line-height:1.4}\n' +
+            '#' + uid + 'lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;align-items:center;justify-content:center;flex-direction:column;cursor:pointer}\n' +
+            '#' + uid + 'lb.active{display:flex}\n' +
+            '#' + uid + 'lb img{max-width:90%;max-height:80vh;border-radius:8px}\n' +
+            '#' + uid + 'lb .lb-cap{color:#888;font-size:14px;margin-top:16px;max-width:600px;text-align:center}\n' +
+            '#' + uid + 'lb .lb-close{position:absolute;top:20px;right:20px;background:#333;border:none;color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:20px}\n';
+    }
+
+    var flexDir = showImage ? (imagePosition === 'left' ? 'row' : 'row-reverse') : '';
+
+    var moduleCaptionCSS = fullCaption ? '#' + uid + ' .bm-module-caption{font-size:' + captionSize + 'px;color:#666;margin-top:20px;padding-top:20px;border-top:1px solid #333}\n' : '';
+    var moduleCaptionHTML = fullCaption ? '<div class="bm-module-caption">' + fullCaption + '</div>\n' : '';
+
+    var code = '<style>\n' +
+'#' + uid + '{position:relative;background:' + bgColor + '}\n' +
+'#' + uid + ' .bm-stage{position:-webkit-sticky;position:sticky;top:' + desktopOffset + 'px;height:calc(100vh - ' + desktopOffset + 'px);overflow:hidden;display:flex;align-items:center;justify-content:center}\n' +
+'#' + uid + ' .bm-body{max-width:' + bodyMaxWidth + 'px;padding:40px 20px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;will-change:transform}\n' +
+'#' + uid + ' .bm-content{display:flex;gap:40px;align-items:flex-start;' + (showImage ? 'flex-direction:' + flexDir : '') + '}\n' +
+'#' + uid + ' .bm-text{flex:1;' + (showImage ? 'max-width:650px;' : '') + 'line-height:1.7;color:' + textColor + ';font-size:' + fontSize + 'px;text-align:' + textAlign + '}\n' +
+'#' + uid + ' .bm-text h2{font-size:24px;color:' + headlineColor + ';margin-bottom:16px;font-weight:600}\n' +
+'#' + uid + ' .bm-text h3{font-size:20px;color:' + headlineColor + ';margin:24px 0 12px;font-weight:600}\n' +
+'#' + uid + ' .bm-text p{margin-bottom:16px}\n' +
+'#' + uid + ' .bm-text strong{color:' + headlineColor + '}\n' +
+imgCSS +
+moduleCaptionCSS +
+'@media(max-width:768px){#' + uid + ' .bm-stage{top:' + mobileOffset + 'px;height:calc(100vh - ' + mobileOffset + 'px)}#' + uid + ' .bm-content{flex-direction:column}' + (showImage ? '#' + uid + ' .bm-img-col{width:100%;transform:none}#' + uid + ' .bm-text{max-width:none}' : '') + '}\n' +
+'</style>\n' +
+'<div id="' + uid + '">\n' +
+'<div class="bm-stage">\n' +
+'<div class="bm-body">\n' +
+'<div class="bm-content">\n' +
+'<div class="bm-text">' + html + '</div>\n' +
+imgHTML +
+'</div>\n' +
+moduleCaptionHTML +
+'</div>\n' +
+'</div>\n' +
+'</div>\n' +
+(showImage ? '<div id="' + uid + 'lb" onclick="this.classList.remove(\'active\')">\n' +
+'<button class="lb-close">✕</button>\n' +
+'<img src="' + loadedImageUrl + '">\n' +
+(imageCaption ? '<div class="lb-cap">' + imageCaption + '</div>\n' : '') +
+'</div>\n' : '') +
+'<scr' + 'ipt>\n' +
+'(function(){\n' +
+'var wrap=document.getElementById("' + uid + '");\n' +
+'var stage=wrap.querySelector(".bm-stage");\n' +
+'var body=wrap.querySelector(".bm-body");\n' +
+'var scrollMult=' + scrollDuration + ';\n' +
+'function setHeight(){\n' +
+'var bodyH=body.offsetHeight;\n' +
+'var stageH=stage.offsetHeight;\n' +
+'var scrollH=Math.max(stageH,bodyH*scrollMult);\n' +
+'wrap.style.height=scrollH+"px";\n' +
+'}\n' +
+'setHeight();window.addEventListener("resize",setHeight);\n' +
+'function upd(){\n' +
+'var extP=window.SCROLLTASTIC_PROGRESS&&window.SCROLLTASTIC_PROGRESS["' + uid + '"];\n' +
+'var progress;\n' +
+'if(extP!==undefined){progress=extP;}else{\n' +
+'var rect=wrap.getBoundingClientRect();\n' +
+'var scrolled=Math.max(0,-rect.top);\n' +
+'var scrollRange=wrap.offsetHeight-window.innerHeight;\n' +
+'progress=scrollRange>0?scrolled/scrollRange:0;\n' +
+'}\n' +
+'progress=Math.max(0,Math.min(1,progress));\n' +
+'var bodyH=body.offsetHeight;\n' +
+'var stageH=stage.offsetHeight;\n' +
+'var overflow=bodyH-stageH;\n' +
+'if(overflow>0){\n' +
+'var translateY=-progress*overflow;\n' +
+'body.style.transform="translateY("+translateY+"px)";\n' +
+'}else{\n' +
+'body.style.transform="translateY(0)";\n' +
+'}\n' +
+'requestAnimationFrame(upd);\n' +
+'}\n' +
+'upd();\n' +
+'})();\n' +
+'<\/scr' + 'ipt>';
+
+    document.getElementById('exportCode').value = code;localStorage.setItem('disco_body-module_export',code);
+    if(!_fromPlanner){document.getElementById('exportModal').classList.add('active')};
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function copyCode() {
+    var code = document.getElementById('exportCode');
+    code.select();
+    document.execCommand('copy');
+    discoAlert('Copied!');
+}
+
+function downloadCode() {
+    var code = document.getElementById('exportCode').value;
+    var filename = prompt('Save as:', 'body-module');
+    if (!filename) return;
+    var blob = new Blob([code], { type: 'text/html' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename.replace(/[^a-z0-9_-]/gi, '_') + '.html';
+    a.click();
+}
+
+function sendToStackBuilder() {var _em=document.getElementById('exportModal');if(_em){_em.classList.remove('active');_em.classList.remove('open');}
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate HTML first'); return; }
+    var queue = JSON.parse(localStorage.getItem('disco_stack_queue') || '[]');
+    queue.push({ name: 'Body Module', html: code, timestamp: Date.now() });
+    localStorage.setItem('disco_stack_queue', JSON.stringify(queue));
+    discoStackSend()
+}
+
+function openSaveModal() {
+    document.getElementById('saveName').value = '';
+    document.getElementById('saveModal').classList.add('active');
+}
+
+function openLoadModal() {
+    renderSavedList();
+    document.getElementById('loadModal').classList.add('active');
+}
+
+function saveProject() {
+    var name = document.getElementById('saveName').value.trim();
+    if (!name) { discoAlert('Enter a project name'); return; }
+
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var data = getCurrentState();
+    data.name = name;
+    data.savedAt = Date.now();
+    data.id = 'proj_' + Date.now();
+
+    projects.unshift(data);
+    if (projects.length > 20) projects = projects.slice(0, 20);
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+
+    closeModal('saveModal');
+    discoAlert('Saved!');
+}
+
+function renderSavedList() {
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var html = '';
+    if (projects.length === 0) {
+        html = '<div style="color:#666;text-align:center;padding:20px;">No saved projects</div>';
+    } else {
+        projects.forEach(function(p) {
+            var date = new Date(p.savedAt).toLocaleDateString();
+            html += '<div class="saved-item">';
+            html += '<div onclick="loadProject(\'' + p.id + '\')"><span class="name">' + p.name + '</span><br><span class="date">' + date + '</span></div>';
+            html += '<button class="delete" onclick="event.stopPropagation();deleteProject(\'' + p.id + '\')">×</button>';
+            html += '</div>';
+        });
+    }
+    document.getElementById('savedList').innerHTML = html;
+}
+
+function loadProject(id) {
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var proj = projects.find(function(p) { return p.id === id; });
+    if (!proj) return;
+
+    document.getElementById('bodyText').value = proj.bodyText || '';
+    document.getElementById('textAlign').value = proj.textAlign || 'left';
+    document.getElementById('imageEnabled').checked = proj.imageEnabled !== false;
+    document.getElementById('imageUrl').value = proj.imageUrl || '';
+    document.getElementById('imageCaption').value = proj.imageCaption || '';
+    document.getElementById('imagePosition').value = proj.imagePosition || 'right';
+    document.getElementById('textColor').value = proj.textColor || '#cccccc';
+    document.getElementById('headlineColor').value = proj.headlineColor || '#ffffff';
+    document.getElementById('bgColor').value = proj.bgColor || '#0a0a0a';
+    document.getElementById('fontSize').value = proj.fontSize || 17;
+    document.getElementById('maxWidth').value = proj.maxWidth || 800;
+    document.getElementById('desktopOffset').value = proj.desktopOffset || 50;
+    document.getElementById('mobileOffset').value = proj.mobileOffset || 200;
+    document.getElementById('minHeight').value = proj.minHeight || 50;
+    document.getElementById('minHeightVal').textContent = (proj.minHeight || 50) + 'vh';
+    document.getElementById('captionText').value = proj.captionText || '';
+    document.getElementById('captionCredit').value = proj.captionCredit || '';
+    document.getElementById('captionSize').value = proj.captionSize || 12;
+    loadedImageUrl = proj.loadedImageUrl || null;
+
+    updatePreview();
+    closeModal('loadModal');
+}
+
+function deleteProject(id) {
+    discoConfirm('Delete this project?', function(){
+var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    projects = projects.filter(function(p) { return p.id !== id; });
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    renderSavedList();
+});
+}
+
+function getCurrentState() {
+    return {
+        bodyText: document.getElementById('bodyText').value,
+        textAlign: document.getElementById('textAlign').value,
+        imageEnabled: document.getElementById('imageEnabled').checked,
+        imageUrl: document.getElementById('imageUrl').value,
+        imageCaption: document.getElementById('imageCaption').value,
+        imagePosition: document.getElementById('imagePosition').value,
+        textColor: document.getElementById('textColor').value,
+        headlineColor: document.getElementById('headlineColor').value,
+        bgColor: document.getElementById('bgColor').value,
+        fontSize: document.getElementById('fontSize').value,
+        maxWidth: document.getElementById('maxWidth').value,
+        desktopOffset: document.getElementById('desktopOffset').value,
+        mobileOffset: document.getElementById('mobileOffset').value,
+        scrollDuration: document.getElementById('scrollDuration').value,
+        minHeight: document.getElementById('minHeight').value,
+        captionText: document.getElementById('captionText').value,
+        captionCredit: document.getElementById('captionCredit').value,
+        captionSize: document.getElementById('captionSize').value,
+        imgOffsetY: document.getElementById('imgOffsetY').value,
+        imgScale: document.getElementById('imgScale').value,
+        loadedImageUrl: loadedImageUrl
+    };
+}
+
+function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getCurrentState()));
+}
+
+function loadState() {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        var s = JSON.parse(saved);
+        document.getElementById('bodyText').value = s.bodyText || '## Headline Goes Here\n\nThis is your body text.';
+        document.getElementById('textAlign').value = s.textAlign || 'left';
+        document.getElementById('imageEnabled').checked = s.imageEnabled !== false;
+        document.getElementById('imageUrl').value = s.imageUrl || '';
+        document.getElementById('imageCaption').value = s.imageCaption || '';
+        document.getElementById('imagePosition').value = s.imagePosition || 'right';
+        document.getElementById('textColor').value = s.textColor || '#cccccc';
+        document.getElementById('headlineColor').value = s.headlineColor || '#ffffff';
+        document.getElementById('bgColor').value = s.bgColor || '#0a0a0a';
+        document.getElementById('fontSize').value = s.fontSize || 17;
+        document.getElementById('maxWidth').value = s.maxWidth || 800;
+        document.getElementById('desktopOffset').value = s.desktopOffset || 50;
+        document.getElementById('mobileOffset').value = s.mobileOffset || 200;
+        document.getElementById('scrollDuration').value = s.scrollDuration || 200;
+        document.getElementById('scrollDurVal').textContent = (s.scrollDuration || 200) + '%';
+        document.getElementById('minHeight').value = s.minHeight || 50;
+        document.getElementById('minHeightVal').textContent = (s.minHeight || 50) + 'vh';
+        document.getElementById('captionText').value = s.captionText || '';
+        document.getElementById('captionCredit').value = s.captionCredit || '';
+        document.getElementById('captionSize').value = s.captionSize || 12;
+        document.getElementById('imgOffsetY').value = s.imgOffsetY || 0;
+        document.getElementById('imgOffsetYVal').textContent = (s.imgOffsetY || 0) + 'px';
+        document.getElementById('imgScale').value = s.imgScale || 1;
+        document.getElementById('imgScaleVal').textContent = parseFloat(s.imgScale || 1).toFixed(2) + 'x';
+        loadedImageUrl = s.loadedImageUrl || null;
+    }
+    updatePreview();
+}
+
+loadState();
+
+function downloadCodeTxt() {
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate code first'); return; }
+    var filename = prompt('Save as:', 'body-module');
+    if (!filename) return;
+    var safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    var blob = new Blob([code], {type:'text/plain'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = safeName + '.txt';
+    a.click();
+}
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asset Exporter | Scrolltastic</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); padding-top: 41px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+.container { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 41px); }
+.controls { background: var(--bg-primary); padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); flex-shrink: 0; }
+.preview-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-deep); }
+.module-title { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em; }
+.module-title span { color: var(--accent); }
+
+h2 { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; transition: all .15s; }
+h2:hover { border-color: var(--border-light); background: var(--bg-tertiary); }
+h2::after { content: '\25be'; font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+h2.collapsed::after { transform: rotate(-90deg); }
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0; }
+
+.control-group { margin-bottom: 10px; }
+label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+input[type="text"], input[type="url"], input[type="number"], select, textarea {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary);
+    border-radius: 6px; font-family: var(--mono); font-size: 11px; outline: none; transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent-dim); }
+input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="color"] { width: 36px; height: 24px; border: 1px solid var(--border); background: var(--bg-tertiary); cursor: pointer; border-radius: 4px; padding: 1px; }
+input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent); }
+
+button {
+    width: 100%; padding: 8px 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--accent); border: 1px solid var(--accent); color: #0a0a0a; font-weight: 600;
+    border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: all .15s;
+}
+button:hover { opacity: 0.85; }
+button.secondary { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.row { display: flex; gap: 8px; align-items: flex-start; }
+.row > * { flex: 1; }
+.hint { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+.range-val { font-family: var(--mono); font-size: 9px; color: var(--accent); float: right; text-transform: none; letter-spacing: 0; }
+
+
+.subtitle { font-size: 12px; color: #666; margin-bottom: 24px; }
+.control-group input, .control-group select, .control-group textarea { width: 100%; padding: 10px 12px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-family: var(--mono); font-size: 11px; }
+.control-group textarea { min-height: 120px; font-family: monospace; font-size: 12px; resize: vertical; }
+.control-group input:focus, .control-group select:focus, .control-group textarea:focus { outline: none; border-color: #4a9eff; }
+button.primary { background: var(--accent); color: #0a0a0a; font-weight: 600; }
+button.primary:hover { background: #6bb3ff; }
+button.primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+.radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.radio-group label { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 13px; color: #ccc; }
+.radio-group input { display: none; }
+.radio-group input:checked + span { color: #4a9eff; }
+.radio-group label:has(input:checked) { border-color: #4a9eff; background: #4a9eff11; }
+
+.preview-header {
+    padding: 0 16px; height: 34px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+}
+.preview-header label { font-size: 9px; display: flex; align-items: center; gap: 5px; cursor: pointer; margin: 0; }
+.preview-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; overflow: hidden; min-height: 400px; }
+.preview-frame { background: #000; position: relative; overflow: hidden; min-width: 200px; min-height: 112px; }
+.preview-frame iframe { border: none; transform-origin: top left; display: block; background: #000; }
+
+.progress-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; }
+.progress-overlay.active { display: flex; }
+.progress-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 40px; text-align: center; max-width: 400px; }
+.progress-title { font-size: 18px; color: #fff; margin-bottom: 8px; }
+.progress-status { font-size: 14px; color: #888; margin-bottom: 24px; }
+.progress-bar { width: 300px; height: 8px; background: #2a2a2a; border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: #4a9eff; width: 0%; transition: width 0.1s; }
+.progress-percent { font-size: 24px; color: #4a9eff; margin-top: 16px; font-weight: 600; }
+.progress-cancel { margin-top: 24px; }
+
+.status-msg { padding: 12px; border-radius: 6px; font-size: 13px; margin-top: 16px; }
+.status-msg.error { background: #ff4a4a22; border: 1px solid #ff4a4a44; color: #ff6b6b; }
+.status-msg.success { background: #4aff4a22; border: 1px solid #4aff4a44; color: #6bff6b; }
+.status-msg.info { background: #4a9eff22; border: 1px solid #4a9eff44; color: #6bb3ff; }
+
+.specs { font-size: 11px; color: #666; margin-top: 8px; padding: 8px; background: #0a0a0a; border-radius: 4px; }
+.specs span { color: #888; }
+
+.ready-badge { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; background: #4aff4a22; border: 1px solid #4aff4a44; border-radius: 6px; font-size: 13px; color: #6bff6b; margin-bottom: 16px; }
+.ready-badge::before { content: '✓'; }
+
+.tip { font-size: 11px; color: #888; margin-top: 12px; padding: 10px; background: #0a0a0a; border-radius: 4px; border-left: 2px solid #4a9eff; line-height: 1.5; }
+
+/* Disco Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--bg-primary);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;font-family:var(--mono);">
+<a href="index.html" style="padding:10px 16px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.5px;">&#8592; Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Zoom Detail</a>
+<a href="text-scroll.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Text Scroll</a>
+<a href="chapter-marker.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chapter Marker</a>
+<a href="key-facts.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Key Facts</a>
+<a href="body-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Body Module</a>
+<a href="epistemic-text.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Epistemic Text</a>
+<a href="adversarial-verification.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Adversarial</a>
+<a href="silence-mapping.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Silence Map</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:var(--accent)!important;background:var(--bg-secondary);}</style>
+<div class="container" style="padding-top:45px;">
+    <div class="controls">
+        <div class="module-title">Asset <span>Exporter</span></div>
+        <p class="subtitle">Export scroll stories as PNG frames</p>
+        
+        <div class="ready-badge">Ready to export</div>
+        
+        <h2 onclick="toggleSection(this)">Source</h2>
+        <div class="section">
+        <div class="control-group">
+            <label>Paste Exported HTML</label>
+            <textarea id="htmlInput" placeholder="Paste your exported module or stack HTML here..."></textarea>
+        </div>
+        <button class="primary" onclick="loadPreview()" style="width:100%;">Load Preview</button>
+        </div>
+        <h2 onclick="toggleSection(this)">Export Settings</h2>
+        <div class="section">
+        <div class="control-group">
+            <label>Aspect Ratio</label>
+            <div class="radio-group">
+                <label><input type="radio" name="aspect" value="16:9" checked><span>16:9</span></label>
+                <label><input type="radio" name="aspect" value="9:16"><span>9:16</span></label>
+                <label><input type="radio" name="aspect" value="1:1"><span>1:1</span></label>
+            </div>
+            <div class="specs">
+                <span id="dimensionDisplay">1920 × 1080</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Duration</label>
+            <div class="radio-group">
+                <label><input type="radio" name="duration" value="5"><span>5s</span></label>
+                <label><input type="radio" name="duration" value="10" checked><span>10s</span></label>
+                <label><input type="radio" name="duration" value="15"><span>15s</span></label>
+                <label><input type="radio" name="duration" value="20"><span>20s</span></label>
+                <label id="autoDurationLabel" style="display:none;"><input type="radio" name="duration" value="0" id="autoDuration"><span id="autoDurationText">Auto</span></label>
+            </div>
+            <button class="secondary" id="calcAutoBtn" onclick="calcAutoDuration()" style="margin-top:8px;display:none;font-size:12px;padding:6px 12px;">Calculate Auto Duration</button>
+        </div>
+        
+        <div class="control-group">
+            <label>Frame Rate</label>
+            <div class="radio-group">
+                <label><input type="radio" name="fps" value="24"><span>24</span></label>
+                <label><input type="radio" name="fps" value="25"><span>25</span></label>
+                <label><input type="radio" name="fps" value="30" checked><span>30</span></label>
+            </div>
+            <div class="specs">
+                <span id="frameDisplay">300 frames total</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Scroll Easing</label>
+            <select id="easing">
+                <option value="linear">Linear (constant speed)</option>
+                <option value="easeInOut" selected>Ease In/Out (smooth start/stop)</option>
+                <option value="easeIn">Ease In (slow start)</option>
+                <option value="easeOut">Ease Out (slow end)</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>File Prefix</label>
+            <input type="text" id="filePrefix" value="frame" placeholder="frame">
+            <div class="specs">Output: <span id="filenamePreview">frame_0001.png</span></div>
+        </div>
+        
+        <div id="statusArea"></div>
+        
+        <button class="primary" id="renderBtn" onclick="startRender()" disabled style="width:100%;margin-top:24px;padding:14px;">
+            Export Image Sequence
+        </button>
+        
+        <div class="tip">
+            <strong>DaVinci Resolve:</strong> File → Import → Media, select first frame, check "Image Sequence"<br><br>
+            <strong>After Effects:</strong> File → Import → File, select first frame, check "PNG Sequence"
+        </div>
+        </div></div>
+    
+    <div class="preview-area">
+        <div class="preview-header">
+            <span>Preview</span>
+            <span id="previewInfo">No content loaded</span>
+        </div>
+        <div class="preview-container" id="previewContainer">
+            <div class="preview-frame" id="previewFrame" style="width:480px;height:270px;">
+                <iframe id="previewIframe" style="width:1920px;height:1080px;transform:scale(0.25);transform-origin:top left;border:none;background:#000;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="progress-overlay" id="progressOverlay">
+    <div class="progress-box">
+        <div class="progress-title">Exporting Frames</div>
+        <div class="progress-status" id="progressStatus">Preparing...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-percent" id="progressPercent">0%</div>
+        <button class="secondary progress-cancel" onclick="cancelRender()">Cancel</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+function toggleSection(el) { el.classList.toggle("collapsed"); el.nextElementSibling.classList.toggle("collapsed"); }
+
+var rendering = false;
+var cancelRequested = false;
+var loadedHTML = '';
+
+function getSettings() {
+    var aspect = document.querySelector('input[name="aspect"]:checked').value;
+    var duration = parseInt(document.querySelector('input[name="duration"]:checked').value);
+    var fps = parseInt(document.querySelector('input[name="fps"]:checked').value);
+    var easing = document.getElementById('easing').value;
+    var prefix = document.getElementById('filePrefix').value || 'frame';
+    
+    var width, height;
+    if (aspect === '16:9') { width = 1920; height = 1080; }
+    else if (aspect === '9:16') { width = 1080; height = 1920; }
+    else { width = 1080; height = 1080; }
+    
+    return { aspect: aspect, duration: duration, fps: fps, easing: easing, prefix: prefix, width: width, height: height, totalFrames: duration * fps };
+}
+
+function updateDisplays() {
+    var s = getSettings();
+    document.getElementById('dimensionDisplay').textContent = s.width + ' × ' + s.height;
+    document.getElementById('frameDisplay').textContent = s.totalFrames + ' frames total';
+    document.getElementById('filenamePreview').textContent = s.prefix + '_0001.png';
+    updatePreviewSize();
+}
+
+document.querySelectorAll('input[name="aspect"], input[name="duration"], input[name="fps"]').forEach(function(el) {
+    el.addEventListener('change', updateDisplays);
+});
+document.getElementById('filePrefix').addEventListener('input', updateDisplays);
+
+function calcAutoDuration() {
+    var frame = document.getElementById('previewFrame');
+    var iframe = frame.querySelector('iframe');
+    if (!iframe) {
+        showStatus('error', 'Load preview first');
+        return;
+    }
+    
+    var s = getSettings();
+    var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    var scrollHeight = Math.max(
+        iframeDoc.documentElement.scrollHeight,
+        iframeDoc.body.scrollHeight
+    );
+    
+    // Calculate based on scroll speed (~600px/sec for comfortable viewing)
+    var scrollSpeed = 600;
+    var viewportHeight = s.height;
+    var scrollableHeight = scrollHeight - viewportHeight;
+    var suggestedDuration = Math.ceil(scrollableHeight / scrollSpeed);
+    
+    // Minimum 5 seconds, round up to nearest 5
+    suggestedDuration = Math.max(5, Math.ceil(suggestedDuration / 5) * 5);
+    
+    // Show and select Auto option
+    var autoLabel = document.getElementById('autoDurationLabel');
+    var autoInput = document.getElementById('autoDuration');
+    var autoText = document.getElementById('autoDurationText');
+    
+    autoInput.value = suggestedDuration;
+    autoText.textContent = suggestedDuration + 's (auto)';
+    autoLabel.style.display = 'flex';
+    autoInput.checked = true;
+    
+    updateDisplays();
+    showStatus('info', 'Auto duration: ' + suggestedDuration + 's based on content length');
+}
+
+function loadPreview() {
+    var html = document.getElementById('htmlInput').value.trim();
+    if (!html) {
+        showStatus('error', 'Paste some HTML first');
+        return;
+    }
+    
+    loadedHTML = html;
+    
+    var frame = document.getElementById('previewFrame');
+    frame.innerHTML = '';
+    
+    var iframe = document.createElement('iframe');
+    iframe.id = 'previewIframe';
+    iframe.style.cssText = 'border:none;background:#000;display:block;';
+    frame.appendChild(iframe);
+    
+    iframe.srcdoc = html;
+    
+    setTimeout(function() {
+        updatePreviewSize();
+        document.getElementById('previewInfo').textContent = 'Content loaded';
+        document.getElementById('renderBtn').disabled = false;
+        document.getElementById('calcAutoBtn').style.display = 'inline-block';
+        showStatus('success', 'Preview loaded. Ready to export.');
+    }, 300);
+}
+
+function updatePreviewSize() {
+    var s = getSettings();
+    var container = document.getElementById('previewContainer');
+    var frame = document.getElementById('previewFrame');
+    var iframe = frame.querySelector('iframe') || document.getElementById('previewIframe');
+    
+    if (!iframe) return;
+    
+    var containerRect = container.getBoundingClientRect();
+    var maxW = containerRect.width - 40;
+    var maxH = containerRect.height - 40;
+    
+    if (maxW <= 0 || maxH <= 0) return;
+    
+    var scaleW = maxW / s.width;
+    var scaleH = maxH / s.height;
+    var scale = Math.min(scaleW, scaleH, 1);
+    
+    var displayW = Math.floor(s.width * scale);
+    var displayH = Math.floor(s.height * scale);
+    
+    frame.style.width = displayW + 'px';
+    frame.style.height = displayH + 'px';
+    frame.style.overflow = 'hidden';
+    
+    iframe.style.width = s.width + 'px';
+    iframe.style.height = s.height + 'px';
+    iframe.style.transform = 'scale(' + scale + ')';
+    iframe.style.transformOrigin = 'top left';
+    iframe.style.display = 'block';
+}
+
+var easings = {
+    linear: function(t) { return t; },
+    easeIn: function(t) { return t * t; },
+    easeOut: function(t) { return t * (2 - t); },
+    easeInOut: function(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+};
+
+async function startRender() {
+    if (!loadedHTML || rendering) return;
+    
+    rendering = true;
+    cancelRequested = false;
+    
+    var s = getSettings();
+    var overlay = document.getElementById('progressOverlay');
+    overlay.classList.add('active');
+    
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('progressPercent').textContent = '0%';
+    document.getElementById('progressStatus').textContent = 'Preparing...';
+    
+    try {
+        // Use overscan to avoid black border
+        var overscan = 1.02;
+        var frameW = Math.ceil(s.width * overscan);
+        var frameH = Math.ceil(s.height * overscan);
+        
+        var renderFrame = document.createElement('iframe');
+        renderFrame.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + frameW + 'px;height:' + frameH + 'px;border:none;background:#000;';
+        document.body.appendChild(renderFrame);
+        
+        renderFrame.srcdoc = loadedHTML;
+        await new Promise(function(r) { setTimeout(r, 1500); });
+        
+        var renderDoc = renderFrame.contentDocument || renderFrame.contentWindow.document;
+        var renderBody = renderDoc.body;
+        
+        var scrollHeight = Math.max(
+            renderDoc.documentElement.scrollHeight,
+            renderBody.scrollHeight
+        ) - frameH;
+        
+        var zip = new JSZip();
+        var ease = easings[s.easing];
+        
+        for (var i = 0; i < s.totalFrames; i++) {
+            if (cancelRequested) throw new Error('Cancelled');
+            
+            var progress = i / (s.totalFrames - 1);
+            var easedProgress = ease(progress);
+            var scrollPos = Math.round(easedProgress * scrollHeight);
+            
+            // Scroll the iframe
+            renderFrame.contentWindow.scrollTo(0, scrollPos);
+            await new Promise(function(r) { setTimeout(r, 100); });
+            
+            // Capture at overscan size
+            var rawCanvas = await html2canvas(renderDoc.documentElement, {
+                width: frameW,
+                height: frameH,
+                windowWidth: frameW,
+                windowHeight: frameH,
+                x: 0,
+                y: 0,
+                scrollX: 0,
+                scrollY: 0,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#000000',
+                scale: 1,
+                foreignObjectRendering: false
+            });
+            
+            // Crop to exact target size (removes black border)
+            var canvas = document.createElement('canvas');
+            canvas.width = s.width;
+            canvas.height = s.height;
+            var ctx = canvas.getContext('2d');
+            // Draw from center of overscan, scaled to fill
+            var offsetX = (frameW - s.width) / 2;
+            var offsetY = (frameH - s.height) / 2;
+            ctx.drawImage(rawCanvas, offsetX, offsetY, s.width, s.height, 0, 0, s.width, s.height);
+            
+            var dataUrl = canvas.toDataURL('image/png');
+            var base64 = dataUrl.split(',')[1];
+            
+            var frameNum = String(i + 1).padStart(4, '0');
+            zip.file(s.prefix + '_' + frameNum + '.png', base64, {base64: true});
+            
+            var pct = Math.round(((i + 1) / s.totalFrames) * 90);
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('progressPercent').textContent = pct + '%';
+            document.getElementById('progressStatus').textContent = 'Capturing frame ' + (i + 1) + ' of ' + s.totalFrames;
+        }
+        
+        document.body.removeChild(renderFrame);
+        
+        if (cancelRequested) throw new Error('Cancelled');
+        
+        document.getElementById('progressStatus').textContent = 'Creating ZIP...';
+        document.getElementById('progressFill').style.width = '95%';
+        document.getElementById('progressPercent').textContent = '95%';
+        
+        var content = await zip.generateAsync({type: 'blob'});
+        
+        var downloadUrl = URL.createObjectURL(content);
+        var a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = s.prefix + '_' + s.width + 'x' + s.height + '_' + s.fps + 'fps.zip';
+        a.click();
+        URL.revokeObjectURL(downloadUrl);
+        
+        document.getElementById('progressFill').style.width = '100%';
+        document.getElementById('progressPercent').textContent = '100%';
+        
+        overlay.classList.remove('active');
+        showStatus('success', 'Exported ' + s.totalFrames + ' frames! Import as image sequence.');
+        
+    } catch (err) {
+        console.error('Render error:', err);
+        overlay.classList.remove('active');
+        if (err.message !== 'Cancelled') {
+            showStatus('error', 'Export failed: ' + err.message);
+        }
+    }
+    
+    rendering = false;
+}
+
+function cancelRender() {
+    cancelRequested = true;
+    document.getElementById('progressStatus').textContent = 'Cancelling...';
+}
+
+function showStatus(type, msg) {
+    var area = document.getElementById('statusArea');
+    area.innerHTML = '<div class="status-msg ' + type + '">' + msg + '</div>';
+    if (type === 'success') {
+        setTimeout(function() { area.innerHTML = ''; }, 8000);
+    }
+}
+
+window.addEventListener('resize', updatePreviewSize);
+
+updateDisplays();
+setTimeout(updatePreviewSize, 100);
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

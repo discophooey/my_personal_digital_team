@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrolltastic Chapter Marker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); padding-top: 41px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+.app { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 41px); }
+.controls { background: var(--bg-primary); padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); }
+.preview-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.preview-header {
+    padding: 0 16px; height: 34px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+}
+.preview-header label { font-size: 9px; display: flex; align-items: center; gap: 5px; cursor: pointer; margin: 0; }
+#progressDisplay { color: var(--accent); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+.preview-scroll { flex: 1; overflow-y: auto; background: var(--bg-deep); }
+.preview-container { min-height: 300vh; position: relative; }
+.preview-stage { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.preview-chapter { font-size: 14px; color: #666; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px; opacity: 0; transform: translateY(20px); transition: all 0.6s; }
+.preview-title { font-weight: 700; line-height: 1.1; text-align: center; opacity: 0; transition: all 0.8s 0.2s; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.preview-subtitle { font-size: 20px; color: #888; margin-top: 20px; opacity: 0; transform: translateY(20px); transition: all 0.6s 0.4s; }
+.preview-stage.revealed .preview-chapter,
+.preview-stage.revealed .preview-subtitle { opacity: 1; transform: translateY(0); }
+.preview-title.fadeUp { transform: translateY(30px); }
+.preview-title.scaleIn { transform: scale(0.7); }
+.preview-title.blurReveal { filter: blur(20px); transform: scale(1.1); }
+.preview-title.randomLetters { }
+.preview-stage.revealed .preview-title.fadeUp { opacity: 1; transform: translateY(0); }
+.preview-stage.revealed .preview-title.scaleIn { opacity: 1; transform: scale(1); }
+.preview-stage.revealed .preview-title.blurReveal { opacity: 1; filter: blur(0); transform: scale(1); }
+.preview-stage.revealed .preview-title.randomLetters { opacity: 1; }
+.preview-caption { position: absolute; bottom: 20px; left: 20px; color: #888; font-size: 12px; }
+.range-val { font-family: var(--mono); font-size: 9px; color: var(--accent); float: right; text-transform: none; letter-spacing: 0; }
+
+.module-title { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em; }
+.module-title span { color: var(--accent); }
+
+h2 { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; transition: all .15s; }
+h2:hover { border-color: var(--border-light); background: var(--bg-tertiary); }
+h2::after { content: '\25be'; font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+h2.collapsed::after { transform: rotate(-90deg); }
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0; }
+
+.control-group { margin-bottom: 10px; }
+label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+input[type="text"], input[type="url"], input[type="number"], select, textarea {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary);
+    border-radius: 6px; font-family: var(--mono); font-size: 11px; outline: none; transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent-dim); }
+input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="color"] { width: 36px; height: 24px; border: 1px solid var(--border); background: var(--bg-tertiary); cursor: pointer; border-radius: 4px; padding: 1px; }
+input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent); }
+
+button {
+    width: 100%; padding: 8px 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--accent); border: 1px solid var(--accent); color: #0a0a0a; font-weight: 600;
+    border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: all .15s;
+}
+button:hover { opacity: 0.85; }
+button.secondary { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.row { display: flex; gap: 8px; align-items: flex-start; }
+.row > * { flex: 1; }
+.hint { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+
+
+.inline-group { display: flex; gap: 8px; align-items: center; }
+.inline-group > * { flex: 1; }
+.save-load-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.save-load-bar button { flex: 1; margin: 0; }
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; }
+.modal.active { display: flex; }
+.modal-content { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.modal-content h3 { font-family: var(--mono); font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
+.modal-content textarea { height: 200px; font-family: var(--mono); font-size: 10px; background: var(--bg-deep); border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 8px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-actions button { flex: 1; }
+.saved-list { max-height: 200px; overflow-y: auto; margin: 10px 0; }
+.saved-item { background: var(--bg-tertiary); padding: 10px 12px; border-radius: 6px; margin-bottom: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.saved-item:hover { background: var(--border); }
+.saved-item .name { color: var(--text-primary); }
+.saved-item .date { color: var(--text-dim); font-size: 11px; }
+.saved-item .delete { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px 8px; margin: 0; width: auto; }
+.saved-item .delete:hover { color: #e74c3c; }
+
+/* Disco Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--bg-primary);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;font-family:var(--mono);">
+<a href="index.html" style="padding:10px 16px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.5px;">← Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Zoom Detail</a>
+<a href="text-scroll.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Text Scroll</a>
+<a href="chapter-marker.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chapter Marker</a>
+<a href="key-facts.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Key Facts</a>
+<a href="body-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Body Module</a>
+<a href="epistemic-text.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Epistemic Text</a>
+<a href="adversarial-verification.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Adversarial</a>
+<a href="silence-mapping.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Silence Map</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:var(--accent)!important;background:var(--bg-secondary);}</style>
+<div class="app" style="margin-top:41px;height:calc(100vh - 41px);">
+    <div class="controls">
+        <div class="module-title">Chapter <span>Marker</span></div>
+        
+        <div class="save-load-bar">
+            <button class="secondary" onclick="openSaveModal()">💾 Save</button>
+            <button class="secondary" onclick="openLoadModal()">📂 Load</button>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Content</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Chapter Number/Label (optional)</label>
+                <input type="text" id="chapterNum" value="Chapter One" oninput="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Title</label>
+                <input type="text" id="titleText" value="The Beginning" oninput="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Subtitle (optional)</label>
+                <input type="text" id="subtitleText" placeholder="Optional subtitle" oninput="updatePreview()">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Animation</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Entry Effect</label>
+                <select id="entryEffect" onchange="updatePreview()">
+                    <option value="fadeUp">Fade Up</option>
+                    <option value="scaleIn">Scale In</option>
+                    <option value="blurReveal">Blur Reveal</option>
+                    <option value="randomLetters">Random Letters (cipher decode)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Trigger Point (%)</label>
+                <input type="range" id="triggerPoint" min="10" max="50" value="20" oninput="updatePreview()">
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Style</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Title Size (px)</label>
+                <input type="range" id="titleSize" min="40" max="120" value="72" oninput="updatePreview(); document.getElementById('titleSizeNum').value=this.value;">
+                <input type="number" id="titleSizeNum" value="72" style="width:60px;margin-top:4px;" oninput="document.getElementById('titleSize').value=this.value; updatePreview();">
+            </div>
+            <div class="control-group">
+                <label>Title Color</label>
+                <input type="color" id="titleColor" value="#ffffff" onchange="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Background</label>
+                <select id="bgType" onchange="updatePreview()">
+                    <option value="transparent" selected>Transparent</option>
+                    <option value="solid">Solid Color</option>
+                    <option value="gradient">Gradient</option>
+                </select>
+            </div>
+            <div class="inline-group">
+                <div class="control-group">
+                    <label>Color 1</label>
+                    <input type="color" id="bgColor1" value="#0f0f0f" onchange="updatePreview()">
+                </div>
+                <div class="control-group" id="bgColor2Group">
+                    <label>Color 2</label>
+                    <input type="color" id="bgColor2" value="#1a1a2e" onchange="updatePreview()">
+                </div>
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Layout</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Container Height <span class="range-val" id="containerHeightVal">100vh</span></label>
+                <input type="range" id="containerHeight" min="30" max="100" value="100" oninput="document.getElementById('containerHeightVal').textContent=this.value+'vh'; updatePreview();">
+            </div>
+            <div class="control-group">
+                <label>Scroll Duration (%)</label>
+                <input type="range" id="scrollDuration" min="100" max="300" value="150" oninput="updatePreviewHeight()">
+            </div>
+            <div class="inline-group">
+                <div class="control-group">
+                    <label>Desktop Offset (px)</label>
+                    <input type="number" id="desktopOffset" value="50" min="0" max="200">
+                </div>
+                <div class="control-group">
+                    <label>Mobile Offset (px)</label>
+                    <input type="number" id="mobileOffset" value="200" min="0" max="300">
+                </div>
+            </div>
+        </div>
+        
+        <h2 onclick="toggleSection(this)">Caption</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Caption Text</label>
+                <input type="text" id="captionText" placeholder="Photo credit or description" oninput="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Caption Size (px)</label>
+                <input type="range" id="captionSize" min="10" max="16" value="12" oninput="updatePreview();">
+            </div>
+        </div>
+        
+        <button onclick="generateExport()">Generate HTML</button>
+        <button class="secondary" onclick="testAnimation()">Test Animation</button>
+    </div>
+    
+    <div class="preview-wrap">
+        <div class="preview-header">
+            <span>Preview (scroll to animate)</span>
+            <span id="progressDisplay">0%</span>
+        </div>
+        <div class="preview-scroll" id="previewScroll">
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-stage" id="previewStage">
+                    <div class="preview-chapter" id="previewChapter">Chapter One</div>
+                    <div class="preview-title fadeUp" id="previewTitle">The Beginning</div>
+                    <div class="preview-subtitle" id="previewSubtitle"></div>
+                    <div class="preview-caption" id="previewCaption"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <h3>Export HTML</h3>
+        <div class="control-group">
+            <label>Generated Code</label>
+            <textarea id="exportCode" readonly></textarea>
+        </div>
+        <div class="modal-actions">
+            <button onclick="copyCode()">📋 Copy</button>
+            <button onclick="downloadCode()">⬇️ Download</button><button onclick="downloadCodeTxt()" class="secondary">📄 .txt</button>
+            <button onclick="sendToStackBuilder()">📚 Stack</button>
+            <button class="secondary" onclick="closeModal('exportModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Save Modal -->
+<div class="modal" id="saveModal">
+    <div class="modal-content">
+        <h3>Save Project</h3>
+        <div class="control-group">
+            <label>Project Name</label>
+            <input type="text" id="saveName" placeholder="My Chapter Marker">
+        </div>
+        <div class="modal-actions">
+            <button onclick="saveProject()">💾 Save</button>
+            <button class="secondary" onclick="closeModal('saveModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Load Modal -->
+<div class="modal" id="loadModal">
+    <div class="modal-content">
+        <h3>Load Project</h3>
+        <div class="saved-list" id="savedList"></div>
+        <div class="modal-actions">
+            <button class="secondary" onclick="closeModal('loadModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var _fromPlanner=new URLSearchParams(location.search).get('planner')==='1';
+
+var scrambleInterval = null;
+var STORAGE_KEY = 'disco_chapter-marker';
+var PROJECTS_KEY = 'disco_chapter-marker_projects';
+
+function toggleSection(el) {
+    el.classList.toggle('collapsed');
+    el.nextElementSibling.classList.toggle('collapsed');
+}
+
+function updatePreviewHeight() {
+    var dur = parseInt(document.getElementById('scrollDuration').value) || 150;
+    document.getElementById('previewContainer').style.height = dur + 'vh';
+}
+
+function updatePreview() {
+    var stage = document.getElementById('previewStage');
+    var chapter = document.getElementById('previewChapter');
+    var title = document.getElementById('previewTitle');
+    var subtitle = document.getElementById('previewSubtitle');
+    var captionEl = document.getElementById('previewCaption');
+    
+    var chapterText = document.getElementById('chapterNum').value;
+    var titleText = document.getElementById('titleText').value;
+    var subtitleText = document.getElementById('subtitleText').value;
+    var titleSize = document.getElementById('titleSize').value;
+    var titleColor = document.getElementById('titleColor').value;
+    var bgType = document.getElementById('bgType').value;
+    var bgColor1 = document.getElementById('bgColor1').value;
+    var bgColor2 = document.getElementById('bgColor2').value;
+    var effect = document.getElementById('entryEffect').value;
+    var trigger = parseInt(document.getElementById('triggerPoint').value) / 100;
+    var captionText = document.getElementById('captionText').value;
+    var captionSize = document.getElementById('captionSize').value;
+    var containerHeight = document.getElementById('containerHeight').value;
+    
+    document.getElementById('bgColor2Group').style.display = bgType === 'gradient' ? 'block' : 'none';
+    
+    stage.style.height = containerHeight + 'vh';
+    
+    chapter.textContent = chapterText;
+    chapter.style.display = chapterText ? 'block' : 'none';
+    title.textContent = titleText;
+    title.style.fontSize = titleSize + 'px';
+    title.style.color = titleColor;
+    subtitle.textContent = subtitleText;
+    subtitle.style.display = subtitleText ? 'block' : 'none';
+    
+    captionEl.textContent = captionText;
+    captionEl.style.fontSize = captionSize + 'px';
+    captionEl.style.display = captionText ? 'block' : 'none';
+    
+    if (bgType === 'gradient') {
+        stage.style.background = 'linear-gradient(135deg, ' + bgColor1 + ' 0%, ' + bgColor2 + ' 100%)';
+    } else if (bgType === 'transparent') {
+        stage.style.background = 'transparent';
+    } else {
+        stage.style.background = bgColor1;
+    }
+    
+    title.className = 'preview-title ' + effect;
+    
+    var scroll = document.getElementById('previewScroll');
+    var container = document.getElementById('previewContainer');
+    var scrollTop = scroll.scrollTop;
+    var maxScroll = container.offsetHeight - scroll.clientHeight;
+    var progress = maxScroll > 0 ? scrollTop / maxScroll : 0;
+    
+    document.getElementById('progressDisplay').textContent = Math.round(progress * 100) + '%';
+    
+    if (progress >= trigger) {
+        stage.classList.add('revealed');
+        if (effect === 'randomLetters' && !scrambleInterval) {
+            scrambleText(title, titleText);
+        }
+    } else {
+        stage.classList.remove('revealed');
+        if (scrambleInterval) {
+            clearInterval(scrambleInterval);
+            scrambleInterval = null;
+        }
+    }
+    
+    saveState();
+}
+
+function scrambleText(el, finalText) {
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    var iteration = 0;
+    var maxIterations = finalText.length * 3;
+    
+    el.style.opacity = 1;
+    
+    scrambleInterval = setInterval(function() {
+        var progress = iteration / maxIterations;
+        var revealedCount = Math.floor(progress * finalText.length);
+        
+        var text = '';
+        for (var i = 0; i < finalText.length; i++) {
+            if (finalText[i] === ' ') {
+                text += ' ';
+            } else if (i < revealedCount) {
+                text += finalText[i];
+            } else {
+                text += chars[Math.floor(Math.random() * chars.length)];
+            }
+        }
+        
+        el.textContent = text;
+        iteration++;
+        
+        if (iteration >= maxIterations) {
+            el.textContent = finalText;
+            clearInterval(scrambleInterval);
+            scrambleInterval = null;
+        }
+    }, 30);
+}
+
+function testAnimation() {
+    var stage = document.getElementById('previewStage');
+    var title = document.getElementById('previewTitle');
+    var titleText = document.getElementById('titleText').value;
+    var effect = document.getElementById('entryEffect').value;
+    
+    stage.classList.remove('revealed');
+    if (scrambleInterval) {
+        clearInterval(scrambleInterval);
+        scrambleInterval = null;
+    }
+    title.textContent = titleText;
+    
+    setTimeout(function() {
+        stage.classList.add('revealed');
+        if (effect === 'randomLetters') {
+            scrambleText(title, titleText);
+        }
+    }, 300);
+}
+
+document.getElementById('previewScroll').addEventListener('scroll', updatePreview);
+
+function generateExport() {
+    var uid = 'cm' + Math.random().toString(36).substr(2, 9);
+    var chapterText = document.getElementById('chapterNum').value;
+    var titleText = document.getElementById('titleText').value;
+    var subtitleText = document.getElementById('subtitleText').value;
+    var titleSize = document.getElementById('titleSize').value;
+    var titleColor = document.getElementById('titleColor').value;
+    var bgType = document.getElementById('bgType').value;
+    var bgColor1 = document.getElementById('bgColor1').value;
+    var bgColor2 = document.getElementById('bgColor2').value;
+    var effect = document.getElementById('entryEffect').value;
+    var trigger = parseInt(document.getElementById('triggerPoint').value) / 100;
+    var scrollMult = parseInt(document.getElementById('scrollDuration').value) / 100;
+    var desktopOffset = document.getElementById('desktopOffset').value;
+    var mobileOffset = document.getElementById('mobileOffset').value;
+    var captionText = document.getElementById('captionText').value;
+    var captionSize = document.getElementById('captionSize').value;
+    var containerHeight = document.getElementById('containerHeight').value;
+    
+    var bgCSS = bgType === 'transparent' 
+        ? 'transparent'
+        : bgType === 'gradient' 
+            ? 'linear-gradient(135deg,' + bgColor1 + ' 0%,' + bgColor2 + ' 100%)'
+            : bgColor1;
+    
+    var effectCSS = '';
+    var effectJS = '';
+    
+    if (effect === 'fadeUp') {
+        effectCSS = '#' + uid + ' .cm-title{opacity:0;transform:translateY(30px);transition:all 0.8s}\n#' + uid + '.on .cm-title{opacity:1;transform:translateY(0)}';
+    } else if (effect === 'scaleIn') {
+        effectCSS = '#' + uid + ' .cm-title{opacity:0;transform:scale(0.7);transition:all 0.8s}\n#' + uid + '.on .cm-title{opacity:1;transform:scale(1)}';
+    } else if (effect === 'blurReveal') {
+        effectCSS = '#' + uid + ' .cm-title{opacity:0;filter:blur(20px);transform:scale(1.1);transition:all 0.8s}\n#' + uid + '.on .cm-title{opacity:1;filter:blur(0);transform:scale(1)}';
+    } else if (effect === 'randomLetters') {
+        effectCSS = '#' + uid + ' .cm-title{opacity:0;transition:opacity 0.1s}\n#' + uid + '.on .cm-title{opacity:1}';
+        effectJS = 'var chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";var finalText="' + titleText.replace(/"/g, '\\"') + '";var ti=null;function scramble(){var it=0,mx=finalText.length*3;titleEl.style.opacity=1;ti=setInterval(function(){var p=it/mx,rv=Math.floor(p*finalText.length),t="";for(var i=0;i<finalText.length;i++){if(finalText[i]===" ")t+=" ";else if(i<rv)t+=finalText[i];else t+=chars[Math.floor(Math.random()*chars.length)];}titleEl.textContent=t;it++;if(it>=mx){titleEl.textContent=finalText;clearInterval(ti);ti=null;}},30);}';
+    }
+    
+    var captionCSS = captionText ? '#' + uid + ' .cm-caption{position:absolute;bottom:20px;left:20px;font-size:' + captionSize + 'px;color:#888}\n' : '';
+    var captionHTML = captionText ? '<div class="cm-caption">' + captionText + '</div>\n' : '';
+    
+    var code = '<style>\n' +
+'#' + uid + '{position:relative;background:' + bgCSS + ';font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}\n' +
+'#' + uid + ' .cm-stage{position:-webkit-sticky;position:sticky;top:' + desktopOffset + 'px;height:calc(' + containerHeight + 'vh - ' + desktopOffset + 'px);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}\n' +
+'#' + uid + ' .cm-chapter{font-size:14px;color:#666;letter-spacing:4px;text-transform:uppercase;margin-bottom:20px;opacity:0;transform:translateY(20px);transition:all 0.6s}\n' +
+'#' + uid + ' .cm-title{font-size:' + titleSize + 'px;font-weight:700;color:' + titleColor + ';line-height:1.1;text-align:center;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}\n' +
+'#' + uid + ' .cm-subtitle{font-size:20px;color:#888;margin-top:20px;opacity:0;transform:translateY(20px);transition:all 0.6s 0.4s}\n' +
+'#' + uid + '.on .cm-chapter,#' + uid + '.on .cm-subtitle{opacity:1;transform:translateY(0)}\n' +
+effectCSS + '\n' +
+captionCSS +
+'@media(max-width:768px){#' + uid + ' .cm-stage{top:' + mobileOffset + 'px;height:calc(' + containerHeight + 'vh - ' + mobileOffset + 'px)}#' + uid + ' .cm-title{font-size:' + Math.round(titleSize * 0.6) + 'px}}\n' +
+'</style>\n' +
+'<div id="' + uid + '">\n' +
+'<div class="cm-stage">\n' +
+(chapterText ? '<div class="cm-chapter">' + chapterText + '</div>\n' : '') +
+'<div class="cm-title">' + titleText + '</div>\n' +
+(subtitleText ? '<div class="cm-subtitle">' + subtitleText + '</div>\n' : '') +
+captionHTML +
+'</div>\n' +
+'</div>\n' +
+'<scr' + 'ipt>\n' +
+'(function(){\n' +
+'var w=document.getElementById("' + uid + '");\n' +
+'var stage=w.querySelector(".cm-stage");\n' +
+'var titleEl=w.querySelector(".cm-title");\n' +
+'var scrollMult=' + scrollMult + ';\n' +
+'var trigger=' + trigger + ';\n' +
+(effectJS ? effectJS + '\n' : '') +
+'var wasOn=false;\n' +
+'function setH(){w.style.height=(stage.offsetHeight*scrollMult)+"px";}\n' +
+'setH();window.addEventListener("resize",setH);\n' +
+'function upd(){\n' +
+'var extP=window.SCROLLTASTIC_PROGRESS&&window.SCROLLTASTIC_PROGRESS["' + uid + '"];\n' +
+'var progress;\n' +
+'if(extP!==undefined){progress=extP;}else{\n' +
+'var r=w.getBoundingClientRect();\n' +
+'var scrolled=Math.max(0,-r.top);\n' +
+'var range=w.offsetHeight-window.innerHeight;\n' +
+'progress=range>0?scrolled/range:0;\n' +
+'}\n' +
+'if(progress>=trigger&&!wasOn){w.classList.add("on");wasOn=true;' + (effect === 'randomLetters' ? 'scramble();' : '') + '}\n' +
+'else if(progress<trigger*0.5&&wasOn){w.classList.remove("on");wasOn=false;' + (effect === 'randomLetters' ? 'if(ti){clearInterval(ti);ti=null;}titleEl.textContent="' + titleText.replace(/"/g, '\\"') + '";' : '') + '}\n' +
+'requestAnimationFrame(upd);\n' +
+'}\n' +
+'upd();\n' +
+'})();\n' +
+'<\/scr' + 'ipt>';
+    
+    document.getElementById('exportCode').value = code;localStorage.setItem('disco_chapter-marker_export',code);
+    if(!_fromPlanner){document.getElementById('exportModal').classList.add('active')};
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function copyCode() {
+    var code = document.getElementById('exportCode');
+    code.select();
+    document.execCommand('copy');
+    discoAlert('Copied!');
+}
+
+function downloadCode() {
+    var code = document.getElementById('exportCode').value;
+    var filename = prompt('Save as:', 'chapter-marker');
+    if (!filename) return;
+    var blob = new Blob([code], { type: 'text/html' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename.replace(/[^a-z0-9_-]/gi, '_') + '.html';
+    a.click();
+}
+
+function sendToStackBuilder() {var _em=document.getElementById('exportModal');if(_em){_em.classList.remove('active');_em.classList.remove('open');}
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate HTML first'); return; }
+    var queue = JSON.parse(localStorage.getItem('disco_stack_queue') || '[]');
+    queue.push({ name: 'Chapter Marker', html: code, timestamp: Date.now() });
+    localStorage.setItem('disco_stack_queue', JSON.stringify(queue));
+    discoStackSend()
+}
+
+function openSaveModal() {
+    document.getElementById('saveName').value = '';
+    document.getElementById('saveModal').classList.add('active');
+}
+
+function openLoadModal() {
+    renderSavedList();
+    document.getElementById('loadModal').classList.add('active');
+}
+
+function saveProject() {
+    var name = document.getElementById('saveName').value.trim();
+    if (!name) { discoAlert('Enter a project name'); return; }
+    
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var data = getCurrentState();
+    data.name = name;
+    data.savedAt = Date.now();
+    data.id = 'proj_' + Date.now();
+    
+    projects.unshift(data);
+    if (projects.length > 20) projects = projects.slice(0, 20);
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    
+    closeModal('saveModal');
+    discoAlert('Saved!');
+}
+
+function renderSavedList() {
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var html = '';
+    if (projects.length === 0) {
+        html = '<div style="color:#666;text-align:center;padding:20px;">No saved projects</div>';
+    } else {
+        projects.forEach(function(p) {
+            var date = new Date(p.savedAt).toLocaleDateString();
+            html += '<div class="saved-item">';
+            html += '<div onclick="loadProject(\'' + p.id + '\')"><span class="name">' + p.name + '</span><br><span class="date">' + date + '</span></div>';
+            html += '<button class="delete" onclick="event.stopPropagation();deleteProject(\'' + p.id + '\')">×</button>';
+            html += '</div>';
+        });
+    }
+    document.getElementById('savedList').innerHTML = html;
+}
+
+function loadProject(id) {
+    var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    var proj = projects.find(function(p) { return p.id === id; });
+    if (!proj) return;
+    
+    document.getElementById('chapterNum').value = proj.chapterNum || '';
+    document.getElementById('titleText').value = proj.titleText || '';
+    document.getElementById('subtitleText').value = proj.subtitleText || '';
+    document.getElementById('titleSize').value = proj.titleSize || 72;
+    document.getElementById('titleSizeNum').value = proj.titleSize || 72;
+    document.getElementById('titleColor').value = proj.titleColor || '#ffffff';
+    document.getElementById('bgType').value = proj.bgType || 'solid';
+    document.getElementById('bgColor1').value = proj.bgColor1 || '#0f0f0f';
+    document.getElementById('bgColor2').value = proj.bgColor2 || '#1a1a2e';
+    document.getElementById('entryEffect').value = proj.entryEffect || 'fadeUp';
+    document.getElementById('triggerPoint').value = proj.triggerPoint || 20;
+    document.getElementById('scrollDuration').value = proj.scrollDuration || 150;
+    document.getElementById('desktopOffset').value = proj.desktopOffset || 50;
+    document.getElementById('mobileOffset').value = proj.mobileOffset || 200;
+    
+    updatePreviewHeight();
+    updatePreview();
+    closeModal('loadModal');
+}
+
+function deleteProject(id) {
+    discoConfirm('Delete this project?', function(){
+var projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    projects = projects.filter(function(p) { return p.id !== id; });
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    renderSavedList();
+});
+}
+
+function getCurrentState() {
+    return {
+        chapterNum: document.getElementById('chapterNum').value,
+        titleText: document.getElementById('titleText').value,
+        subtitleText: document.getElementById('subtitleText').value,
+        titleSize: document.getElementById('titleSize').value,
+        titleColor: document.getElementById('titleColor').value,
+        bgType: document.getElementById('bgType').value,
+        bgColor1: document.getElementById('bgColor1').value,
+        bgColor2: document.getElementById('bgColor2').value,
+        entryEffect: document.getElementById('entryEffect').value,
+        triggerPoint: document.getElementById('triggerPoint').value,
+        scrollDuration: document.getElementById('scrollDuration').value,
+        desktopOffset: document.getElementById('desktopOffset').value,
+        mobileOffset: document.getElementById('mobileOffset').value,
+        containerHeight: document.getElementById('containerHeight').value,
+        captionText: document.getElementById('captionText').value,
+        captionSize: document.getElementById('captionSize').value
+    };
+}
+
+function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getCurrentState()));
+}
+
+function loadState() {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        var s = JSON.parse(saved);
+        document.getElementById('chapterNum').value = s.chapterNum || 'Chapter One';
+        document.getElementById('titleText').value = s.titleText || 'The Beginning';
+        document.getElementById('subtitleText').value = s.subtitleText || '';
+        document.getElementById('titleSize').value = s.titleSize || 72;
+        document.getElementById('titleSizeNum').value = s.titleSize || 72;
+        document.getElementById('titleColor').value = s.titleColor || '#ffffff';
+        document.getElementById('bgType').value = s.bgType || 'solid';
+        document.getElementById('bgColor1').value = s.bgColor1 || '#0f0f0f';
+        document.getElementById('bgColor2').value = s.bgColor2 || '#1a1a2e';
+        document.getElementById('entryEffect').value = s.entryEffect || 'fadeUp';
+        document.getElementById('triggerPoint').value = s.triggerPoint || 20;
+        document.getElementById('scrollDuration').value = s.scrollDuration || 150;
+        document.getElementById('desktopOffset').value = s.desktopOffset || 50;
+        document.getElementById('mobileOffset').value = s.mobileOffset || 200;
+        document.getElementById('containerHeight').value = s.containerHeight || 100;
+        document.getElementById('containerHeightVal').textContent = (s.containerHeight || 100) + 'vh';
+        document.getElementById('captionText').value = s.captionText || '';
+        document.getElementById('captionSize').value = s.captionSize || 12;
+    }
+    updatePreviewHeight();
+    updatePreview();
+}
+
+loadState();
+
+function downloadCodeTxt() {
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate code first'); return; }
+    var filename = prompt('Save as:', 'chapter-marker');
+    if (!filename) return;
+    var safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    var blob = new Blob([code], {type:'text/plain'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = safeName + '.txt';
+    a.click();
+}
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

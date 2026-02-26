@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrolltastic Chart</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); padding-top: 41px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+.app { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 41px); transition: grid-template-columns 0.3s; }
+.app.controls-hidden { grid-template-columns: 0 1fr; }
+.controls { background: var(--bg-primary); padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); transition: opacity 0.3s, padding 0.3s; }
+.app.controls-hidden .controls { opacity: 0; padding: 0; overflow: hidden; }
+
+.toggle-btn { position: fixed; top: 10px; left: 10px; z-index: 100; width: 32px; height: 32px; padding: 0; border-radius: 8px; font-size: 14px; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; transition: all .15s; }
+.toggle-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.module-title { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em; }
+.module-title span { color: var(--accent); }
+
+h2 { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; transition: all .15s; }
+h2:hover { border-color: var(--border-light); background: var(--bg-tertiary); }
+h2::after { content: '▾'; font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+h2.collapsed::after { transform: rotate(-90deg); }
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0; }
+
+.control-group { margin-bottom: 10px; }
+label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+input[type="text"], input[type="number"], select, textarea {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary);
+    border-radius: 6px; font-family: var(--mono); font-size: 11px; outline: none; transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent-dim); }
+textarea { min-height: 60px; resize: vertical; }
+input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="color"] { width: 36px; height: 24px; border: 1px solid var(--border); background: var(--bg-tertiary); cursor: pointer; border-radius: 4px; padding: 1px; }
+input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent); }
+
+button {
+    width: 100%; padding: 8px 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--accent); border: 1px solid var(--accent); color: #0a0a0a; font-weight: 600;
+    border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: all .15s;
+}
+button:hover { opacity: 0.85; }
+button.secondary { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.row { display: flex; gap: 8px; align-items: flex-start; }
+.row > * { flex: 1; }
+.hint { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+.range-val { font-family: var(--mono); font-size: 9px; color: var(--accent); float: right; text-transform: none; letter-spacing: 0; }
+
+/* Toggle Groups */
+.toggle-group { display: flex; gap: 6px; margin-bottom: 10px; }
+.toggle-group .tg-btn { flex: 1; padding: 6px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); cursor: pointer; font-family: var(--mono); font-size: 10px; font-weight: 500; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.15s; width: auto; margin: 0; }
+.toggle-group .tg-btn:hover { border-color: var(--border-light); color: var(--text-secondary); }
+.toggle-group .tg-btn.active { background: var(--accent); border-color: var(--accent); color: #0a0a0a; font-weight: 600; }
+
+/* Data List */
+.data-list { max-height: 240px; overflow-y: auto; }
+.data-entry { background: var(--bg-secondary); padding: 8px; border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--border); }
+.data-entry-row { display: flex; gap: 6px; align-items: center; }
+.data-entry input[type="text"] { flex: 2; margin-bottom: 0; }
+.data-entry input[type="number"] { width: 60px; margin-bottom: 0; flex: none; }
+.data-entry input[type="color"] { width: 30px; height: 24px; flex: none; }
+.data-entry .remove { width: 24px; height: 24px; min-width: 24px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: #ff6b6b; cursor: pointer; font-size: 14px; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; flex: none; }
+.data-entry .remove:hover { background: #ff6b6b; color: white; border-color: #ff6b6b; }
+
+.btn-add { background: transparent; border: 1px dashed var(--border); color: var(--text-dim); }
+.btn-add:hover { border-color: var(--accent-dim); color: var(--accent); opacity: 1; }
+
+/* Preview Area */
+.preview-area { background: var(--bg-deep); display: flex; flex-direction: column; overflow: hidden; }
+.preview-header {
+    padding: 0 16px; height: 34px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+}
+#progressDisplay { color: var(--accent); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+
+.preview-scroll { flex: 1; overflow-y: auto; }
+.preview-container { position: relative; }
+.preview-stage { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+
+/* Chart Container */
+.chart-wrap { padding: 30px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease; }
+.chart-wrap.sizing-fit { width: 90%; max-width: 90vw; height: auto; max-height: 85vh; }
+.chart-wrap.sizing-cover { width: 100%; height: 100vh; justify-content: center; border-radius: 0; }
+.chart-wrap.sizing-fill { width: 100%; height: 100%; justify-content: center; border-radius: 0; }
+.chart-title { font-size: 1.5rem; margin-bottom: 20px; text-align: center; color: #fff; font-weight: bold; }
+
+#chartContent { width: 100%; }
+
+/* Bar Chart */
+.bar-chart { width: 100%; display: flex; flex-direction: column; gap: 15px; }
+.bar-chart.vertical { flex-direction: row; align-items: flex-end; justify-content: center; height: 300px; gap: 20px; }
+.bar-item { display: flex; align-items: center; gap: 10px; }
+.bar-item.vertical { flex-direction: column-reverse; height: 100%; }
+.bar-label { min-width: 100px; font-size: 0.9rem; color: #ccc; }
+.bar-item.vertical .bar-label { min-width: auto; text-align: center; }
+.bar-track { flex: 1; height: 30px; background: #333; border-radius: 4px; overflow: hidden; }
+.bar-item.vertical .bar-track { width: 50px; height: 100%; flex: none; display: flex; align-items: flex-end; }
+.bar-fill { height: 100%; width: 0; border-radius: 4px; transition: width 0.05s linear; }
+.bar-item.vertical .bar-fill { width: 100%; height: 0; transition: height 0.05s linear; flex-shrink: 0; }
+.bar-value { min-width: 50px; font-size: 0.9rem; color: #fff; font-weight: bold; opacity: 0; transition: opacity 0.3s; }
+.bar-item.vertical .bar-value { min-width: auto; }
+
+/* Pie Chart */
+.pie-chart { position: relative; width: 300px; height: 300px; margin: 0 auto; }
+.pie-chart svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.pie-segment { transition: stroke-dasharray 0.05s linear; }
+.pie-center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-size: 1.2rem; font-weight: bold; color: #fff; }
+.pie-legend { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; justify-content: center; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #fff; }
+.legend-color { width: 16px; height: 16px; border-radius: 3px; }
+
+/* Caption & Overlay */
+.preview-caption { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 700px; padding: 12px 16px; border-radius: 8px; font-size: 13px; line-height: 1.5; color: #e0e0e0; text-align: center; opacity: 0; transition: opacity 0.4s; z-index: 100; }
+.preview-caption.on { opacity: 1; }
+.preview-caption .caption-credit { color: #999; font-size: 11px; font-style: italic; margin-top: 4px; }
+.text-overlay { position: absolute; padding: 12px 20px; border-radius: 4px; transition: opacity 0.4s; z-index: 50; max-width: 90%; box-sizing: border-box; white-space: pre-line; }
+
+/* Export Modal */
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; }
+.modal.active { display: flex; }
+.modal-content { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; width: 90%; max-width: 800px; max-height: 85vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h1 { font-family: var(--mono); font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin: 0; }
+.modal-close { background: none; border: none; color: var(--text-dim); font-size: 22px; cursor: pointer; width: auto; padding: 4px 8px; margin: 0; }
+.modal-close:hover { color: var(--accent); }
+textarea.code {
+    width: 100%; height: 300px;
+    background: var(--bg-deep); border: 1px solid var(--border); color: var(--accent);
+    font-family: var(--mono); font-size: 10px; padding: 12px; border-radius: 8px; outline: none;
+}
+textarea.code:focus { border-color: var(--accent-dim); }
+
+/* Disco Confirm/Alert Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--bg-primary);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;font-family:var(--mono);">
+<a href="index.html" style="padding:10px 16px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.5px;">&#8592; Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Zoom Detail</a>
+<a href="text-scroll.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Text Scroll</a>
+<a href="chapter-marker.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chapter Marker</a>
+<a href="key-facts.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Key Facts</a>
+<a href="body-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Body Module</a>
+<a href="epistemic-text.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Epistemic Text</a>
+<a href="adversarial-verification.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Adversarial</a>
+<a href="silence-mapping.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Silence Map</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:var(--accent)!important;background:var(--bg-secondary);}</style>
+
+<button class="toggle-btn" onclick="toggleControls()">&#9776;</button>
+<div class="app" id="app">
+    <div class="controls">
+        <div class="module-title">Chart <span>Module</span></div>
+
+        <h2 onclick="toggleSection(this)">Chart Type</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Type</label>
+                <div class="toggle-group">
+                    <div class="tg-btn active" data-type="bar" onclick="setChartType('bar')">Bar</div>
+                    <div class="tg-btn" data-type="pie" onclick="setChartType('pie')">Pie</div>
+                </div>
+            </div>
+            <div id="bar-options">
+                <div class="control-group">
+                    <label>Orientation</label>
+                    <div class="toggle-group">
+                        <div class="tg-btn active" data-orient="horizontal" onclick="setOrientation('horizontal')">Horizontal</div>
+                        <div class="tg-btn" data-orient="vertical" onclick="setOrientation('vertical')">Vertical</div>
+                    </div>
+                </div>
+            </div>
+            <div id="pie-options" style="display:none">
+                <div class="control-group">
+                    <label>Style</label>
+                    <div class="toggle-group">
+                        <div class="tg-btn active" data-pie="pie" onclick="setPieStyle('pie')">Pie</div>
+                        <div class="tg-btn" data-pie="donut" onclick="setPieStyle('donut')">Donut</div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Center Text (Donut)</label>
+                    <input type="text" id="center-text" value="Total" oninput="updatePreview()">
+                </div>
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Data</h2>
+        <div class="section">
+            <div class="data-list" id="data-list"></div>
+            <button class="btn-add" onclick="addDataEntry()">+ Add Data Point</button>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Animation</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Stagger Animation</label>
+                <div class="toggle-group">
+                    <div class="tg-btn active" data-stagger="true" onclick="setStagger(true)">On</div>
+                    <div class="tg-btn" data-stagger="false" onclick="setStagger(false)">Off</div>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Scroll Duration (vh) <span class="range-val" id="scrollDurationVal">200</span></label>
+                <input type="range" id="scrollDuration" min="150" max="500" value="200" oninput="document.getElementById('scrollDurationVal').textContent=this.value;updatePreviewHeight()">
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Styling</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Chart Title</label>
+                <input type="text" id="chart-title" value="Simple Chart" oninput="updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Background Color</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="color" id="bg-color" value="#000000" oninput="updatePreview()">
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;margin:0;text-transform:none;letter-spacing:0;"><input type="checkbox" id="bgTransparent" checked onchange="updatePreview()"> Transparent</label>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Chart Scale <span class="range-val" id="chartScaleVal">80%</span></label>
+                <input type="range" id="chartScale" min="40" max="100" value="80" oninput="document.getElementById('chartScaleVal').textContent=this.value+'%';updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Offset X <span class="range-val" id="chartOffsetXVal">0px</span></label>
+                <input type="range" id="chartOffsetX" min="-200" max="200" value="0" oninput="document.getElementById('chartOffsetXVal').textContent=this.value+'px';updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Offset Y <span class="range-val" id="chartOffsetYVal">0px</span></label>
+                <input type="range" id="chartOffsetY" min="-200" max="200" value="0" oninput="document.getElementById('chartOffsetYVal').textContent=this.value+'px';updatePreview()">
+            </div>
+            <div class="control-group">
+                <label>Sizing</label>
+                <div class="toggle-group">
+                    <div class="tg-btn active" data-sizing="fit" onclick="setSizing('fit')">Fit</div>
+                    <div class="tg-btn" data-sizing="cover" onclick="setSizing('cover')">Cover</div>
+                    <div class="tg-btn" data-sizing="fill" onclick="setSizing('fill')">Fill</div>
+                </div>
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Text Overlay</h2>
+        <div class="section">
+            <div class="control-group">
+                <label style="text-transform:none;letter-spacing:0;"><input type="checkbox" id="textEnabled" onchange="updatePreview()"> Enable Text Overlay</label>
+            </div>
+            <div id="textControls" style="display:none">
+                <div class="control-group">
+                    <label>Text</label>
+                    <textarea id="overlayText" rows="2" oninput="updatePreview()" placeholder="Enter text..."></textarea>
+                </div>
+                <div class="control-group">
+                    <label>Font Size <span class="range-val" id="textSizeVal">32px</span></label>
+                    <input type="range" id="textSize" min="16" max="80" value="32" oninput="document.getElementById('textSizeVal').textContent=this.value+'px';updatePreview()">
+                </div>
+                <div class="control-group">
+                    <label>Text Color</label>
+                    <input type="color" id="textColor" value="#ffffff" oninput="updatePreview()">
+                </div>
+                <div class="row">
+                    <div class="control-group">
+                        <label>Position</label>
+                        <select id="textPosition" onchange="updatePreview()">
+                            <option value="top">Top</option>
+                            <option value="center" selected>Center</option>
+                            <option value="bottom">Bottom</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Align</label>
+                        <select id="textAlign" onchange="updatePreview()">
+                            <option value="left">Left</option>
+                            <option value="center" selected>Center</option>
+                            <option value="right">Right</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>X Offset <span class="range-val" id="textXVal">0px</span></label>
+                    <input type="range" id="textX" min="-300" max="300" value="0" oninput="document.getElementById('textXVal').textContent=this.value+'px';updatePreview()">
+                </div>
+                <div class="control-group">
+                    <label>Y Offset <span class="range-val" id="textYVal">0px</span></label>
+                    <input type="range" id="textY" min="-300" max="300" value="0" oninput="document.getElementById('textYVal').textContent=this.value+'px';updatePreview()">
+                </div>
+                <div class="control-group" style="display:flex;gap:16px;">
+                    <label style="text-transform:none;letter-spacing:0;"><input type="checkbox" id="textBold" onchange="updatePreview()"> Bold</label>
+                    <label style="text-transform:none;letter-spacing:0;"><input type="checkbox" id="textBgEnabled" onchange="updatePreview()"> Background</label>
+                </div>
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Caption</h2>
+        <div class="section">
+            <div class="control-group">
+                <label style="text-transform:none;letter-spacing:0;"><input type="checkbox" id="captionEnabled" checked onchange="updatePreview()"> Enable Caption</label>
+            </div>
+            <div id="captionControls">
+                <div class="control-group">
+                    <label>Caption Text</label>
+                    <textarea id="captionText" rows="2" oninput="updatePreview()" placeholder="Caption text...">Scroll-driven bar and pie charts.</textarea>
+                </div>
+                <div class="control-group">
+                    <label>Credit</label>
+                    <input type="text" id="captionCredit" value="" oninput="updatePreview()" placeholder="Source or credit">
+                </div>
+                <div class="control-group">
+                    <label style="text-transform:none;letter-spacing:0;"><input type="checkbox" id="captionBgEnabled" checked onchange="updatePreview()"> Caption Background</label>
+                </div>
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Embed Settings</h2>
+        <div class="section">
+            <div class="control-group">
+                <label>Mobile Top Offset <span class="range-val" id="mobileOffsetVal">200px</span></label>
+                <input type="range" id="mobileOffset" min="0" max="300" value="200" oninput="document.getElementById('mobileOffsetVal').textContent=this.value+'px'">
+                <div class="hint">Default 200px for AP mobile nav/banners</div>
+            </div>
+            <div class="control-group">
+                <label>Desktop Top Offset <span class="range-val" id="desktopOffsetVal">0px</span></label>
+                <input type="range" id="desktopOffset" min="0" max="200" value="0" oninput="document.getElementById('desktopOffsetVal').textContent=this.value+'px'">
+            </div>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Export</h2>
+        <div class="section">
+            <button onclick="generateExport()">Generate HTML</button>
+            <button class="secondary" onclick="copyCode()">&#128203; Copy Code</button>
+            <button class="secondary" onclick="downloadHTML()">&#128190; Download</button>
+            <button class="secondary" onclick="downloadCodeTxt()">&#128196; .txt</button>
+            <button class="secondary" onclick="resetModule()" style="margin-top:6px;">&#8634; Reset</button>
+        </div>
+
+        <h2 onclick="toggleSection(this)">Project</h2>
+        <div class="section">
+            <div class="row">
+                <button class="secondary" onclick="saveConfig()">&#128190; Save</button>
+                <button class="secondary" onclick="loadConfig()">&#128194; Load</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-area">
+        <div class="preview-header">
+            <span>Preview</span>
+            <span id="progressDisplay">0%</span>
+        </div>
+        <div class="preview-scroll" id="previewScroll">
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-stage" id="previewStage">
+                    <div class="chart-wrap sizing-fit" id="chartWrap">
+                        <div class="chart-title" id="chartTitle">Simple Chart</div>
+                        <div id="chartContent"></div>
+                        <div class="pie-legend" id="pieLegend"></div>
+                    </div>
+                    <div class="text-overlay" id="textOverlay" style="display:none"></div>
+                    <div class="preview-caption" id="previewCaption"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <div class="modal-header"><h1>Export Code</h1><button class="modal-close" onclick="closeModal()">&times;</button></div>
+        <textarea class="code" id="exportCode" readonly></textarea>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+            <button onclick="copyCode()">&#128203; Copy</button>
+            <button class="secondary" onclick="downloadHTML()">&#128190; Download</button>
+            <button class="secondary" onclick="downloadCodeTxt()">&#128196; .txt</button>
+            <button class="secondary" onclick="sendToStackBuilder()">&#128218; Stack</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var _fromPlanner=new URLSearchParams(location.search).get('planner')==='1';
+
+function toggleControls() { document.getElementById('app').classList.toggle('controls-hidden'); }
+function toggleSection(el) { el.classList.toggle('collapsed'); el.nextElementSibling.classList.toggle('collapsed'); }
+function closeModal() { document.getElementById('exportModal').classList.remove('active'); }
+
+const defColors = ['#ff6666', '#888888', '#666666', '#aaaaaa', '#555555', '#999999'];
+
+var config = {
+    chartType: 'bar',
+    orientation: 'horizontal',
+    pieStyle: 'pie',
+    stagger: true,
+    title: 'Simple Chart',
+    centerText: 'Total',
+    bgColor: '#000000',
+    chartScale: 80,
+    chartOffsetX: 0,
+    chartOffsetY: 0,
+    sizing: 'fit',
+    captionEnabled: true,
+    captionText: 'Scroll-driven bar and pie charts.',
+    captionCredit: '',
+    captionBgEnabled: true,
+    textEnabled: false,
+    text: '',
+    textSize: 32,
+    textColor: '#ffffff',
+    textPosition: 'center',
+    textAlign: 'center',
+    textX: 0,
+    textY: 0,
+    textBold: false,
+    textBgEnabled: false,
+    data: [
+        { label: 'North', value: 85, color: '#ff6666' },
+        { label: 'South', value: 65, color: '#888888' },
+        { label: 'East', value: 92, color: '#666666' },
+        { label: 'West', value: 78, color: '#aaaaaa' }
+    ]
+};
+
+function setChartType(t) {
+    config.chartType = t;
+    document.querySelectorAll('[data-type]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.type === t);
+    });
+    document.getElementById('bar-options').style.display = t === 'bar' ? 'block' : 'none';
+    document.getElementById('pie-options').style.display = t === 'pie' ? 'block' : 'none';
+    updatePreview();
+}
+
+function setOrientation(o) {
+    config.orientation = o;
+    document.querySelectorAll('[data-orient]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.orient === o);
+    });
+    updatePreview();
+}
+
+function setPieStyle(s) {
+    config.pieStyle = s;
+    document.querySelectorAll('[data-pie]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.pie === s);
+    });
+    updatePreview();
+}
+
+function setStagger(v) {
+    config.stagger = v;
+    document.querySelectorAll('[data-stagger]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.stagger === String(v));
+    });
+    updatePreview();
+}
+
+function setSizing(m) {
+    config.sizing = m;
+    document.querySelectorAll('[data-sizing]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.sizing === m);
+    });
+    updatePreview();
+}
+
+function addDataEntry(l, v, c) {
+    if (!l) l = '';
+    if (!v) v = 50;
+    if (!c) c = defColors[config.data.length % defColors.length];
+    config.data.push({ label: l, value: v, color: c });
+    renderDataList();
+    updatePreview();
+}
+
+function removeDataEntry(i) {
+    config.data.splice(i, 1);
+    renderDataList();
+    updatePreview();
+}
+
+function updateDataEntry(i, f, v) {
+    if (f === 'value') v = parseFloat(v) || 0;
+    config.data[i][f] = v;
+    updatePreview();
+}
+
+function renderDataList() {
+    document.getElementById('data-list').innerHTML = config.data.map(function(d, i) {
+        return '<div class="data-entry"><div class="data-entry-row">' +
+            '<input type="text" placeholder="Label" value="' + d.label + '" onchange="updateDataEntry(' + i + ',\'label\',this.value)">' +
+            '<input type="number" placeholder="Val" value="' + d.value + '" onchange="updateDataEntry(' + i + ',\'value\',this.value)">' +
+            '<input type="color" value="' + d.color + '" onchange="updateDataEntry(' + i + ',\'color\',this.value)">' +
+            '<button class="remove" onclick="removeDataEntry(' + i + ')">&#215;</button>' +
+            '</div></div>';
+    }).join('');
+}
+
+function updatePreviewHeight() {
+    document.getElementById('previewContainer').style.height = (parseInt(document.getElementById('scrollDuration').value) || 200) + 'vh';
+}
+
+function updatePreview() {
+    config.title = document.getElementById('chart-title').value;
+    config.centerText = document.getElementById('center-text').value;
+    config.bgColor = document.getElementById('bg-color').value;
+    config.bgTransparent = document.getElementById('bgTransparent').checked;
+    config.chartScale = parseInt(document.getElementById('chartScale').value) || 80;
+    config.chartOffsetX = parseInt(document.getElementById('chartOffsetX').value) || 0;
+    config.chartOffsetY = parseInt(document.getElementById('chartOffsetY').value) || 0;
+    config.textEnabled = document.getElementById('textEnabled').checked;
+    config.text = document.getElementById('overlayText').value;
+    config.textSize = parseInt(document.getElementById('textSize').value) || 32;
+    config.textColor = document.getElementById('textColor').value;
+    config.textPosition = document.getElementById('textPosition').value;
+    config.textAlign = document.getElementById('textAlign').value;
+    config.textX = parseInt(document.getElementById('textX').value) || 0;
+    config.textY = parseInt(document.getElementById('textY').value) || 0;
+    config.textBold = document.getElementById('textBold').checked;
+    config.textBgEnabled = document.getElementById('textBgEnabled').checked;
+    config.captionEnabled = document.getElementById('captionEnabled').checked;
+    config.captionText = document.getElementById('captionText').value;
+    config.captionCredit = document.getElementById('captionCredit').value;
+    config.captionBgEnabled = document.getElementById('captionBgEnabled').checked;
+
+    document.getElementById('textControls').style.display = config.textEnabled ? 'block' : 'none';
+    document.getElementById('captionControls').style.display = config.captionEnabled ? 'block' : 'none';
+    document.getElementById('chartTitle').textContent = config.title;
+
+    var wrap = document.getElementById('chartWrap');
+    wrap.style.background = config.bgTransparent ? 'transparent' : config.bgColor;
+    wrap.className = 'chart-wrap sizing-' + config.sizing;
+    document.getElementById('chartContent').style.transform = 'scale(' + (config.chartScale / 100) + ') translate(' + config.chartOffsetX + 'px,' + config.chartOffsetY + 'px)';
+    document.getElementById('chartContent').style.transformOrigin = 'center top';
+
+    var tov = document.getElementById('textOverlay');
+    if (config.textEnabled && config.text) {
+        tov.style.display = 'block';
+        tov.innerHTML = config.text.replace(/\n/g, '<br>');
+        tov.style.fontSize = config.textSize + 'px';
+        tov.style.color = config.textColor;
+        tov.style.textAlign = config.textAlign;
+        tov.style.fontWeight = config.textBold ? 'bold' : 'normal';
+        tov.style.left = '50%';
+        tov.style.marginLeft = config.textX + 'px';
+        tov.style.marginTop = config.textY + 'px';
+        tov.style.transform = 'translateX(-50%)';
+        tov.style.top = config.textPosition === 'top' ? '60px' : config.textPosition === 'center' ? '50%' : 'auto';
+        tov.style.bottom = config.textPosition === 'bottom' ? '100px' : 'auto';
+        if (config.textPosition === 'center') tov.style.transform = 'translate(-50%,-50%)';
+        tov.style.background = config.textBgEnabled ? 'rgba(0,0,0,.8)' : 'none';
+    } else {
+        tov.style.display = 'none';
+    }
+
+    var cap = document.getElementById('previewCaption');
+    if (config.captionEnabled && (config.captionText || config.captionCredit)) {
+        cap.classList.add('on');
+        cap.innerHTML = config.captionText + (config.captionCredit ? '<div class="caption-credit">' + config.captionCredit + '</div>' : '');
+        cap.style.background = config.captionBgEnabled ? 'rgba(0,0,0,.8)' : 'none';
+    } else {
+        cap.classList.remove('on');
+    }
+
+    var content = document.getElementById('chartContent');
+    var legend = document.getElementById('pieLegend');
+    if (config.chartType === 'bar') {
+        legend.style.display = 'none';
+        content.innerHTML = renderBarChart();
+    } else {
+        legend.style.display = 'flex';
+        content.innerHTML = renderPieChart();
+        legend.innerHTML = renderLegend();
+    }
+    applyEffect();
+}
+
+function renderBarChart() {
+    var max = Math.max.apply(null, config.data.map(function(d) { return d.value; }));
+    var v = config.orientation === 'vertical';
+    return '<div class="bar-chart' + (v ? ' vertical' : '') + '">' +
+        config.data.map(function(d, i) {
+            return '<div class="bar-item' + (v ? ' vertical' : '') + '" data-index="' + i + '">' +
+                '<span class="bar-label">' + d.label + '</span>' +
+                '<div class="bar-track"><div class="bar-fill" style="background:' + d.color + '" data-target="' + ((d.value / max) * 100) + '"></div></div>' +
+                '<span class="bar-value">' + d.value + '</span>' +
+                '</div>';
+        }).join('') +
+        '</div>';
+}
+
+function renderPieChart() {
+    var tot = config.data.reduce(function(s, d) { return s + d.value; }, 0);
+    var r = config.pieStyle === 'donut' ? 80 : 100;
+    var sw = config.pieStyle === 'donut' ? 40 : 100;
+    var circ = 2 * Math.PI * r;
+    var off = 0;
+    var segs = config.data.map(function(d, i) {
+        var pct = d.value / tot;
+        var dash = pct * circ;
+        var o = off;
+        off += dash;
+        return '<circle class="pie-segment" cx="150" cy="150" r="' + r + '" fill="none" stroke="' + d.color + '" stroke-width="' + sw + '" stroke-dasharray="0 ' + circ + '" data-target="' + dash + '" data-circumference="' + circ + '" style="transform-origin:center;transform:rotate(' + ((o / circ) * 360) + 'deg)"/>';
+    }).join('');
+    return '<div class="pie-chart"><svg viewBox="0 0 300 300">' + segs + '</svg>' +
+        (config.pieStyle === 'donut' && config.centerText ? '<div class="pie-center-text">' + config.centerText + '</div>' : '') +
+        '</div>';
+}
+
+function renderLegend() {
+    return config.data.map(function(d) {
+        return '<div class="legend-item"><div class="legend-color" style="background:' + d.color + '"></div><span>' + d.label + ': ' + d.value + '</span></div>';
+    }).join('');
+}
+
+function applyEffect() {
+    var scr = document.getElementById('previewScroll');
+    var cnt = document.getElementById('previewContainer');
+    var max = cnt.offsetHeight - scr.clientHeight;
+    var prog = max > 0 ? scr.scrollTop / max : 0;
+    document.getElementById('progressDisplay').textContent = Math.round(prog * 100) + '%';
+
+    var e = function(t) { return 1 - Math.pow(1 - t, 3); };
+
+    var barFills = document.querySelectorAll('.bar-fill');
+    var barCount = barFills.length;
+    var maxStagger = 0.5;
+    var staggerStep = barCount > 1 && config.stagger ? maxStagger / (barCount - 1) : 0;
+
+    barFills.forEach(function(f, i) {
+        var t = parseFloat(f.dataset.target) || 0;
+        var d = config.stagger ? i * staggerStep : 0;
+        var animWindow = 1 - maxStagger;
+        var p = Math.max(0, Math.min(1, (prog - d) / animWindow));
+        f.style[config.orientation === 'vertical' ? 'height' : 'width'] = t * e(p) + '%';
+        var val = f.parentElement.parentElement.querySelector('.bar-value');
+        if (val) val.style.opacity = p > 0.8 ? 1 : 0;
+    });
+
+    var pieSegs = document.querySelectorAll('.pie-segment');
+    var pieCount = pieSegs.length;
+    var pieStagger = pieCount > 1 && config.stagger ? maxStagger / (pieCount - 1) : 0;
+
+    pieSegs.forEach(function(s, i) {
+        var t = parseFloat(s.dataset.target) || 0;
+        var c = parseFloat(s.dataset.circumference) || 628;
+        var d = config.stagger ? i * pieStagger : 0;
+        var animWindow = 1 - maxStagger;
+        var p = Math.max(0, Math.min(1, (prog - d) / animWindow));
+        s.style.strokeDasharray = (t * e(p)) + ' ' + (c - t * e(p));
+    });
+}
+
+var raf = null;
+document.getElementById('previewScroll').addEventListener('scroll', function() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(applyEffect);
+}, { passive: true });
+
+function generateExport() {
+    var u = 'ch' + Math.random().toString(36).substr(2, 4);
+    var dur = parseInt(document.getElementById('scrollDuration').value) || 200;
+    var mob = parseInt(document.getElementById('mobileOffset').value) || 200;
+    var dsk = parseInt(document.getElementById('desktopOffset').value) || 0;
+    var max = Math.max.apply(null, config.data.map(function(d) { return d.value; })) || 1;
+    var tot = config.data.reduce(function(s, d) { return s + d.value; }, 0) || 1;
+    var v = config.orientation === 'vertical';
+    var bar = config.chartType === 'bar';
+    var itemCount = config.data.length;
+    var maxStg = 0.5;
+    var stgStep = config.stagger && itemCount > 1 ? maxStg / (itemCount - 1) : 0;
+    var animWin = 1 - maxStg;
+
+    var esc = function(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    var h = '', css = '';
+
+    if (bar) {
+        h = '<div class="b">';
+        config.data.forEach(function(d, i) {
+            h += '<div class="i"><span class="l">' + esc(d.label) + '</span><div class="t"><div class="f" style="background:' + d.color + '" data-t="' + Math.round((d.value / max) * 100) + '"></div></div><span class="n">' + d.value + '</span></div>';
+        });
+        h += '</div>';
+        css = v ?
+            '#' + u + ' .b{display:flex;flex-direction:row;align-items:flex-end;justify-content:center;width:100%;height:300px;gap:20px}#' + u + ' .i{display:flex;flex-direction:column-reverse;align-items:center;height:100%;gap:10px}#' + u + ' .l{font-size:.9rem;color:#ccc;text-align:center}#' + u + ' .t{width:50px;height:100%;background:#333;border-radius:4px;overflow:hidden;display:flex;align-items:flex-end;flex:none}#' + u + ' .f{width:100%;height:0;border-radius:4px;flex-shrink:0}#' + u + ' .n{font-size:.9rem;color:#fff;font-weight:bold;opacity:0;transition:opacity .3s}' :
+            '#' + u + ' .b{display:flex;flex-direction:column;gap:15px}#' + u + ' .i{display:flex;align-items:center;gap:10px}#' + u + ' .l{min-width:100px;font-size:.9rem;color:#ccc}#' + u + ' .t{flex:1;height:30px;background:#333;border-radius:4px;overflow:hidden}#' + u + ' .f{height:100%;width:0;border-radius:4px}#' + u + ' .n{min-width:50px;font-size:.9rem;color:#fff;font-weight:bold;opacity:0;transition:opacity .3s}';
+    } else {
+        var r = config.pieStyle === 'donut' ? 80 : 100;
+        var sw = config.pieStyle === 'donut' ? 40 : 100;
+        var circ = 2 * Math.PI * r;
+        var off = 0;
+        h = '<div class="p"><svg viewBox="0 0 300 300">';
+        config.data.forEach(function(d) {
+            var dash = Math.round((d.value / tot) * circ * 100) / 100;
+            h += '<circle class="s" cx="150" cy="150" r="' + r + '" fill="none" stroke="' + d.color + '" stroke-width="' + sw + '" stroke-dasharray="0 ' + Math.round(circ) + '" data-t="' + dash + '" data-c="' + Math.round(circ) + '" style="transform-origin:center;transform:rotate(' + Math.round((off / circ) * 360) + 'deg)"/>';
+            off += dash;
+        });
+        h += '</svg>';
+        if (config.pieStyle === 'donut' && config.centerText) h += '<div class="ct">' + esc(config.centerText) + '</div>';
+        h += '</div><div class="lg">';
+        config.data.forEach(function(d) {
+            h += '<div class="li"><span class="lc" style="background:' + d.color + '"></span><span>' + esc(d.label) + ': ' + d.value + '</span></div>';
+        });
+        h += '</div>';
+        css = '#' + u + ' .p{position:relative;width:300px;height:300px;margin:0 auto}#' + u + ' .p svg{width:100%;height:100%;transform:rotate(-90deg)}#' + u + ' .ct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.2rem;font-weight:bold;color:#fff}#' + u + ' .lg{display:flex;flex-wrap:wrap;gap:15px;margin-top:20px;justify-content:center}#' + u + ' .li{display:flex;align-items:center;gap:8px;font-size:.85rem;color:#fff}#' + u + ' .lc{width:16px;height:16px;border-radius:3px;display:inline-block}';
+    }
+
+    var tov = '', tovc = '';
+    if (config.textEnabled && config.text) {
+        var vpos = config.textPosition === 'top' ? 'top:60px;' : config.textPosition === 'center' ? 'top:50%;' : 'bottom:100px;';
+        var vtrans = config.textPosition === 'center' ? 'transform:translate(-50%,-50%);' : 'transform:translateX(-50%);';
+        tovc = '#' + u + ' .to{position:absolute;left:50%;' + vpos + vtrans + 'margin-left:' + config.textX + 'px;margin-top:' + config.textY + 'px;font-size:' + config.textSize + 'px;color:' + config.textColor + ';text-align:' + config.textAlign + ';font-weight:' + (config.textBold ? 'bold' : 'normal') + ';padding:12px 20px;border-radius:4px;white-space:pre-line;z-index:50;' + (config.textBgEnabled ? 'background:rgba(0,0,0,.8);' : '') + '}';
+        tov = '<div class="to">' + esc(config.text).replace(/\n/g, '<br>') + '</div>';
+    }
+
+    var cap = '', capc = '';
+    if (config.captionEnabled && (config.captionText || config.captionCredit)) {
+        capc = '#' + u + ' .cap{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);width:85%;max-width:700px;padding:12px 16px;border-radius:8px;font-size:13px;line-height:1.5;color:#e0e0e0;text-align:center;z-index:100;' + (config.captionBgEnabled ? 'background:rgba(0,0,0,.8);' : '') + '}#' + u + ' .cap em{color:#999;font-size:11px;display:block;margin-top:4px}';
+        cap = '<div class="cap">' + esc(config.captionText) + (config.captionCredit ? '<em>' + esc(config.captionCredit) + '</em>' : '') + '</div>';
+    }
+
+    var js = bar ?
+        '!function(){var w=document.getElementById("' + u + '"),c=0;!function U(){var r=w.getBoundingClientRect(),t=Math.max(0,Math.min(1,-(r.top-(innerWidth<768?' + mob + ':' + dsk + '))/(w.offsetHeight-innerHeight+(innerWidth<768?' + mob + ':' + dsk + '))));var extP=window.SCROLLTASTIC_PROGRESS&&window.SCROLLTASTIC_PROGRESS["' + u + '"];if(extP!==undefined)t=extP;c+=(t-c)*.15;w.querySelectorAll(".f").forEach(function(f,i){var p=Math.max(0,Math.min(1,(c-i*' + stgStep + ')/' + animWin + ')),e=1-Math.pow(1-p,3);f.style.' + (v ? 'height' : 'width') + '=f.dataset.t*e+"%";f.parentNode.parentNode.lastChild.style.opacity=p>.8?1:0});requestAnimationFrame(U)}()}()' :
+        '!function(){var w=document.getElementById("' + u + '"),c=0;!function U(){var r=w.getBoundingClientRect(),t=Math.max(0,Math.min(1,-(r.top-(innerWidth<768?' + mob + ':' + dsk + '))/(w.offsetHeight-innerHeight+(innerWidth<768?' + mob + ':' + dsk + '))));var extP=window.SCROLLTASTIC_PROGRESS&&window.SCROLLTASTIC_PROGRESS["' + u + '"];if(extP!==undefined)t=extP;c+=(t-c)*.15;w.querySelectorAll(".s").forEach(function(g,i){var p=Math.max(0,Math.min(1,(c-i*' + stgStep + ')/' + animWin + ')),e=1-Math.pow(1-p,3),a=g.dataset.t,k=g.dataset.c;g.style.strokeDasharray=a*e+" "+(k-a*e)});requestAnimationFrame(U)}()}()';
+
+    var b64 = btoa(js);
+
+    var ttl = config.title ? '<div class="tt">' + esc(config.title) + '</div>' : '';
+    var stageBg = config.bgTransparent ? 'transparent' : config.bgColor;
+
+    var code = '<!-- Chart Module -->\n<style>\n#' + u + '{position:relative;width:100%;min-height:' + dur + 'vh}\n#' + u + ' .st{position:-webkit-sticky;position:sticky;top:0;width:100%;height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;background:' + stageBg + ';font-family:-apple-system,sans-serif}\n#' + u + ' .tt{font-size:1.5rem;margin-bottom:20px;text-align:center;color:#fff;font-weight:bold}\n#' + u + ' .cc{display:flex;flex-direction:column;align-items:center;transform:translate(' + config.chartOffsetX + 'px,' + config.chartOffsetY + 'px) scale(' + (config.chartScale / 100) + ');transform-origin:center}\n' + css + '\n' + tovc + '\n' + capc + '\n</style>\n<div id="' + u + '">\n<div class="st">' + ttl + '<div class="cc">' + h + '</div>' + tov + cap + '</div>\n</div>\n<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="eval(atob(\'' + b64 + '\'))">';
+
+    document.getElementById('exportCode').value = code;localStorage.setItem('disco_chart_export',code);
+    if(!_fromPlanner){document.getElementById('exportModal').classList.add('active')};
+}
+
+function copyCode() {
+    var code = document.getElementById('exportCode');
+    if (!code.value) { generateExport(); return; }
+    code.select();
+    document.execCommand('copy');
+    discoAlert('Code copied to clipboard!');
+}
+
+function downloadHTML() {
+    var code = document.getElementById('exportCode').value;
+    if (!code) { generateExport(); return; }
+    var filename = prompt('Save export as:', 'chart-embed');
+    if (!filename) return;
+    var safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    var blob = new Blob([code], { type: 'text/html' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = safeName + '.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+function sendToStackBuilder() {var _em=document.getElementById('exportModal');if(_em){_em.classList.remove('active');_em.classList.remove('open');}
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate HTML first'); return; }
+    var queue = JSON.parse(localStorage.getItem('disco_stack_queue') || '[]');
+    queue.push({ name: 'Chart', html: code, timestamp: Date.now() });
+    localStorage.setItem('disco_stack_queue', JSON.stringify(queue));
+    discoStackSend()
+}
+
+function saveConfig() {
+    var filename = prompt('Save config as:', 'chart-config');
+    if (!filename) return;
+    var blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename.replace(/[^a-z0-9_-]/gi, '_') + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+function loadConfig() {
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.json';
+    inp.onchange = function(e) {
+        var f = e.target.files[0];
+        if (!f) return;
+        var r = new FileReader();
+        r.onload = function(ev) {
+            try {
+                config = JSON.parse(ev.target.result);
+                restoreUI();
+                discoAlert('Configuration loaded!');
+            } catch (err) {
+                discoAlert('Invalid config file');
+            }
+        };
+        r.readAsText(f);
+    };
+    inp.click();
+}
+
+function restoreUI() {
+    document.getElementById('chart-title').value = config.title || '';
+    document.getElementById('center-text').value = config.centerText || '';
+    document.getElementById('bg-color').value = config.bgColor || '#000000';
+    document.getElementById('chartScale').value = config.chartScale || 80;
+    document.getElementById('chartScaleVal').textContent = (config.chartScale || 80) + '%';
+    document.getElementById('chartOffsetX').value = config.chartOffsetX || 0;
+    document.getElementById('chartOffsetXVal').textContent = (config.chartOffsetX || 0) + 'px';
+    document.getElementById('chartOffsetY').value = config.chartOffsetY || 0;
+    document.getElementById('chartOffsetYVal').textContent = (config.chartOffsetY || 0) + 'px';
+    document.getElementById('textEnabled').checked = config.textEnabled || false;
+    document.getElementById('overlayText').value = config.text || '';
+    document.getElementById('textSize').value = config.textSize || 32;
+    document.getElementById('textSizeVal').textContent = (config.textSize || 32) + 'px';
+    document.getElementById('textColor').value = config.textColor || '#ffffff';
+    document.getElementById('textPosition').value = config.textPosition || 'center';
+    document.getElementById('textAlign').value = config.textAlign || 'center';
+    document.getElementById('textX').value = config.textX || 0;
+    document.getElementById('textXVal').textContent = (config.textX || 0) + 'px';
+    document.getElementById('textY').value = config.textY || 0;
+    document.getElementById('textYVal').textContent = (config.textY || 0) + 'px';
+    document.getElementById('textBold').checked = config.textBold || false;
+    document.getElementById('textBgEnabled').checked = config.textBgEnabled || false;
+    document.getElementById('captionEnabled').checked = config.captionEnabled !== false;
+    document.getElementById('captionText').value = config.captionText || '';
+    document.getElementById('captionCredit').value = config.captionCredit || '';
+    document.getElementById('captionBgEnabled').checked = config.captionBgEnabled !== false;
+    setChartType(config.chartType || 'bar');
+    setOrientation(config.orientation || 'horizontal');
+    setPieStyle(config.pieStyle || 'pie');
+    setStagger(config.stagger !== false);
+    setSizing(config.sizing || 'fit');
+    renderDataList();
+    updatePreview();
+}
+
+// Init
+renderDataList();
+updatePreviewHeight();
+updatePreview();
+</script>
+
+<script>
+(function(){
+  var path = location.pathname.split('/').pop() || 'index.html';
+  document.querySelectorAll('#disco-nav a').forEach(function(a){
+    if(a.getAttribute('href') === path){
+      a.style.color = '#4a9eff';
+      a.style.borderBottom = '2px solid #4a9eff';
+    }
+  });
+})();
+</script>
+
+<script>
+(function() {
+    var KEY = 'disco_chart';
+
+    function saveState() {
+        var state = { inputs: {} };
+
+        state.data = config.data;
+        state.chartType = config.chartType;
+        state.orientation = config.orientation;
+        state.pieStyle = config.pieStyle;
+        state.stagger = config.stagger;
+        state.sizing = config.sizing;
+
+        document.querySelectorAll('input[id], select[id], textarea[id]').forEach(function(el) {
+            if (el.type === 'checkbox') state.inputs[el.id] = el.checked;
+            else if (el.type === 'file') return;
+            else state.inputs[el.id] = el.value;
+        });
+        try { localStorage.setItem(KEY, JSON.stringify(state)); localStorage.removeItem(KEY + '_from_planner'); } catch(e) {}
+    }
+
+    function loadState() {
+        try {
+            var saved = localStorage.getItem(KEY);
+            if (!saved) return;
+            var state = JSON.parse(saved);
+
+            if (state.data) config.data = state.data;
+
+            if (state.chartType) config.chartType = state.chartType;
+            if (state.orientation) config.orientation = state.orientation;
+            if (state.pieStyle) config.pieStyle = state.pieStyle;
+            if (typeof state.stagger !== 'undefined') config.stagger = state.stagger;
+            if (state.sizing) config.sizing = state.sizing;
+
+            Object.keys(state.inputs || {}).forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    if (el.type === 'checkbox') el.checked = state.inputs[id];
+                    else if (el.type === 'file') return;
+                    else el.value = state.inputs[id];
+                    var valEl = document.getElementById(id + 'Val');
+                    if (valEl && el.type === 'range') valEl.textContent = el.value + (id.toLowerCase().includes('offset') ? 'px' : (id.toLowerCase().includes('size') ? 'px' : (id.toLowerCase().includes('scale') || id.toLowerCase().includes('duration') ? '%' : '')));
+                }
+            });
+
+            document.querySelectorAll('[data-type]').forEach(function(b) { b.classList.toggle('active', b.dataset.type === config.chartType); });
+            document.querySelectorAll('[data-orient]').forEach(function(b) { b.classList.toggle('active', b.dataset.orient === config.orientation); });
+            document.querySelectorAll('[data-pie]').forEach(function(b) { b.classList.toggle('active', b.dataset.pie === config.pieStyle); });
+            document.querySelectorAll('[data-stagger]').forEach(function(b) { b.classList.toggle('active', b.dataset.stagger === String(config.stagger)); });
+            document.querySelectorAll('[data-sizing]').forEach(function(b) { b.classList.toggle('active', b.dataset.sizing === config.sizing); });
+
+            document.getElementById('bar-options').style.display = config.chartType === 'bar' ? 'block' : 'none';
+            document.getElementById('pie-options').style.display = config.chartType === 'pie' ? 'block' : 'none';
+
+            renderDataList();
+            updatePreviewHeight();
+            updatePreview();
+        } catch(e) { console.warn('Load state error:', e); }
+    }
+
+    window.resetModule = function() {
+        discoConfirm('Reset all settings to defaults?', function(){localStorage.removeItem(KEY);
+            location.reload();});
+    };
+
+    var _orig_addDataEntry = window.addDataEntry;
+    window.addDataEntry = function() { _orig_addDataEntry.apply(this, arguments); saveState(); };
+    var _orig_removeDataEntry = window.removeDataEntry;
+    window.removeDataEntry = function() { _orig_removeDataEntry.apply(this, arguments); saveState(); };
+    var _orig_updateDataEntry = window.updateDataEntry;
+    window.updateDataEntry = function() { _orig_updateDataEntry.apply(this, arguments); saveState(); };
+
+    var _orig_setChartType = window.setChartType;
+    window.setChartType = function() { _orig_setChartType.apply(this, arguments); saveState(); };
+    var _orig_setOrientation = window.setOrientation;
+    window.setOrientation = function() { _orig_setOrientation.apply(this, arguments); saveState(); };
+    var _orig_setPieStyle = window.setPieStyle;
+    window.setPieStyle = function() { _orig_setPieStyle.apply(this, arguments); saveState(); };
+    var _orig_setStagger = window.setStagger;
+    window.setStagger = function() { _orig_setStagger.apply(this, arguments); saveState(); };
+    var _orig_setSizing = window.setSizing;
+    window.setSizing = function() { _orig_setSizing.apply(this, arguments); saveState(); };
+
+    document.addEventListener('change', saveState);
+    document.addEventListener('input', saveState);
+
+    setTimeout(loadState, 150);
+})();
+
+function downloadCodeTxt() {
+    var code = document.getElementById('exportCode').value;
+    if (!code) { discoAlert('Generate code first'); return; }
+    var filename = prompt('Save as:', 'chart');
+    if (!filename) return;
+    var safeName = filename.replace(/[^a-z0-9_-]/gi, '_');
+    var blob = new Blob([code], {type:'text/plain'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = safeName + '.txt';
+    a.click();
+}
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

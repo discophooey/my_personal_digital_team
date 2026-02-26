@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Responsive Preview - Presentation Disco</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--bg-deep); color: var(--text-primary); padding-top: 41px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+.header { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 16px; }
+.back-btn { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; }
+.back-btn:hover { background: #3a3a3a; color: #fff; }
+.module-title { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em; }
+.module-title span { color: var(--accent); }
+
+h2 { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; transition: all .15s; }
+h2:hover { border-color: var(--border-light); background: var(--bg-tertiary); }
+h2::after { content: '\25be'; font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+h2.collapsed::after { transform: rotate(-90deg); }
+.section { max-height: 2000px; overflow: hidden; transition: max-height 0.3s; }
+.section.collapsed { max-height: 0; }
+
+.control-group { margin-bottom: 10px; }
+label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+input[type="text"], input[type="url"], input[type="number"], select, textarea {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary);
+    border-radius: 6px; font-family: var(--mono); font-size: 11px; outline: none; transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent-dim); }
+input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+input[type="color"] { width: 36px; height: 24px; border: 1px solid var(--border); background: var(--bg-tertiary); cursor: pointer; border-radius: 4px; padding: 1px; }
+input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent); }
+
+button {
+    width: 100%; padding: 8px 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--accent); border: 1px solid var(--accent); color: #0a0a0a; font-weight: 600;
+    border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: all .15s;
+}
+button:hover { opacity: 0.85; }
+button.secondary { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+.row { display: flex; gap: 8px; align-items: flex-start; }
+.row > * { flex: 1; }
+.hint { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+.range-val { font-family: var(--mono); font-size: 9px; color: var(--accent); float: right; text-transform: none; letter-spacing: 0; }
+
+
+.mode-toggle { display: flex; background: #0a0a0a; border-radius: 6px; padding: 2px; margin-left: 16px; }
+.mode-btn { padding: 6px 12px; background: transparent; border: none; border-radius: 4px; color: #888; cursor: pointer; font-size: 12px; }
+.mode-btn.active { background: #4a9eff; color: #000; font-weight: 600; }
+
+.header-actions { display: flex; gap: 8px; margin-left: auto; }
+.header-btn { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.header-btn:hover { background: #3a3a3a; color: #fff; }
+
+.main { display: flex; flex: 1; overflow: hidden; }
+
+.sidebar { width: 280px; background: var(--bg-primary); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+.section-title { color: var(--text-dim); font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+
+.code-input { width: 100%; height: 150px; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); padding: 10px; border-radius: 6px; font-family: var(--mono); font-size: 11px; resize: vertical; }
+.code-input:focus { outline: none; border-color: #4a9eff; }
+.url-input { width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 12px; border-radius: 6px; font-family: var(--mono); font-size: 11px; }
+.url-input:focus { outline: none; border-color: #4a9eff; }
+
+.input-actions { display: flex; gap: 8px; margin-top: 8px; }
+.btn { padding: 10px 12px; border-radius: 6px; cursor: pointer; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border: none; }
+.btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; flex: 1; }
+.btn-primary:hover { background: #357abd; }
+.btn-secondary { background: #2a2a2a; border: 1px solid #3a3a3a; color: #888; }
+.btn-secondary:hover { background: #3a3a3a; color: #fff; }
+
+.device-list { display: flex; flex-direction: column; gap: 4px; }
+.device-btn { width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 6px; color: #888; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.device-btn:hover { background: #2a2a2a; color: #fff; }
+.device-btn.active { background: #2a2a2a; color: #fff; }
+.device-size { color: #555; font-size: 10px; }
+
+.custom-size { display: flex; gap: 8px; }
+.custom-field { flex: 1; }
+.custom-field label { color: var(--text-dim); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+.custom-field input { width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); padding: 6px 8px; border-radius: 4px; font-family: var(--mono); font-size: 11px; }
+.custom-field input:focus { outline: none; border-color: #4a9eff; }
+
+.zoom-section { margin-top: auto; }
+.zoom-label { color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+.zoom-slider { width: 100%; margin-bottom: 8px; }
+.zoom-presets { display: flex; justify-content: space-between; }
+.zoom-btn { background: #2a2a2a; border: none; color: #888; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+.zoom-btn:hover { background: #3a3a3a; color: #fff; }
+.zoom-btn.active { background: #4a9eff; color: #000; }
+
+.preview-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; overflow: auto; background: var(--bg-deep); }
+
+.device-frame-wrapper { position: relative; }
+.size-label { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); color: #666; font-size: 12px; white-space: nowrap; }
+.device-frame { background: #1a1a1a; border-radius: 24px; padding: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.device-screen { background: #fff; border-radius: 12px; overflow: hidden; position: relative; }
+.device-screen iframe { border: none; }
+.home-indicator { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); height: 4px; background: #333; border-radius: 2px; }
+
+.empty-preview { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #f5f5f5, #e0e0e0); color: #999; }
+.empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-text { font-size: 14px; font-weight: 500; }
+.empty-hint { font-size: 12px; margin-top: 8px; color: #bbb; text-align: center; padding: 0 20px; }
+
+.footer { background: #151515; border-top: 1px solid #2a2a2a; padding: 8px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #666; }
+.footer-tip { color: #4a9eff; }
+
+/* Disco Modal */
+.disco-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; font-family: var(--sans); }
+.disco-modal-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+.disco-modal { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.disco-modal-overlay.active .disco-modal { transform: scale(1); }
+.disco-modal-title { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.disco-modal-msg { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+.disco-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.disco-modal-btns button { padding: 7px 16px; border: none; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; width: auto; margin: 0; }
+.disco-modal-btns .disco-btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; border: 1px solid var(--accent); }
+.disco-modal-btns .disco-btn-primary:hover { opacity: 0.85; }
+.disco-modal-btns .disco-btn-secondary { background: var(--bg-tertiary); color: var(--text-dim); border: 1px solid var(--border); }
+.disco-modal-btns .disco-btn-secondary:hover { border-color: var(--border-light); color: var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <a href="index.html" class="back-btn">← Hub</a>
+    <div class="module-title">Responsive <span>Preview</span></div>
+    <div class="mode-toggle">
+        <button class="mode-btn active" id="modeCode" onclick="setMode('code')">Paste Code</button>
+        <button class="mode-btn" id="modeUrl" onclick="setMode('url')">URL</button>
+    </div>
+    <div class="header-actions">
+        <button class="header-btn" onclick="toggleOrientation()">🔄 <span id="orientationLabel">Landscape</span></button>
+    </div>
+</div>
+
+<div class="main">
+    <div class="sidebar">
+        <div id="codeSection">
+            <div class="section-title">Paste HTML Code</div>
+            <textarea class="code-input" id="codeInput" placeholder="Paste exported module HTML here..."></textarea>
+            <div class="input-actions">
+                <button class="btn btn-primary" onclick="loadPreview()">Load Preview</button>
+                <button class="btn btn-secondary" onclick="clearPreview()">Clear</button>
+            </div>
+        </div>
+        <div id="urlSection" style="display: none;">
+            <div class="section-title">Enter URL</div>
+            <input type="text" class="url-input" id="urlInput" placeholder="https://example.com" />
+            <div class="input-actions">
+                <button class="btn btn-primary" onclick="loadPreview()">Load Preview</button>
+                <button class="btn btn-secondary" onclick="clearPreview()">Clear</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-title">Devices</div>
+            <div class="device-list" id="deviceList"></div>
+        </div>
+
+        <div>
+            <div class="section-title">Custom Size</div>
+            <div class="custom-size">
+                <div class="custom-field">
+                    <label>W</label>
+                    <input type="number" id="customWidth" value="390" onchange="setCustomSize()" />
+                </div>
+                <div class="custom-field">
+                    <label>H</label>
+                    <input type="number" id="customHeight" value="844" onchange="setCustomSize()" />
+                </div>
+            </div>
+        </div>
+
+        <div class="zoom-section">
+            <div class="zoom-label">Zoom: <span id="zoomValue">75</span>%</div>
+            <input type="range" class="zoom-slider" id="zoomSlider" min="25" max="150" value="75" onchange="setZoom(this.value)" />
+            <div class="zoom-presets">
+                <button class="zoom-btn" onclick="setZoom(50)">50%</button>
+                <button class="zoom-btn active" onclick="setZoom(75)">75%</button>
+                <button class="zoom-btn" onclick="setZoom(100)">100%</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-area">
+        <div class="device-frame-wrapper">
+            <div class="size-label" id="sizeLabel">390 × 844 (iPhone 14)</div>
+            <div class="device-frame" id="deviceFrame">
+                <div class="device-screen" id="deviceScreen">
+                    <div class="empty-preview" id="emptyPreview">
+                        <div class="empty-icon">📱</div>
+                        <div class="empty-text">Paste code or enter URL</div>
+                        <div class="empty-hint">Test your scroll modules at different screen sizes</div>
+                    </div>
+                    <iframe id="previewIframe" style="display: none;"></iframe>
+                </div>
+                <div class="home-indicator" id="homeIndicator"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <div>Viewport: <span id="footerSize">390×844</span> | Zoom: <span id="footerZoom">75</span>% | <span id="footerOrientation">portrait</span></div>
+    <div class="footer-tip">Tip: Copy HTML from any module's export and paste here to test</div>
+</div>
+
+<script>
+const devices = [
+    { name: 'iPhone SE', width: 375, height: 667, icon: '📱' },
+    { name: 'iPhone 14', width: 390, height: 844, icon: '📱' },
+    { name: 'iPhone 14 Pro Max', width: 430, height: 932, icon: '📱' },
+    { name: 'iPad Mini', width: 768, height: 1024, icon: '📱' },
+    { name: 'iPad Pro 11"', width: 834, height: 1194, icon: '⬛' },
+    { name: 'iPad Pro 12.9"', width: 1024, height: 1366, icon: '⬛' },
+    { name: 'Desktop HD', width: 1280, height: 800, icon: '🖥' },
+    { name: 'Desktop Full HD', width: 1920, height: 1080, icon: '🖥' },
+];
+
+let mode = 'code';
+let currentDevice = devices[1];
+let isCustom = false;
+let customWidth = 390;
+let customHeight = 844;
+let orientation = 'portrait';
+let zoom = 75;
+let previewContent = '';
+
+function setMode(newMode) {
+    mode = newMode;
+    document.getElementById('modeCode').classList.toggle('active', mode === 'code');
+    document.getElementById('modeUrl').classList.toggle('active', mode === 'url');
+    document.getElementById('codeSection').style.display = mode === 'code' ? 'block' : 'none';
+    document.getElementById('urlSection').style.display = mode === 'url' ? 'block' : 'none';
+}
+
+function selectDevice(index) {
+    currentDevice = devices[index];
+    isCustom = false;
+    document.getElementById('customWidth').value = currentDevice.width;
+    document.getElementById('customHeight').value = currentDevice.height;
+    renderDeviceList();
+    updatePreview();
+}
+
+function setCustomSize() {
+    customWidth = parseInt(document.getElementById('customWidth').value) || 390;
+    customHeight = parseInt(document.getElementById('customHeight').value) || 844;
+    isCustom = true;
+    renderDeviceList();
+    updatePreview();
+}
+
+function toggleOrientation() {
+    orientation = orientation === 'portrait' ? 'landscape' : 'portrait';
+    document.getElementById('orientationLabel').textContent = orientation === 'portrait' ? 'Landscape' : 'Portrait';
+    document.getElementById('footerOrientation').textContent = orientation;
+    updatePreview();
+}
+
+function setZoom(value) {
+    zoom = parseInt(value);
+    document.getElementById('zoomSlider').value = zoom;
+    document.getElementById('zoomValue').textContent = zoom;
+    document.getElementById('footerZoom').textContent = zoom;
+    
+    // Update zoom button states
+    document.querySelectorAll('.zoom-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === zoom + '%');
+    });
+    
+    updatePreview();
+}
+
+function loadPreview() {
+    if (mode === 'code') {
+        previewContent = document.getElementById('codeInput').value.trim();
+    } else {
+        previewContent = document.getElementById('urlInput').value.trim();
+    }
+    updatePreview();
+}
+
+function clearPreview() {
+    previewContent = '';
+    document.getElementById('codeInput').value = '';
+    document.getElementById('urlInput').value = '';
+    updatePreview();
+}
+
+function updatePreview() {
+    const baseWidth = isCustom ? customWidth : currentDevice.width;
+    const baseHeight = isCustom ? customHeight : currentDevice.height;
+    
+    const displayWidth = orientation === 'portrait' ? baseWidth : baseHeight;
+    const displayHeight = orientation === 'portrait' ? baseHeight : baseWidth;
+    
+    const scaledWidth = displayWidth * (zoom / 100);
+    const scaledHeight = displayHeight * (zoom / 100);
+    
+    // Update size label
+    const deviceName = isCustom ? 'custom' : currentDevice.name;
+    document.getElementById('sizeLabel').textContent = `${displayWidth} × ${displayHeight} (${deviceName})`;
+    document.getElementById('footerSize').textContent = `${displayWidth}×${displayHeight}`;
+    
+    // Update device frame
+    const frame = document.getElementById('deviceFrame');
+    frame.style.width = (scaledWidth + 24) + 'px';
+    frame.style.height = (scaledHeight + 24) + 'px';
+    
+    // Update screen
+    const screen = document.getElementById('deviceScreen');
+    screen.style.width = scaledWidth + 'px';
+    screen.style.height = scaledHeight + 'px';
+    
+    // Update home indicator
+    const homeIndicator = document.getElementById('homeIndicator');
+    homeIndicator.style.width = (scaledWidth * 0.35) + 'px';
+    homeIndicator.style.display = displayWidth < 500 ? 'block' : 'none';
+    
+    // Update iframe
+    const iframe = document.getElementById('previewIframe');
+    const emptyPreview = document.getElementById('emptyPreview');
+    
+    if (previewContent) {
+        emptyPreview.style.display = 'none';
+        iframe.style.display = 'block';
+        iframe.style.width = displayWidth + 'px';
+        iframe.style.height = displayHeight + 'px';
+        iframe.style.transform = `scale(${zoom / 100})`;
+        iframe.style.transformOrigin = 'top left';
+        
+        if (mode === 'code' || !previewContent.startsWith('http')) {
+            iframe.srcdoc = previewContent;
+        } else {
+            iframe.src = previewContent;
+        }
+    } else {
+        emptyPreview.style.display = 'flex';
+        iframe.style.display = 'none';
+    }
+}
+
+function renderDeviceList() {
+    const container = document.getElementById('deviceList');
+    container.innerHTML = devices.map((d, i) => `
+        <button class="device-btn ${!isCustom && currentDevice.name === d.name ? 'active' : ''}" onclick="selectDevice(${i})">
+            <span>${d.icon} ${d.name}</span>
+            <span class="device-size">${d.width}×${d.height}</span>
+        </button>
+    `).join('');
+}
+
+// Init
+renderDeviceList();
+updatePreview();
+</script>
+
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

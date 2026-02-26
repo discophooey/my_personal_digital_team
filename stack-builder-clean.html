@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disco Stack Builder</title>
+    <style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --bg-deep: #0a0a0a;
+    --bg-primary: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #242424;
+    --border: #2e2e2e;
+    --border-light: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888888;
+    --text-dim: #5a5a5a;
+    --accent: #4a9eff;
+    --accent-dim: #2a6db8;
+    --accent-glow: rgba(74,158,255,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Instrument Serif', serif;
+}
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+            padding-top: 41px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 500px;
+            gap: 16px;
+            align-items: start;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--bg-primary);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .module-title {
+            font-family: var(--display);
+            font-size: 22px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .module-title span {
+            color: var(--accent);
+        }
+
+        .subtitle {
+            font-family: var(--mono);
+            font-size: 9px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 24px;
+            line-height: 1.8;
+        }
+
+        h2 {
+            font-family: var(--mono);
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+            background: var(--bg-secondary);
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            cursor: move;
+            transition: all 0.2s;
+        }
+
+        .section:hover {
+            border-color: var(--accent-dim);
+        }
+
+        .section.dragging {
+            opacity: 0.5;
+            transform: scale(0.98);
+        }
+
+        .section.collapsed {
+            padding: 10px 12px;
+        }
+
+        .section.collapsed .section-header {
+            margin-bottom: 0;
+        }
+
+        .collapse-arrow {
+            color: var(--text-secondary);
+            font-size: 10px;
+            margin-right: 6px;
+            transition: transform 0.2s;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        .section-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .section-controls button {
+            padding: 3px 7px;
+            font-family: var(--mono);
+            font-size: 10px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .section-controls button:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--border-light);
+        }
+
+        .section-controls .remove {
+            background: transparent;
+            border-color: var(--border);
+            color: var(--text-secondary);
+        }
+
+        .section-controls .remove:hover {
+            background: rgba(255,68,68,0.15);
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 12px;
+            resize: vertical;
+            line-height: 1.4;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        textarea::placeholder {
+            color: var(--text-dim);
+        }
+
+        button {
+            width: 100%;
+            padding: 8px 14px;
+            background: var(--accent);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 6px;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        button:hover {
+            background: #5fadff;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        button.secondary:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        button.success {
+            background: #34a853;
+            color: #fff;
+        }
+
+        button.success:hover {
+            background: #46b865;
+        }
+
+        .preview-panel {
+            position: sticky;
+            top: 61px;
+        }
+
+        .preview-info {
+            background: var(--bg-secondary);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 11px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .preview-info strong {
+            color: var(--accent);
+            display: block;
+            margin-bottom: 6px;
+            font-family: var(--mono);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .section-count {
+            display: inline-block;
+            background: var(--accent);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .preview-modal {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .preview-modal.active {
+            display: block;
+        }
+
+        .preview-modal-content {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .preview-modal-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-primary);
+        }
+
+        .preview-modal-header h3 {
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-secondary);
+        }
+
+        .preview-modal-body {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .preview-modal-body iframe {
+            width: 125%;
+            height: 125%;
+            border: none;
+            transform: scale(0.8);
+            transform-origin: top left;
+        }
+
+        .preview-modal-body.fit-frame {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .preview-modal-body.fit-frame iframe {
+            width: 1200px;
+            height: 900px;
+            transform: scale(0.85);
+            transform-origin: center center;
+            border: 3px solid var(--accent);
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+        }
+
+        .close-preview {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .close-preview:hover {
+            background: var(--accent);
+            color: #0a0a0a;
+            border-color: var(--accent);
+        }
+
+        .char-count {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        /* Range input styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 6px var(--accent-glow);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 6px var(--accent-glow);
+        }
+
+        /* Color input styling */
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            background: var(--bg-tertiary);
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 2px;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 2px;
+        }
+
+/* Disco Modal */
+.disco-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:none;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;pointer-events:none;font-family:var(--mono)}
+.disco-modal-overlay.active{display:flex;opacity:1;pointer-events:auto}
+.disco-modal{background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:12px;padding:24px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);transform:scale(0.95);transition:transform 0.2s}
+.disco-modal-overlay.active .disco-modal{transform:scale(1)}
+.disco-modal-title{font-family:var(--mono);color:var(--accent);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+.disco-modal-msg{color:var(--text-secondary);font-size:13px;line-height:1.5;margin-bottom:20px;white-space:pre-line}
+.disco-modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.disco-modal-btns button{padding:8px 18px;border:none;border-radius:6px;font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;transition:background 0.2s}
+.disco-modal-btns .disco-btn-primary{background:var(--accent);color:#0a0a0a}
+.disco-modal-btns .disco-btn-primary:hover{background:#5fadff}
+.disco-modal-btns .disco-btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border)}
+.disco-modal-btns .disco-btn-secondary:hover{background:var(--border);color:var(--text-primary)}
+</style>
+</head>
+<body>
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--bg-primary);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;font-family:var(--mono);">
+<a href="index.html" style="padding:10px 16px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;">← Hub</a>
+<a href="before-after.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Before/After</a>
+<a href="card-stack.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Card Stack</a>
+<a href="chart.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chart</a>
+<a href="collage.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Collage</a>
+<a href="doc-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Doc Module</a>
+<a href="gallery.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Gallery</a>
+<a href="globe.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Globe</a>
+<a href="hotspots.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Hotspots</a>
+<a href="layers.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Layers</a>
+<a href="pull-quote.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Pull Quote</a>
+<a href="matte.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Matte</a>
+<a href="single-image.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Single Image</a>
+<a href="stat-counter.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stat Counter</a>
+<a href="timeline.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Timeline</a>
+<a href="video.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Video</a>
+<a href="zoom-detail.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Zoom Detail</a>
+<a href="text-scroll.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Text Scroll</a>
+<a href="chapter-marker.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Chapter Marker</a>
+<a href="key-facts.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Key Facts</a>
+<a href="body-module.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Body Module</a>
+<a href="epistemic-text.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Epistemic Text</a>
+<a href="adversarial-verification.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Adversarial</a>
+<a href="silence-mapping.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Silence Map</a>
+<a href="stack-builder-clean.html" style="padding:10px 14px;color:var(--text-dim);text-decoration:none;font-size:10px;white-space:nowrap;">Stack Builder</a>
+</div>
+<style>#disco-nav a:hover{color:var(--accent)!important;background:var(--bg-secondary);}</style>
+
+    <div class="container">
+        <div class="panel">
+            <div class="module-title">Stack <span>Builder</span></div>
+            <div class="subtitle">
+                Combine multiple Scrolltastic modules into one seamless scroll story.
+                Paste HTML code from individual modules, arrange the order, and export.
+            </div>
+
+            <h2>
+                Stack Sections
+                <span class="section-count" id="sectionCount">0</span>
+            </h2>
+
+            <div id="sectionsContainer">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📚</div>
+                    <p>No sections yet. Add your first section below!</p>
+                </div>
+            </div>
+
+            <button onclick="addSection()" class="secondary">+ Add Section</button>
+        </div>
+
+        <div class="preview-panel panel">
+            <h2>Actions</h2>
+
+            <button onclick="previewStack()" class="success">Preview Combined</button>
+            <button onclick="exportStack()">Export HTML</button>
+            <button onclick="clearStack()" class="secondary">Clear All</button>
+
+            <div class="preview-info">
+                <strong>How to use</strong>
+                1. Open any Scrolltastic module<br>
+                2. Configure and generate HTML<br>
+                3. Click "Send to Stack" in export modal<br>
+                4. Repeat for more modules<br>
+                5. Drag sections to reorder<br>
+                6. Preview and export!
+            </div>
+
+            <h2>Stack Mode</h2>
+            <div style="margin-bottom:12px;">
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:8px;font-family:var(--mono);font-size:11px;color:var(--text-secondary);">
+                    <input type="radio" name="stackMode" value="stack" onchange="updateMode()">
+                    <span><strong style="color:var(--text-primary);">Stack</strong> — modules stack vertically</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text-secondary);">
+                    <input type="radio" name="stackMode" value="viewport" checked onchange="updateMode()">
+                    <span><strong style="color:var(--text-primary);">Viewport</strong> — modules blend in single viewport</span>
+                </label>
+            </div>
+
+            <!-- Common Settings (both modes) -->
+            <div id="commonSettings" style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);margin-bottom:12px;">
+                <div style="margin-bottom:10px;">
+                    <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Top Offset (px)</label>
+                    <input type="number" id="vpDesktopOffset" value="50" min="0" max="300" style="width:100%;padding:8px;background:var(--bg-deep);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:var(--mono);font-size:11px;" onchange="saveSettings()">
+                </div>
+            </div>
+
+            <!-- Stack Mode Only Settings -->
+            <div id="stackSettings" style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);margin-bottom:12px;">
+                <div>
+                    <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Background Color</label>
+                    <input type="color" id="stackBgColor" value="#000000" style="width:100%;height:36px;padding:2px;background:var(--bg-deep);border:1px solid var(--border);border-radius:4px;cursor:pointer;" onchange="saveSettings()">
+                </div>
+            </div>
+
+            <!-- Viewport Mode Only Settings -->
+            <div id="viewportSettings" style="display:block;background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);margin-bottom:12px;">
+                <div style="margin-bottom:10px;">
+                    <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Transition</label>
+                    <select id="transitionType" onchange="updateTransitionOptions(); saveSettings();" style="width:100%;padding:8px;background:var(--bg-deep);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:var(--mono);font-size:11px;">
+                        <option value="crossfade">Crossfade</option>
+                        <option value="blur">Blur</option>
+                        <option value="wipe">Wipe</option>
+                        <option value="fadeblack">Fade through black</option>
+                        <option value="iris">Iris</option>
+                        <option value="none">None (hard cut)</option>
+                    </select>
+                </div>
+                <div id="wipeDirectionGroup" style="display:none;margin-bottom:10px;">
+                    <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Wipe Direction</label>
+                    <select id="wipeDirection" style="width:100%;padding:8px;background:var(--bg-deep);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:var(--mono);font-size:11px;" onchange="saveSettings()">
+                        <option value="left">Left to right</option>
+                        <option value="right">Right to left</option>
+                        <option value="up">Bottom to top</option>
+                        <option value="down">Top to bottom</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Transition Duration (% of scroll budget)</label>
+                    <input type="range" id="transitionDuration" min="0" max="30" value="15" style="width:100%;" oninput="document.getElementById('transitionDurationVal').textContent = this.value + '%'; saveSettings();">
+                    <span id="transitionDurationVal" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">15%</span>
+                </div>
+                <p style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:10px;">Scroll budget is set per-section above.</p>
+            </div>
+
+            <h2>Export Settings</h2>
+            <textarea id="embedCode" readonly placeholder="Combined HTML will appear here after preview..."></textarea>
+            <button onclick="copyCode()" class="secondary">Copy to Clipboard</button>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="preview-modal" id="previewModal">
+        <div class="preview-modal-content">
+            <div class="preview-modal-header">
+                <h3>Preview - Combined Stack</h3>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-family: var(--mono); font-size: 10px; color: var(--text-dim);">
+                    <input type="checkbox" id="fitFrameToggle" onchange="toggleFitFrame()">
+                    Fit Frame
+                </label>
+                <button onclick="closePreview()" class="close-preview">Close</button>
+            </div>
+            <div class="preview-modal-body">
+                <iframe id="previewIframe"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sections = [];
+        let sectionIdCounter = 0;
+        let draggedIndex = null;
+
+        // Persistence functions
+        function saveState() {
+            localStorage.setItem('disco_stack_sections', JSON.stringify(sections));
+            localStorage.setItem('disco_stack_counter', sectionIdCounter);
+        }
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem('disco_stack_sections');
+                const counter = localStorage.getItem('disco_stack_counter');
+                if (saved) {
+                    sections = JSON.parse(saved);
+                    // Migrate old sections to have new properties
+                    sections.forEach(s => {
+                        if (s.scrollBudget === undefined) s.scrollBudget = 2000;
+                        if (s.collapsed === undefined) s.collapsed = false;
+                        if (s.layout === undefined) s.layout = 'viewport';
+                    });
+                    sectionIdCounter = parseInt(counter) || sections.length;
+                    renderSections();
+                }
+            } catch (e) {
+                console.warn('Could not load saved state:', e);
+            }
+        }
+
+        function addSection() {
+            const section = {
+                id: ++sectionIdCounter,
+                name: `Section ${sectionIdCounter}`,
+                html: '',
+                scrollBudget: 2000,
+                collapsed: false,
+                layout: 'viewport'
+            };
+            sections.push(section);
+            renderSections();
+            saveState();
+        }
+
+        function removeSection(id) {
+            discoConfirm('Remove this section?', function(){sections = sections.filter(s => s.id !== id);
+                renderSections();
+                saveState();});
+        }
+
+        function updateSection(id, html) {
+            const section = sections.find(s => s.id === id);
+            if (section) {
+                section.html = html;
+                saveState();
+            }
+        }
+
+        function updateLayout(id, layout) {
+            const section = sections.find(s => s.id === id);
+            if (section) {
+                section.layout = layout;
+                renderSections();
+                saveState();
+            }
+        }
+
+        function renderSections() {
+            const container = document.getElementById('sectionsContainer');
+            document.getElementById('sectionCount').textContent = sections.length;
+            const mode = document.querySelector('input[name="stackMode"]:checked').value;
+
+            if (sections.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📚</div>
+                        <p>No sections yet. Add your first section below!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            sections.forEach((section, index) => {
+                const charCount = section.html.length;
+                const isCollapsed = section.collapsed;
+                const scrollBudget = section.scrollBudget || 2000;
+
+                html += `
+                    <div class="section ${isCollapsed ? 'collapsed' : ''}" draggable="true" data-index="${index}" data-id="${section.id}">
+                        <div class="section-header" onclick="toggleCollapse(${section.id}, event)">
+                            <div class="section-title">
+                                <span style="color: var(--text-dim);">⋮⋮</span>
+                                <span class="collapse-arrow">${isCollapsed ? '▶' : '▼'}</span>
+                                ${section.name}
+                                <span style="color:var(--text-dim);font-family:var(--mono);font-size:10px;margin-left:8px;">${charCount.toLocaleString()} chars</span>
+                            </div>
+                            <div class="section-controls" onclick="event.stopPropagation()">
+                                ${mode === 'viewport' ? `
+                                <label style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--text-dim);">
+                                    <select style="padding:3px 4px;background:var(--bg-deep);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:var(--mono);font-size:10px;"
+                                        onchange="updateLayout(${section.id}, this.value)"
+                                        onclick="event.stopPropagation()">
+                                        <option value="viewport" ${section.layout !== 'flow' ? 'selected' : ''}>Scroll</option>
+                                        <option value="flow" ${section.layout === 'flow' ? 'selected' : ''}>Flow</option>
+                                    </select>
+                                </label>
+                                ${section.layout !== 'flow' ? `
+                                <label style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--text-dim);">
+                                    Budget:
+                                    <input type="number" value="${scrollBudget}" min="500" max="10000" step="100"
+                                        style="width:70px;padding:4px;background:var(--bg-deep);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:var(--mono);font-size:10px;"
+                                        onchange="updateScrollBudget(${section.id}, this.value)"
+                                        onclick="event.stopPropagation()">px
+                                </label>
+                                ` : '<span style="font-family:var(--mono);font-size:10px;color:#4a9;margin:0 4px;">↕ natural height</span>'}
+                                ` : ''}
+                                <button onclick="renameSection(${section.id}); event.stopPropagation();">✏️</button>
+                                <button onclick="removeSection(${section.id}); event.stopPropagation();" class="remove">✕</button>
+                            </div>
+                        </div>
+                        <div class="section-body" style="display:${isCollapsed ? 'none' : 'block'}">
+                            <textarea
+                                placeholder="Paste HTML code from a Scrolltastic module here..."
+                                oninput="updateSection(${section.id}, this.value)"
+                            >${section.html}</textarea>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            setupDragDrop();
+        }
+
+        function toggleCollapse(id, event) {
+            if (event.target.tagName === 'BUTTON' || event.target.tagName === 'INPUT') return;
+            const section = sections.find(s => s.id === id);
+            if (section) {
+                section.collapsed = !section.collapsed;
+                renderSections();
+                saveState();
+            }
+        }
+
+        function updateScrollBudget(id, value) {
+            const section = sections.find(s => s.id === id);
+            if (section) {
+                section.scrollBudget = parseInt(value) || 2000;
+                saveState();
+            }
+        }
+
+        function renameSection(id) {
+            const section = sections.find(s => s.id === id);
+            if (!section) return;
+
+            const newName = prompt('Rename section:', section.name);
+            if (newName && newName.trim()) {
+                section.name = newName.trim();
+                renderSections();
+                saveState();
+            }
+        }
+
+        function setupDragDrop() {
+            const sectionElements = document.querySelectorAll('.section');
+
+            sectionElements.forEach(element => {
+                element.addEventListener('dragstart', function(e) {
+                    draggedIndex = parseInt(this.getAttribute('data-index'));
+                    this.classList.add('dragging');
+                });
+
+                element.addEventListener('dragend', function(e) {
+                    this.classList.remove('dragging');
+                });
+
+                element.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                });
+
+                element.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    const dropIndex = parseInt(this.getAttribute('data-index'));
+
+                    if (draggedIndex !== dropIndex) {
+                        const draggedSection = sections[draggedIndex];
+                        sections.splice(draggedIndex, 1);
+                        sections.splice(dropIndex, 0, draggedSection);
+                        renderSections();
+                        saveState();
+                    }
+                });
+            });
+        }
+
+        function updateMode() {
+            const mode = document.querySelector('input[name="stackMode"]:checked').value;
+            document.getElementById('viewportSettings').style.display = mode === 'viewport' ? 'block' : 'none';
+            document.getElementById('stackSettings').style.display = mode === 'stack' ? 'block' : 'none';
+            renderSections(); // Re-render to show/hide per-section scroll budget
+            saveSettings();
+        }
+
+        function updateTransitionOptions() {
+            const type = document.getElementById('transitionType').value;
+            document.getElementById('wipeDirectionGroup').style.display = type === 'wipe' ? 'block' : 'none';
+        }
+
+        function saveSettings() {
+            const settings = {
+                mode: document.querySelector('input[name="stackMode"]:checked').value,
+                topOffset: document.getElementById('vpDesktopOffset').value,
+                stackBgColor: document.getElementById('stackBgColor').value,
+                transitionType: document.getElementById('transitionType').value,
+                wipeDirection: document.getElementById('wipeDirection').value,
+                transitionDuration: document.getElementById('transitionDuration').value
+            };
+            localStorage.setItem('disco_stack_settings', JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem('disco_stack_settings');
+                if (saved) {
+                    const s = JSON.parse(saved);
+                    if (s.mode) {
+                        document.querySelector(`input[name="stackMode"][value="${s.mode}"]`).checked = true;
+                    }
+                    if (s.topOffset) document.getElementById('vpDesktopOffset').value = s.topOffset;
+                    if (s.stackBgColor) document.getElementById('stackBgColor').value = s.stackBgColor;
+                    if (s.transitionType) document.getElementById('transitionType').value = s.transitionType;
+                    if (s.wipeDirection) document.getElementById('wipeDirection').value = s.wipeDirection;
+                    if (s.transitionDuration) document.getElementById('transitionDuration').value = s.transitionDuration;
+                    document.getElementById('transitionDurationVal').textContent = (s.transitionDuration || 15) + '%';
+                    updateMode();
+                    updateTransitionOptions();
+                }
+            } catch (e) {
+                console.warn('Could not load settings:', e);
+            }
+        }
+
+        function previewStack() {
+            if (sections.length === 0) {
+                discoAlert('Add some sections first!');
+                return;
+            }
+
+            const hasContent = sections.some(s => s.html.trim());
+            if (!hasContent) {
+                discoAlert('All sections are empty! Paste some HTML code first.');
+                return;
+            }
+
+            const combinedHTML = generateCombinedHTML();
+            document.getElementById('embedCode').value = combinedHTML;
+
+            const blob = new Blob([combinedHTML], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+
+            document.getElementById('previewIframe').src = url;
+            document.getElementById('previewModal').classList.add('active');
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.remove('active');
+            document.getElementById('previewIframe').src = '';
+            document.getElementById('fitFrameToggle').checked = false;
+            document.querySelector('.preview-modal-body').classList.remove('fit-frame');
+        }
+
+        function toggleFitFrame() {
+            const body = document.querySelector('.preview-modal-body');
+            const toggle = document.getElementById('fitFrameToggle');
+            if (toggle.checked) {
+                body.classList.add('fit-frame');
+            } else {
+                body.classList.remove('fit-frame');
+            }
+        }
+
+        function generateCombinedHTML() {
+            const mode = document.querySelector('input[name="stackMode"]:checked').value;
+            return mode === 'viewport' ? generateViewportHTML() : generateNormalHTML();
+        }
+
+        function generateNormalHTML() {
+            let combinedStyles = '';
+            let combinedScripts = '';
+            let combinedBody = '';
+            let title = 'Disco Stack';
+            const desktopOffset = parseInt(document.getElementById('vpDesktopOffset').value) || 50;
+            const bgColor = document.getElementById('stackBgColor').value || '#000000';
+
+            sections.forEach((section, index) => {
+                if (!section.html.trim()) return;
+
+                // Parse the HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(section.html, 'text/html');
+
+                // Extract title from first section
+                if (index === 0 && doc.querySelector('title')) {
+                    title = doc.querySelector('title').textContent;
+                }
+
+                // Extract and combine styles
+                doc.querySelectorAll('style').forEach(style => {
+                    combinedStyles += style.textContent + '\n\n';
+                });
+
+                // Extract and combine body content
+                const bodyContent = doc.body ? doc.body.innerHTML : section.html;
+                combinedBody += '<!-- Section ' + (index + 1) + ': ' + section.name + ' -->\n' + bodyContent + '\n\n';
+
+                // Extract and combine scripts
+                doc.querySelectorAll('script').forEach(script => {
+                    combinedScripts += '// Script from: ' + section.name + '\n' + script.textContent + '\n\n';
+                });
+            });
+
+            if (!combinedBody.trim()) {
+                return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Empty Stack</title></head><body style="padding: 100px; text-align: center; font-family: sans-serif; color: #666;"><h1>No Content</h1><p>All sections were empty.</p></body></html>';
+            }
+
+            // Build the final combined HTML with wrapper for CMS isolation
+            const htmlDoc = '<!DOCTYPE html>\n' +
+                '<html lang="en">\n' +
+                '<head>\n' +
+                '    <meta charset="UTF-8">\n' +
+                '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+                '    <title>' + title + '</title>\n' +
+                '    <style>\n' +
+                '        * { margin: 0; padding: 0; box-sizing: border-box; }\n' +
+                '        body { background: ' + bgColor + '; overflow-x: hidden; }\n' +
+                '        ' + combinedStyles + '\n' +
+                '        /* Wrapper isolates from CMS overflow issues */\n' +
+                '        .nm-wrap { position: relative; width: 100%; background: ' + bgColor + '; overflow: clip; }\n' +
+                '        .nm-scroll { position: -webkit-sticky; position: sticky; top: ' + desktopOffset + 'px; height: calc(100vh - ' + desktopOffset + 'px); overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }\n' +
+                '        .nm-scroll::-webkit-scrollbar { width: 0; background: transparent; }\n' +
+                '        /* Override module stages to be sticky within scroll container */\n' +
+                '        .nm-scroll [class*="-stage"] { position: -webkit-sticky; position: sticky; top: 0; }\n' +
+                '        @media(max-width:768px){\n' +
+                '            .nm-scroll { top: ' + desktopOffset + 'px; height: calc(100vh - ' + desktopOffset + 'px); }\n' +
+                '            .nm-scroll [class*="-stage"] { top: 0 !important; height: 100vh !important; }\n' +
+                '        }\n' +
+                '    </style>\n' +
+                '</head>\n' +
+                '<body>\n' +
+                '    <div class="nm-wrap">\n' +
+                '    <div class="nm-scroll">\n' +
+                '        ' + combinedBody + '\n' +
+                '    </div>\n' +
+                '    </div>\n' +
+                '    <script>\n' +
+                '        // Calculate wrapper height based on scroll content\n' +
+                '        (function(){\n' +
+                '            var wrap = document.querySelector(".nm-wrap");\n' +
+                '            var scroll = document.querySelector(".nm-scroll");\n' +
+                '            function setHeight(){\n' +
+                '                var scrollHeight = scroll.scrollHeight;\n' +
+                '                var viewHeight = window.innerHeight;\n' +
+                '                wrap.style.height = scrollHeight + "px";\n' +
+                '            }\n' +
+                '            setHeight();\n' +
+                '            window.addEventListener("resize", setHeight);\n' +
+                '            // Sync internal scroll with page scroll\n' +
+                '            var ticking = false;\n' +
+                '            function syncScroll(){\n' +
+                '                var rect = wrap.getBoundingClientRect();\n' +
+                '                var scrolled = Math.max(0, -rect.top);\n' +
+                '                var maxScroll = scroll.scrollHeight - scroll.clientHeight;\n' +
+                '                var targetScroll = Math.min(scrolled, maxScroll);\n' +
+                '                scroll.scrollTop = targetScroll;\n' +
+                '                ticking = false;\n' +
+                '            }\n' +
+                '            window.addEventListener("scroll", function(){\n' +
+                '                if(!ticking){ requestAnimationFrame(syncScroll); ticking = true; }\n' +
+                '            }, {passive: true});\n' +
+                '        })();\n' +
+                '        ' + combinedScripts + '\n' +
+                '    </' + 'script>\n' +
+                '</body>\n' +
+                '</html>';
+
+            return htmlDoc;
+        }
+
+        function generateViewportHTML() {
+            const transitionType = document.getElementById('transitionType').value;
+            const transitionPct = parseInt(document.getElementById('transitionDuration').value) / 100;
+            const topOffset = parseInt(document.getElementById('vpDesktopOffset').value) || 50;
+            const wipeDirection = document.getElementById('wipeDirection').value;
+            let title = 'Disco Viewport Stack';
+
+            // --- Step 1: Parse each section ---
+            const parsed = [];
+            sections.forEach((section, index) => {
+                if (!section.html.trim()) return;
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(section.html, 'text/html');
+                if (index === 0 && doc.querySelector('title')) {
+                    title = doc.querySelector('title').textContent;
+                }
+                const firstDiv = doc.body.querySelector('div[id]');
+                const moduleId = firstDiv ? firstDiv.id : 'module' + index;
+                let styles = '';
+                doc.querySelectorAll('style').forEach(s => { styles += s.textContent + '\n'; });
+                let scripts = '';
+                doc.querySelectorAll('script').forEach(s => { scripts += s.textContent + '\n'; });
+                const bodyContent = doc.body ? doc.body.innerHTML : section.html;
+                parsed.push({
+                    layout: section.layout || 'viewport',
+                    moduleId: moduleId,
+                    styles: styles,
+                    scripts: scripts,
+                    bodyContent: bodyContent,
+                    scrollBudget: section.scrollBudget || 2000
+                });
+            });
+
+            if (parsed.length === 0) {
+                return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Empty Stack</title></head><body style="padding:100px;text-align:center;font-family:sans-serif;color:#666;"><h1>No Content</h1></body></html>';
+            }
+
+            // --- Step 2: Group into runs ---
+            // Each run is either {type:'viewport', items:[...]} or {type:'flow', item: {...}}
+            const runs = [];
+            parsed.forEach(p => {
+                if (p.layout === 'flow') {
+                    runs.push({ type: 'flow', item: p });
+                } else {
+                    // Add to current viewport run or start new one
+                    if (runs.length > 0 && runs[runs.length - 1].type === 'viewport') {
+                        runs[runs.length - 1].items.push(p);
+                    } else {
+                        runs.push({ type: 'viewport', items: [p] });
+                    }
+                }
+            });
+
+            // --- Step 3: Build combined output ---
+            let allStyles = '';
+            let bodyHTML = '';
+            let allScripts = '';
+            let vpGroupIndex = 0;
+
+            runs.forEach((run, ri) => {
+                if (run.type === 'flow') {
+                    // Flow section: natural height with entrance animation
+                    const p = run.item;
+                    allStyles += p.styles + '\n';
+                    allScripts += p.scripts + '\n';
+                    const flowId = 'flow-' + ri;
+                    bodyHTML += '    <div id="' + flowId + '" class="flow-section" style="opacity:0;transform:translateY(40px);transition:opacity 0.6s ease,transform 0.6s ease;">\n' +
+                        p.bodyContent + '\n    </div>\n';
+                } else {
+                    // Viewport group
+                    const g = vpGroupIndex++;
+                    const gClass = 'vpg-' + g;
+                    let groupBody = '';
+                    let groupIds = [];
+                    let groupBudgets = [];
+
+                    run.items.forEach((p, li) => {
+                        allStyles += p.styles + '\n';
+                        allScripts += p.scripts + '\n';
+                        groupIds.push(p.moduleId);
+                        groupBudgets.push(p.scrollBudget);
+                        groupBody += '        <div class="' + gClass + '-layer vp-layer" data-index="' + li + '">\n' + p.bodyContent + '\n        </div>\n';
+                    });
+
+                    const totalHeight = groupBudgets.reduce((s, b) => s + b, 0);
+
+                    bodyHTML += '    <div class="' + gClass + '-wrap vp-wrap" style="position:relative;width:100%;height:' + totalHeight + 'px;background:#000;overflow:clip;">\n' +
+                        '    <div class="' + gClass + '-container vp-container">\n' +
+                        groupBody +
+                        '        <div class="' + gClass + '-blackout vp-blackout"></div>\n' +
+                        '    </div>\n' +
+                        '    </div>\n';
+
+                    // Build per-group scroll controller
+                    allScripts += '\n/* Viewport group ' + g + ' controller */\n' +
+                        '(function(){\n' +
+                        'var ids = ' + JSON.stringify(groupIds) + ';\n' +
+                        'var budgets = ' + JSON.stringify(groupBudgets) + ';\n' +
+                        'var totalBudget = ' + totalHeight + ';\n' +
+                        'var n = ids.length;\n' +
+                        'var transType = "' + transitionType + '";\n' +
+                        'var transPct = ' + transitionPct + ';\n' +
+                        'var wipeDir = "' + wipeDirection + '";\n' +
+                        'var wrap = document.querySelector(".' + gClass + '-wrap");\n' +
+                        'var layers = wrap.querySelectorAll(".' + gClass + '-layer");\n' +
+                        'var blackout = wrap.querySelector(".' + gClass + '-blackout");\n' +
+                        'window.SCROLLTASTIC_PROGRESS = window.SCROLLTASTIC_PROGRESS || {};\n' +
+                        'var ranges = [];\n' +
+                        'var cumulative = 0;\n' +
+                        'for(var i=0;i<n;i++){var start=cumulative/totalBudget;cumulative+=budgets[i];ranges.push({start:start,end:cumulative/totalBudget});}\n' +
+                        'function getClipPath(type,progress,dir){\n' +
+                        '  if(type==="wipe"){var p=Math.max(0,Math.min(100,progress*100));if(dir==="left")return"inset(0 "+(100-p)+"% 0 0)";if(dir==="right")return"inset(0 0 0 "+(100-p)+"%)";if(dir==="up")return"inset("+(100-p)+"% 0 0 0)";if(dir==="down")return"inset(0 0 "+(100-p)+"% 0)";}\n' +
+                        '  if(type==="iris"){var radius=Math.max(0,Math.min(100,progress*75));return"circle("+radius+"% at 50% 50%)";}\n' +
+                        '  return"none";\n' +
+                        '}\n' +
+                        'function upd(){\n' +
+                        '  var rect=wrap.getBoundingClientRect();var wh=window.innerHeight;\n' +
+                        '  var scrolled=Math.max(0,-rect.top);var scrollRange=wrap.offsetHeight-wh;\n' +
+                        '  if(scrollRange<=0)scrollRange=1;\n' +
+                        '  var progress=Math.max(0,Math.min(1,scrolled/scrollRange));\n' +
+                        '  var blackoutOpacity=0;\n' +
+                        '  for(var i=0;i<n;i++){\n' +
+                        '    var range=ranges[i];var start=range.start;var end=range.end;\n' +
+                        '    var localP=Math.max(0,Math.min(1,(progress-start)/(end-start)));\n' +
+                        '    window.SCROLLTASTIC_PROGRESS[ids[i]]=localP;\n' +
+                        '    var layer=layers[i];if(!layer)continue;\n' +
+                        '    var opacity=1;var filter="";var clipPath="none";\n' +
+                        '    if(transType!=="none"&&n>1){\n' +
+                        '      if(i>0&&localP<transPct){var fadeP=localP/transPct;' +
+                        'if(transType==="crossfade"){opacity=fadeP;}' +
+                        'else if(transType==="blur"){opacity=fadeP;filter="blur("+((1-fadeP)*10)+"px)";}' +
+                        'else if(transType==="wipe"||transType==="iris"){opacity=1;clipPath=getClipPath(transType,fadeP,wipeDir);}' +
+                        'else if(transType==="fadeblack"){opacity=fadeP;blackoutOpacity=Math.max(blackoutOpacity,1-fadeP);}}\n' +
+                        '      if(i<n-1&&localP>(1-transPct)){var fadeP=(1-localP)/transPct;' +
+                        'if(transType==="crossfade"){opacity=fadeP;}' +
+                        'else if(transType==="blur"){opacity=fadeP;filter="blur("+((1-fadeP)*10)+"px)";}' +
+                        'else if(transType==="wipe"||transType==="iris"){opacity=1;}' +
+                        'else if(transType==="fadeblack"){opacity=fadeP;blackoutOpacity=Math.max(blackoutOpacity,1-fadeP);}}\n' +
+                        '    }\n' +
+                        '    var isActive=progress>=start-transPct/n&&progress<=end+transPct/n;\n' +
+                        '    layer.style.opacity=isActive?opacity:0;\n' +
+                        '    layer.style.filter=filter;\n' +
+                        '    layer.style.clipPath=clipPath;\n' +
+                        '    layer.style.webkitClipPath=clipPath;\n' +
+                        '    layer.style.pointerEvents=isActive&&opacity>0.5?"auto":"none";\n' +
+                        '  }\n' +
+                        '  if(blackout)blackout.style.opacity=blackoutOpacity;\n' +
+                        '  requestAnimationFrame(upd);\n' +
+                        '}\n' +
+                        'upd();\n' +
+                        '})();\n';
+                }
+            });
+
+            // --- Step 4: Flow entrance observer ---
+            allScripts += '\n/* Flow section entrance animations */\n' +
+                '(function(){\n' +
+                'var flows=document.querySelectorAll(".flow-section");\n' +
+                'if(!flows.length)return;\n' +
+                'if(window.IntersectionObserver){\n' +
+                '  var obs=new IntersectionObserver(function(entries){\n' +
+                '    entries.forEach(function(e){\n' +
+                '      if(e.isIntersecting){e.target.style.opacity="1";e.target.style.transform="translateY(0)";obs.unobserve(e.target);}\n' +
+                '    });\n' +
+                '  },{threshold:0.05});\n' +
+                '  flows.forEach(function(f){obs.observe(f);});\n' +
+                '}else{flows.forEach(function(f){f.style.opacity="1";f.style.transform="translateY(0)";});}\n' +
+                '})();\n';
+
+            // --- Step 5: Assemble document ---
+            const htmlDoc = '<!DOCTYPE html>\n' +
+                '<html lang="en">\n' +
+                '<head>\n' +
+                '    <meta charset="UTF-8">\n' +
+                '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+                '    <title>' + title + '</title>\n' +
+                '    <style>\n' +
+                '        * { margin: 0; padding: 0; box-sizing: border-box; }\n' +
+                '        body { background: #000; }\n' +
+                '        ' + allStyles + '\n' +
+                '        .vp-container { position: -webkit-sticky; position: sticky; top: ' + topOffset + 'px; width: 100%; height: calc(100vh - ' + topOffset + 'px); overflow: hidden; }\n' +
+                '        .vp-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.1s; overflow: hidden; }\n' +
+                '        .vp-layer:first-child { opacity: 1; }\n' +
+                '        .vp-blackout { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; opacity: 0; pointer-events: none; z-index: 9999; }\n' +
+                '        .vp-layer > div { height: 100% !important; position: relative !important; }\n' +
+                '        .vp-layer [class*="-stage"] { position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100% !important; height: 100% !important; }\n' +
+                '        .flow-section { position: relative; width: 100%; }\n' +
+                '        @media(max-width:768px){\n' +
+                '          .vp-container { top: ' + topOffset + 'px; height: calc(100vh - ' + topOffset + 'px); }\n' +
+                '          .vp-layer > div { height: 100% !important; }\n' +
+                '          .vp-layer [class*="-stage"] { position: absolute !important; top: 0 !important; height: 100% !important; }\n' +
+                '        }\n' +
+                '    </style>\n' +
+                '</head>\n' +
+                '<body>\n' +
+                bodyHTML +
+                '    <script>\n' +
+                '        ' + allScripts + '\n' +
+                '    </' + 'script>\n' +
+                '</body>\n' +
+                '</html>';
+
+            return htmlDoc;
+        }
+
+        function exportStack() {
+            if (sections.length === 0) {
+                discoAlert('Add some sections first!');
+                return;
+            }
+
+            const hasContent = sections.some(s => s.html.trim());
+            if (!hasContent) {
+                discoAlert('All sections are empty! Paste some HTML code first.');
+                return;
+            }
+
+            const combinedHTML = generateCombinedHTML();
+            const blob = new Blob([combinedHTML], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'scrolltastic-stack.html';
+            a.click();
+
+            discoAlert('✓ Exported! File: scrolltastic-stack.html');
+        }
+
+        function clearStack() {
+            if (sections.length === 0) return;
+
+            discoConfirm(`Clear all ${sections.length} sections?`, function(){sections = [];
+                sectionIdCounter = 0;
+                document.getElementById('embedCode').value = '';
+                renderSections();
+                saveState();});
+        }
+
+        function copyCode() {
+            const textarea = document.getElementById('embedCode');
+            if (!textarea.value) {
+                discoAlert('Nothing to copy! Preview first to generate the combined HTML.');
+                return;
+            }
+
+            textarea.select();
+            document.execCommand('copy');
+            discoAlert('✓ Copied to clipboard!');
+        }
+
+        // Check for queued items from other modules
+        function checkQueue() {
+            try {
+                var raw = localStorage.getItem('disco_stack_queue');
+                if (!raw) return;
+                var queue = JSON.parse(raw);
+                if (!queue || !queue.length) return;
+                localStorage.removeItem('disco_stack_queue');
+
+                var names = [];
+                for (var i = 0; i < queue.length; i++) {
+                    sectionIdCounter++;
+                    sections.push({
+                        id: sectionIdCounter,
+                        name: queue[i].name || 'Section ' + sectionIdCounter,
+                        html: queue[i].html,
+                        scrollBudget: queue[i].layout === 'flow' ? 0 : 2000,
+                        collapsed: false,
+                        layout: queue[i].layout || 'viewport'
+                    });
+                    names.push(queue[i].name);
+                }
+                renderSections();
+                saveState();
+                discoAlert('Imported ' + queue.length + ' module' + (queue.length > 1 ? 's' : '') + ':\n\n' + names.join(', '));
+            } catch (e) {
+                console.warn('Could not process queue:', e);
+            }
+        }
+
+        // Initialize - load saved state and settings then check queue
+        loadState();
+        loadSettings();
+        updateMode(); // Apply mode visibility
+        setTimeout(checkQueue, 0); // Defer so modal functions are available
+    </script>
+<script>
+(function(){
+  var path = location.pathname.split('/').pop() || 'index.html';
+  document.querySelectorAll('#disco-nav a').forEach(function(a){
+    if(a.getAttribute('href') === path){
+      a.style.color = '#4a9eff';
+      a.style.borderBottom = '2px solid #4a9eff';
+    }
+  });
+})();
+</script>
+<div class="disco-modal-overlay" id="discoModalOverlay" onclick="if(event.target===this)discoCloseModal()"><div class="disco-modal"><div class="disco-modal-title">Disco says:</div><div class="disco-modal-msg" id="discoModalMsg"></div><div class="disco-modal-btns" id="discoModalBtns"></div></div></div>
+<script>
+function discoAlert(msg,cb){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoCb=cb||null;window._discoOk=null;window._discoCancel=null;}
+function discoConfirm(msg,onOk,onCancel){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent=typeof msg==='string'?msg:String(msg);b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Cancel</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">OK</button>';o.classList.add('active');window._discoOk=onOk||null;window._discoCancel=onCancel||null;window._discoCb=null;}
+function discoStackSend(){var o=document.getElementById('discoModalOverlay'),m=document.getElementById('discoModalMsg'),b=document.getElementById('discoModalBtns');m.textContent='Sent to Stack Builder!';b.innerHTML='<button class="disco-btn-secondary" onclick="discoCloseModal(\'cancel\')">Close</button><button class="disco-btn-primary" onclick="discoCloseModal(\'ok\')">Open Stack Builder now</button>';o.classList.add('active');window._discoOk=function(){window.location.href='stack-builder-clean.html';};window._discoCancel=null;window._discoCb=null;}
+function discoCloseModal(action){document.getElementById('discoModalOverlay').classList.remove('active');if(action==='ok'&&window._discoOk){var f=window._discoOk;window._discoOk=null;f();}else if(action==='cancel'&&window._discoCancel){var f=window._discoCancel;window._discoCancel=null;f();}else if(action==='ok'&&window._discoCb){var f=window._discoCb;window._discoCb=null;f();}}
+</script>
+</body>
+</html>

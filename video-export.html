@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Export | Scrolltastic</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; min-height: 100vh; }
+.container { display: flex; height: 100vh; }
+.controls { width: 380px; background: #1a1a1a; padding: 20px; overflow-y: auto; border-right: 1px solid #2a2a2a; flex-shrink: 0; }
+.preview-area { flex: 1; display: flex; flex-direction: column; background: #0a0a0a; }
+h1 { font-size: 20px; margin-bottom: 8px; color: #fff; }
+.subtitle { font-size: 12px; color: #666; margin-bottom: 24px; }
+h2 { font-size: 14px; color: #4a9eff; margin: 24px 0 16px 0; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; }
+h2:first-of-type { margin-top: 0; }
+.control-group { margin-bottom: 16px; }
+.control-group label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; }
+.control-group input, .control-group select, .control-group textarea { width: 100%; padding: 10px 12px; background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 6px; color: #e0e0e0; font-size: 14px; }
+.control-group textarea { min-height: 120px; font-family: monospace; font-size: 12px; resize: vertical; }
+.control-group input:focus, .control-group select:focus, .control-group textarea:focus { outline: none; border-color: #4a9eff; }
+button { padding: 10px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+button.primary { background: #4a9eff; color: #000; font-weight: 600; }
+button.primary:hover { background: #6bb3ff; }
+button.primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+button.secondary { background: #2a2a2a; color: #e0e0e0; }
+button.secondary:hover { background: #3a3a3a; }
+.button-row { display: flex; gap: 10px; margin-top: 16px; }
+.button-row button { flex: 1; }
+
+.radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.radio-group label { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 6px; cursor: pointer; font-size: 13px; color: #ccc; }
+.radio-group input { display: none; }
+.radio-group input:checked + span { color: #4a9eff; }
+.radio-group label:has(input:checked) { border-color: #4a9eff; background: #4a9eff11; }
+
+.preview-header { padding: 12px 20px; background: #1a1a1a; border-bottom: 1px solid #2a2a2a; display: flex; align-items: center; gap: 16px; }
+.preview-header span { font-size: 12px; color: #666; }
+.preview-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; overflow: hidden; min-height: 400px; }
+.preview-frame { background: #000; position: relative; overflow: hidden; border: 1px solid #333; min-width: 200px; min-height: 112px; }
+.preview-frame iframe { border: none; transform-origin: top left; display: block; background: #fff; }
+
+.progress-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; }
+.progress-overlay.active { display: flex; }
+.progress-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 40px; text-align: center; max-width: 400px; }
+.progress-title { font-size: 18px; color: #fff; margin-bottom: 8px; }
+.progress-status { font-size: 14px; color: #888; margin-bottom: 24px; }
+.progress-bar { width: 300px; height: 8px; background: #2a2a2a; border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: #4a9eff; width: 0%; transition: width 0.1s; }
+.progress-percent { font-size: 24px; color: #4a9eff; margin-top: 16px; font-weight: 600; }
+.progress-cancel { margin-top: 24px; }
+
+.status-msg { padding: 12px; border-radius: 6px; font-size: 13px; margin-top: 16px; }
+.status-msg.error { background: #ff4a4a22; border: 1px solid #ff4a4a44; color: #ff6b6b; }
+.status-msg.success { background: #4aff4a22; border: 1px solid #4aff4a44; color: #6bff6b; }
+.status-msg.warning { background: #ffaa4a22; border: 1px solid #ffaa4a44; color: #ffcc6b; }
+.status-msg.info { background: #4a9eff22; border: 1px solid #4a9eff44; color: #6bb3ff; }
+
+.specs { font-size: 11px; color: #666; margin-top: 8px; padding: 8px; background: #0a0a0a; border-radius: 4px; }
+.specs span { color: #888; }
+
+.ffmpeg-status { display: flex; align-items: center; gap: 8px; padding: 12px; background: #0a0a0a; border-radius: 6px; margin-bottom: 16px; }
+.ffmpeg-dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
+.ffmpeg-dot.loading { background: #ffaa4a; animation: pulse 1s infinite; }
+.ffmpeg-dot.ready { background: #4aff4a; }
+.ffmpeg-dot.error { background: #ff4a4a; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.ffmpeg-text { font-size: 12px; color: #888; }
+</style>
+</head>
+<body>
+
+<div id="disco-nav" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#111;border-bottom:1px solid #2a2a2a;display:flex;overflow-x:auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <a href="index.html" style="padding:12px 20px;color:#4a9eff;text-decoration:none;font-size:14px;white-space:nowrap;border-right:1px solid #2a2a2a;">← Hub</a>
+    <span style="padding:12px 20px;color:#fff;font-size:14px;font-weight:600;">Video Export</span>
+</div>
+
+<div class="container" style="padding-top:45px;">
+    <div class="controls">
+        <h1>Video Export</h1>
+        <p class="subtitle">Convert scroll stories to video</p>
+        
+        <div class="ffmpeg-status">
+            <div class="ffmpeg-dot" id="ffmpegDot"></div>
+            <span class="ffmpeg-text" id="ffmpegText">Loading encoder...</span>
+        </div>
+        
+        <h2>Source</h2>
+        <div class="control-group">
+            <label>Paste Exported HTML</label>
+            <textarea id="htmlInput" placeholder="Paste your exported module or stack HTML here..."></textarea>
+        </div>
+        <button class="primary" onclick="loadPreview()" style="width:100%;">Load Preview</button>
+        
+        <h2>Video Settings</h2>
+        <div class="control-group">
+            <label>Aspect Ratio</label>
+            <div class="radio-group">
+                <label><input type="radio" name="aspect" value="16:9" checked><span>16:9</span></label>
+                <label><input type="radio" name="aspect" value="9:16"><span>9:16</span></label>
+                <label><input type="radio" name="aspect" value="1:1"><span>1:1</span></label>
+            </div>
+            <div class="specs">
+                <span id="dimensionDisplay">1920 × 1080</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Duration</label>
+            <div class="radio-group">
+                <label><input type="radio" name="duration" value="10" checked><span>10s</span></label>
+                <label><input type="radio" name="duration" value="15"><span>15s</span></label>
+                <label><input type="radio" name="duration" value="20"><span>20s</span></label>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Frame Rate</label>
+            <div class="radio-group">
+                <label><input type="radio" name="fps" value="24"><span>24</span></label>
+                <label><input type="radio" name="fps" value="25"><span>25</span></label>
+                <label><input type="radio" name="fps" value="30" checked><span>30</span></label>
+            </div>
+            <div class="specs">
+                <span id="frameDisplay">300 frames total</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Scroll Easing</label>
+            <select id="easing">
+                <option value="linear">Linear (constant speed)</option>
+                <option value="easeInOut" selected>Ease In/Out (smooth start/stop)</option>
+                <option value="easeIn">Ease In (slow start)</option>
+                <option value="easeOut">Ease Out (slow end)</option>
+            </select>
+        </div>
+        
+        <div id="statusArea"></div>
+        
+        <div class="button-row" style="margin-top:24px;">
+            <button class="primary" id="renderBtn" onclick="startRender()" disabled>Render Video</button>
+        </div>
+    </div>
+    
+    <div class="preview-area">
+        <div class="preview-header">
+            <span>Preview</span>
+            <span id="previewInfo">No content loaded</span>
+        </div>
+        <div class="preview-container" id="previewContainer">
+            <div class="preview-frame" id="previewFrame" style="width:480px;height:270px;">
+                <iframe id="previewIframe" style="width:1920px;height:1080px;transform:scale(0.25);transform-origin:top left;border:none;background:#fff;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="progress-overlay" id="progressOverlay">
+    <div class="progress-box">
+        <div class="progress-title">Rendering Video</div>
+        <div class="progress-status" id="progressStatus">Preparing...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-percent" id="progressPercent">0%</div>
+        <button class="secondary progress-cancel" onclick="cancelRender()">Cancel</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
+
+<script>
+// Variables declared first
+var ffmpeg = null;
+var ffmpegLoaded = false;
+var rendering = false;
+var cancelRequested = false;
+var loadedHTML = '';
+
+// Initialize ffmpeg
+async function initFFmpeg() {
+    const dot = document.getElementById('ffmpegDot');
+    const text = document.getElementById('ffmpegText');
+    
+    dot.className = 'ffmpeg-dot loading';
+    text.textContent = 'Loading encoder (~25MB)...';
+    
+    try {
+        // Check if FFmpegWASM is available
+        if (typeof FFmpegWASM === 'undefined') {
+            throw new Error('FFmpeg library not loaded');
+        }
+        
+        ffmpeg = new FFmpegWASM.FFmpeg();
+        
+        ffmpeg.on('progress', ({ progress }) => {
+            if (rendering) {
+                const pct = Math.round(50 + progress * 50);
+                document.getElementById('progressFill').style.width = pct + '%';
+                document.getElementById('progressPercent').textContent = pct + '%';
+                document.getElementById('progressStatus').textContent = 'Encoding video...';
+            }
+        });
+        
+        await ffmpeg.load({
+            coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/umd/ffmpeg-core.js',
+            wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/umd/ffmpeg-core.wasm'
+        });
+        
+        ffmpegLoaded = true;
+        dot.className = 'ffmpeg-dot ready';
+        text.textContent = 'Encoder ready';
+        updateRenderButton();
+    } catch (err) {
+        console.error('FFmpeg load error:', err);
+        dot.className = 'ffmpeg-dot error';
+        text.textContent = 'Encoder failed to load';
+        showStatus('error', 'FFmpeg failed to load. Try refreshing the page.');
+    }
+}
+
+// Get current settings
+function getSettings() {
+    const aspect = document.querySelector('input[name="aspect"]:checked').value;
+    const duration = parseInt(document.querySelector('input[name="duration"]:checked').value);
+    const fps = parseInt(document.querySelector('input[name="fps"]:checked').value);
+    const easing = document.getElementById('easing').value;
+    
+    let width, height;
+    if (aspect === '16:9') { width = 1920; height = 1080; }
+    else if (aspect === '9:16') { width = 1080; height = 1920; }
+    else { width = 1080; height = 1080; }
+    
+    return { aspect, duration, fps, easing, width, height, totalFrames: duration * fps };
+}
+
+// Update displays
+function updateDisplays() {
+    const s = getSettings();
+    document.getElementById('dimensionDisplay').textContent = s.width + ' × ' + s.height;
+    document.getElementById('frameDisplay').textContent = s.totalFrames + ' frames total';
+    updatePreviewSize();
+}
+
+// Radio change listeners
+document.querySelectorAll('input[name="aspect"], input[name="duration"], input[name="fps"]').forEach(el => {
+    el.addEventListener('change', updateDisplays);
+});
+
+// Load preview
+function loadPreview() {
+    const html = document.getElementById('htmlInput').value.trim();
+    if (!html) {
+        showStatus('error', 'Paste some HTML first');
+        return;
+    }
+    
+    loadedHTML = html;
+    
+    const frame = document.getElementById('previewFrame');
+    
+    // Clear and create fresh iframe
+    frame.innerHTML = '';
+    
+    const iframe = document.createElement('iframe');
+    iframe.id = 'previewIframe';
+    iframe.style.cssText = 'border:none;background:#fff;display:block;';
+    frame.appendChild(iframe);
+    
+    // Use srcdoc 
+    iframe.srcdoc = html;
+    
+    // Update after short delay (srcdoc should be instant)
+    setTimeout(function() {
+        updatePreviewSize();
+        document.getElementById('previewInfo').textContent = 'Content loaded';
+        updateRenderButton();
+        showStatus('success', 'Preview loaded. Ready to render.');
+    }, 300);
+}
+
+// Update preview size based on aspect ratio
+function updatePreviewSize() {
+    const s = getSettings();
+    const container = document.getElementById('previewContainer');
+    const frame = document.getElementById('previewFrame');
+    const iframe = frame.querySelector('iframe') || document.getElementById('previewIframe');
+    
+    if (!iframe) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const maxW = containerRect.width - 40;
+    const maxH = containerRect.height - 40;
+    
+    if (maxW <= 0 || maxH <= 0) return; // Container not ready
+    
+    // Calculate scale to fit
+    const scaleW = maxW / s.width;
+    const scaleH = maxH / s.height;
+    const scale = Math.min(scaleW, scaleH, 1); // Allow up to 100%
+    
+    const displayW = Math.floor(s.width * scale);
+    const displayH = Math.floor(s.height * scale);
+    
+    frame.style.width = displayW + 'px';
+    frame.style.height = displayH + 'px';
+    frame.style.overflow = 'hidden';
+    
+    iframe.style.width = s.width + 'px';
+    iframe.style.height = s.height + 'px';
+    iframe.style.transform = 'scale(' + scale + ')';
+    iframe.style.transformOrigin = 'top left';
+    iframe.style.display = 'block';
+}
+
+// Update render button state
+function updateRenderButton() {
+    const btn = document.getElementById('renderBtn');
+    btn.disabled = !ffmpegLoaded || !loadedHTML;
+}
+
+// Easing functions
+const easings = {
+    linear: t => t,
+    easeIn: t => t * t,
+    easeOut: t => t * (2 - t),
+    easeInOut: t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+};
+
+// Start render
+async function startRender() {
+    if (!ffmpegLoaded || !loadedHTML || rendering) return;
+    
+    rendering = true;
+    cancelRequested = false;
+    
+    const s = getSettings();
+    const overlay = document.getElementById('progressOverlay');
+    overlay.classList.add('active');
+    
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('progressPercent').textContent = '0%';
+    document.getElementById('progressStatus').textContent = 'Preparing frames...';
+    
+    try {
+        // Create offscreen iframe for rendering
+        const renderFrame = document.createElement('iframe');
+        renderFrame.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + s.width + 'px;height:' + s.height + 'px;border:none;background:#fff;';
+        document.body.appendChild(renderFrame);
+        
+        // Load HTML into render frame using srcdoc
+        renderFrame.srcdoc = loadedHTML;
+        
+        // Wait for content to settle
+        await new Promise(r => setTimeout(r, 1500));
+        
+        const renderDoc = renderFrame.contentDocument || renderFrame.contentWindow.document;
+        const renderBody = renderDoc.body;
+        
+        // Get scroll height
+        const scrollHeight = Math.max(
+            renderDoc.documentElement.scrollHeight,
+            renderBody.scrollHeight
+        ) - s.height;
+        
+        const frames = [];
+        const ease = easings[s.easing];
+        
+        // Capture frames
+        for (let i = 0; i < s.totalFrames; i++) {
+            if (cancelRequested) throw new Error('Cancelled');
+            
+            const progress = i / (s.totalFrames - 1);
+            const easedProgress = ease(progress);
+            const scrollPos = Math.round(easedProgress * scrollHeight);
+            
+            // Set scroll position
+            renderFrame.contentWindow.scrollTo(0, scrollPos);
+            await new Promise(r => setTimeout(r, 50)); // Let animations settle
+            
+            // Capture frame
+            const canvas = await html2canvas(renderBody, {
+                width: s.width,
+                height: s.height,
+                windowWidth: s.width,
+                windowHeight: s.height,
+                scrollX: 0,
+                scrollY: scrollPos,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#000000',
+                scale: 1
+            });
+            
+            // Convert to blob
+            const frameBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+            const frameData = await frameBlob.arrayBuffer();
+            frames.push(new Uint8Array(frameData));
+            
+            // Update progress (0-50% for capturing)
+            const pct = Math.round((i / s.totalFrames) * 50);
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('progressPercent').textContent = pct + '%';
+            document.getElementById('progressStatus').textContent = 'Capturing frame ' + (i + 1) + ' of ' + s.totalFrames;
+        }
+        
+        // Cleanup render frame
+        document.body.removeChild(renderFrame);
+        
+        if (cancelRequested) throw new Error('Cancelled');
+        
+        // Write frames to ffmpeg
+        document.getElementById('progressStatus').textContent = 'Writing frames...';
+        
+        for (let i = 0; i < frames.length; i++) {
+            const filename = 'frame' + String(i).padStart(4, '0') + '.png';
+            await ffmpeg.writeFile(filename, frames[i]);
+        }
+        
+        if (cancelRequested) throw new Error('Cancelled');
+        
+        // Encode video
+        document.getElementById('progressStatus').textContent = 'Encoding video...';
+        
+        await ffmpeg.exec([
+            '-framerate', String(s.fps),
+            '-i', 'frame%04d.png',
+            '-c:v', 'libx264',
+            '-pix_fmt', 'yuv420p',
+            '-crf', '23',
+            '-preset', 'fast',
+            'output.mp4'
+        ]);
+        
+        // Read output
+        const data = await ffmpeg.readFile('output.mp4');
+        
+        // Cleanup ffmpeg files
+        for (let i = 0; i < frames.length; i++) {
+            const filename = 'frame' + String(i).padStart(4, '0') + '.png';
+            await ffmpeg.deleteFile(filename);
+        }
+        await ffmpeg.deleteFile('output.mp4');
+        
+        // Download
+        const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+        const downloadUrl = URL.createObjectURL(videoBlob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = 'scrolltastic_' + s.aspect.replace(':', 'x') + '_' + s.duration + 's.mp4';
+        a.click();
+        URL.revokeObjectURL(downloadUrl);
+        
+        overlay.classList.remove('active');
+        showStatus('success', 'Video exported successfully!');
+        
+    } catch (err) {
+        console.error('Render error:', err);
+        overlay.classList.remove('active');
+        if (err.message !== 'Cancelled') {
+            showStatus('error', 'Render failed: ' + err.message);
+        }
+    }
+    
+    rendering = false;
+}
+
+// Cancel render
+function cancelRender() {
+    cancelRequested = true;
+    document.getElementById('progressStatus').textContent = 'Cancelling...';
+}
+
+// Show status message
+function showStatus(type, msg) {
+    const area = document.getElementById('statusArea');
+    area.innerHTML = '<div class="status-msg ' + type + '">' + msg + '</div>';
+    if (type === 'success') {
+        setTimeout(() => { area.innerHTML = ''; }, 5000);
+    }
+}
+
+// Window resize
+window.addEventListener('resize', updatePreviewSize);
+
+// Init
+updateDisplays();
+setTimeout(updatePreviewSize, 100); // Ensure container is rendered
+initFFmpeg();
+</script>
+</body>
+</html>
